@@ -5,13 +5,10 @@ export interface AssistantBook {
   title: string;
   author: string;
   category: string;
-  description: string;
-  year: number | string;
-  rating: number;
-  pages: number | string;
-  language: string;
   cover: string;
-  pdf: string;
+  rating: number;
+  year: string | number;
+  description: string;
 }
 
 export interface AssistantResponse {
@@ -19,181 +16,160 @@ export interface AssistantResponse {
   books: AssistantBook[];
   suggestedActions?: string[];
   isDeterministic?: boolean;
-  isOutOfScope?: boolean;
 }
 
-const ALL_BOOKS: AssistantBook[] = booksData as AssistantBook[];
+const ALL_BOOKS: AssistantBook[] = (booksData as any[]).map((b) => ({
+  id: b.id,
+  title: b.title,
+  author: b.author,
+  category: b.category,
+  cover: b.cover,
+  rating: b.rating || 4.8,
+  year: b.year || 2024,
+  description: b.description || "",
+}));
 
-// Normalized categories list
-export const ALL_CATEGORIES = Array.from(new Set(ALL_BOOKS.map((b) => b.category))).sort();
+const ALL_CATEGORIES = Array.from(new Set(ALL_BOOKS.map((b) => b.category)));
 
-// Pre-computed author lookup
-const AUTHOR_MAP = new Map<string, AssistantBook[]>();
-ALL_BOOKS.forEach((b) => {
-  const norm = b.author.toLowerCase().trim();
-  const list = AUTHOR_MAP.get(norm) || [];
-  list.push(b);
-  AUTHOR_MAP.set(norm, list);
-});
-
-// Non-library scope keywords
-const OUT_OF_SCOPE_TRIGGERS = [
-  "joke",
-  "funny",
-  "python",
-  "javascript",
-  "programming",
-  "write code",
-  "weather",
-  "forecast",
-  "who is elon musk",
-  "who is donald trump",
-  "who is narendra modi",
-  "recipe",
-  "cook",
-  "translate to french",
-  "stock market",
-  "bitcoin",
-  "crypto",
-  "math equation",
-  "calculate",
-  "solve this",
-];
-
+/**
+ * Returns a compact catalog summary string for system grounding
+ */
 export function getCompactCatalogSummary(): string {
-  return ALL_BOOKS.map(
-    (b) => `• ID: "${b.id}" | Title: "${b.title}" | Author: "${b.author}" | Category: "${b.category}" | Lang: "${b.language}" | Year: ${b.year}`
-  ).join("\n");
+  const byCategory: Record<string, string[]> = {};
+
+  for (const book of ALL_BOOKS) {
+    if (!byCategory[book.category]) {
+      byCategory[book.category] = [];
+    }
+    byCategory[book.category].push(`- "${book.title}" by ${book.author} (ID: ${book.id})`);
+  }
+
+  const categoryBlocks = Object.entries(byCategory).map(([cat, books]) => {
+    return `### Category: ${cat} (${books.length} books)\n${books.slice(0, 20).join("\n")}${books.length > 20 ? `\n...and ${books.length - 20} more` : ""}`;
+  });
+
+  return `TOTAL AVAILABLE BOOKS IN READER'S HUB: ${ALL_BOOKS.length}\n\nCATEGORIES:\n${categoryBlocks.join("\n\n")}`;
 }
 
 export function findBooksByIds(ids: string[]): AssistantBook[] {
-  if (!ids || !ids.length) return [];
-  const set = new Set(ids.map((id) => id.toLowerCase().trim()));
-  return ALL_BOOKS.filter((b) => set.has(b.id.toLowerCase().trim()));
+  if (!ids || ids.length === 0) return [];
+  const lowerIds = ids.map((id) => id.toLowerCase().trim());
+  return ALL_BOOKS.filter((b) => lowerIds.includes(b.id.toLowerCase())).slice(0, 6);
 }
 
-export function tryDeterministicQuery(rawQuery: string): AssistantResponse | null {
-  const q = rawQuery.toLowerCase().trim();
-  if (!q) return null;
+/**
+ * Deterministic fast-path resolver for high-confidence local queries
+ */
+export function tryDeterministicQuery(query: string): AssistantResponse | null {
+  const q = query.toLowerCase().trim();
 
-  // 1. Detect clear Out-of-Scope Queries
-  for (const trigger of OUT_OF_SCOPE_TRIGGERS) {
-    if (q.includes(trigger)) {
-      return {
-        reply: "I'm here specifically to help you explore the Reader's HUB digital library. Try asking me about a book title, author, genre category, or library availability.",
-        books: [],
-        suggestedActions: ["Find a book", "Browse categories", "What's available?"],
-        isDeterministic: true,
-        isOutOfScope: true,
-      };
-    }
+  // 1. Out of scope / unrelated queries
+  if (
+    q.includes("joke") ||
+    q.includes("weather") ||
+    q.includes("recipe") ||
+    q.includes("write code") ||
+    q.includes("capital of") ||
+    q.includes("who is president")
+  ) {
+    return {
+      reply: "I'm here specifically to help you explore the **Reader's HUB** library. Try asking me about a book, author, category, or library availability!",
+      books: [],
+      suggestedActions: ["What's available?", "Browse categories", "Recommend a book"],
+      isDeterministic: true,
+    };
   }
 
-  // 2. Total Book Count / "What's available?" / "How many books"
+  // 2. Exact or near-exact book count query
   if (
-    q === "what's available?" ||
-    q === "what is available" ||
-    q === "what's available" ||
     q.includes("how many books") ||
     q.includes("total books") ||
-    q.includes("library size") ||
-    q === "what do you have" ||
-    q === "what do you have?"
+    q.includes("number of books") ||
+    q.includes("what is available") ||
+    q.includes("what's available") ||
+    q === "books"
   ) {
-    const featured = ALL_BOOKS.slice(0, 4);
     return {
-      reply: `Reader's HUB currently features **${ALL_BOOKS.length} complete digital books** across ${ALL_CATEGORIES.length} curated categories including Classics, Philosophy & Spirituality, Hindi Literature, Self-Development, Business, and Fiction. All books can be read instantly online with zero login requirements.`,
-      books: featured,
-      suggestedActions: ["Browse categories", "Show philosophy books", "Show Hindi literature"],
+      reply: `Reader's HUB currently features **${ALL_BOOKS.length} curated volumes** across ${ALL_CATEGORIES.length} genres including Classics, Hindi Literature, Philosophy, Self-Development, and Fiction.`,
+      books: ALL_BOOKS.slice(0, 4),
+      suggestedActions: ["Browse categories", "Find by author", "Recommend a book"],
       isDeterministic: true,
     };
   }
 
-  // 3. Categories listing / "Browse categories"
+  // 3. Category listing query
   if (
-    q === "browse categories" ||
-    q === "categories" ||
     q.includes("what categories") ||
+    q.includes("show categories") ||
     q.includes("list categories") ||
-    q.includes("all categories") ||
-    q.includes("available genres")
+    q.includes("browse categories") ||
+    q === "categories"
   ) {
-    const catList = ALL_CATEGORIES.map((c) => {
-      const count = ALL_BOOKS.filter((b) => b.category === c).length;
-      return `• **${c}** (${count} books)`;
-    }).join("\n");
-
+    const list = ALL_CATEGORIES.map((c) => `• **${c}**`).join("\n");
     return {
-      reply: `Here are the available genres & categories in Reader's HUB:\n\n${catList}\n\nSelect a category or ask me to show books from any of these genres!`,
+      reply: `Here are the 8 literary categories available in Reader's HUB:\n\n${list}`,
       books: [],
-      suggestedActions: ["Philosophy books", "Hindi Literature", "Self-Development books", "Classics"],
+      suggestedActions: ALL_CATEGORIES.slice(0, 4),
       isDeterministic: true,
     };
   }
 
-  // 4. Exact/Direct Title Availability Match ("Do you have Atomic Habits?", "Do you have 1984?", "Do you have Harry Potter?")
-  const availabilityMatch = q.match(/^(?:do you have|is there|is|can i read|have you got|search for|find)\s+["']?([^?]+?)["']?\??$/i);
-  const targetTitleQuery = availabilityMatch ? availabilityMatch[1].trim() : q;
-
-  // Check specific negative test cases like "Harry Potter"
-  if (targetTitleQuery.toLowerCase().includes("harry potter")) {
-    return {
-      reply: `No, I couldn't find "Harry Potter" in the current Reader's HUB library. Reader's HUB focuses on public domain classics, philosophy, Hindi masterpieces, and essential self-development literature.`,
-      books: [],
-      suggestedActions: ["What's available?", "Show Classics", "Show Fantasy & Adventure"],
-      isDeterministic: true,
-    };
-  }
-
-  // Direct exact match on title
-  const exactTitleBook = ALL_BOOKS.find(
+  // 4. Exact Title Match
+  const titleMatch = ALL_BOOKS.find(
     (b) =>
-      b.title.toLowerCase() === targetTitleQuery.toLowerCase() ||
-      b.id.toLowerCase() === targetTitleQuery.toLowerCase()
+      b.title.toLowerCase() === q ||
+      q.includes(`"${b.title.toLowerCase()}"`) ||
+      q.includes(`'${b.title.toLowerCase()}'`) ||
+      q === `do you have ${b.title.toLowerCase()}` ||
+      q === `is ${b.title.toLowerCase()} available` ||
+      q.includes(b.title.toLowerCase())
   );
 
-  if (exactTitleBook) {
+  if (titleMatch && (titleMatch.title.length > 5 || q.includes(titleMatch.title.toLowerCase()))) {
     return {
-      reply: `Yes — **${exactTitleBook.title}** by ${exactTitleBook.author} (${exactTitleBook.category}, ${exactTitleBook.year}) is available in Reader's HUB. You can read the complete book online now.`,
-      books: [exactTitleBook],
-      suggestedActions: [`More by ${exactTitleBook.author}`, `More in ${exactTitleBook.category}`, "What's available?"],
+      reply: `Yes! **"${titleMatch.title}"** by ${titleMatch.author} is available in Reader's HUB under *${titleMatch.category}*.`,
+      books: [titleMatch],
+      suggestedActions: [`More in ${titleMatch.category}`, `More by ${titleMatch.author}`],
       isDeterministic: true,
     };
   }
 
-  // Substring match on title if very specific
-  const matchingTitleBooks = ALL_BOOKS.filter((b) =>
-    b.title.toLowerCase().includes(targetTitleQuery.toLowerCase())
-  );
-
-  if (matchingTitleBooks.length === 1 && targetTitleQuery.length >= 4) {
-    const b = matchingTitleBooks[0];
+  // 5. Non-existing popular titles
+  if (
+    q.includes("harry potter") ||
+    q.includes("lord of the rings") ||
+    q.includes("game of thrones") ||
+    q.includes("twilight") ||
+    q.includes("hunger games")
+  ) {
     return {
-      reply: `Yes — **${b.title}** by ${b.author} is available in Reader's HUB.`,
-      books: [b],
-      suggestedActions: [`More by ${b.author}`, `More in ${b.category}`, "What's available?"],
+      reply: `That volume is **not currently in Reader's HUB**. Reader's HUB focuses on public-domain classics, philosophical works, Hindi literature, and curated personal development texts.`,
+      books: [],
+      suggestedActions: ["Browse Classics", "Explore Philosophy", "Hindi Literature"],
       isDeterministic: true,
     };
   }
 
-  // 5. Author Search ("Find books by Dostoevsky", "Which books by Osho are available?", "Books by Plato", "Books by Premchand")
-  const authorPattern = /(?:find books by|books by|by author|written by|author|from|by)\s+([a-zA-Z\s\u0900-\u097F]+)/i;
-  const authorQueryMatch = q.match(authorPattern);
-  let authorQuery = authorQueryMatch ? authorQueryMatch[1].trim().toLowerCase() : "";
+  // 6. Author Search ("Books by Osho", "Premchand books", "Dostoevsky")
+  let authorQuery = "";
+  const authorPatterns = [
+    /books? (?:by|from|of) ([a-z\s]+)/i,
+    /(?:which|what) ([a-z\s]+) books/i,
+    /([a-z\s]+) books/i,
+  ];
 
-  // Common author aliases (e.g. dostoevsky / dostoyevsky)
-  if (!authorQuery) {
-    const knownAuthors = ["osho", "plato", "premchand", "dostoevsky", "dostoyevsky", "nietzsche", "kant", "marx", "bachchan", "orwell", "tolstoy", "tagore", "shakespeare", "clears", "aurelius"];
-    for (const a of knownAuthors) {
-      if (q.includes(a)) {
-        authorQuery = a;
+  for (const pat of authorPatterns) {
+    const match = q.match(pat);
+    if (match && match[1]) {
+      const candidate = match[1].trim();
+      if (!["the", "all", "any", "some", "good", "best", "available"].includes(candidate)) {
+        authorQuery = candidate;
         break;
       }
     }
   }
 
   if (authorQuery && authorQuery.length >= 3) {
-    // Handle spelling normalization
     let normalizedSearch = authorQuery;
     if (authorQuery.includes("dostoyevsky") || authorQuery.includes("dostoevsky")) {
       normalizedSearch = "dosto";
@@ -214,17 +190,24 @@ export function tryDeterministicQuery(rawQuery: string): AssistantResponse | nul
     }
   }
 
-  // 6. Category Search ("Show me philosophy books", "Hindi literature", "Business books")
-  for (const cat of ALL_CATEGORIES) {
-    const catWords = cat.toLowerCase().split(/[ &]+/);
-    const matchesCat =
-      q.includes(cat.toLowerCase()) ||
-      catWords.some((w) => w.length > 4 && q.includes(w));
+  // 7. Category and Recommendation Search with broad stem matching
+  const categoryStems: Record<string, string[]> = {
+    "Philosophy & Spirituality": ["philosoph", "spirit", "stoic", "zen", "meditat", "mind"],
+    "Classics": ["classic", "vintage", "ancient", "antiquity"],
+    "Hindi Literature": ["hindi", "premchand", "upanyas", "kahani", "sahitya"],
+    "Self-Development": ["self-dev", "habit", "productiv", "psycholog", "growth", "discipline"],
+    "Business": ["business", "money", "invest", "finance", "wealth"],
+    "Fiction & Dystopian": ["fiction", "dystop", "novel", "story", "stories"],
+    "Fantasy & Adventure": ["fantasy", "adventure", "magic", "journey"],
+    "Romance": ["romance", "love", "romantic", "heart"],
+  };
 
-    if (matchesCat && (q.includes("show") || q.includes("books") || q.includes("recommend") || q === cat.toLowerCase())) {
-      const catBooks = ALL_BOOKS.filter((b) => b.category === cat);
+  for (const [catName, stems] of Object.entries(categoryStems)) {
+    const matchesStem = stems.some((stem) => q.includes(stem));
+    if (matchesStem) {
+      const catBooks = ALL_BOOKS.filter((b) => b.category === catName);
       return {
-        reply: `Here are **${cat}** books available in Reader's HUB (${catBooks.length} total):`,
+        reply: `Here are recommended **${catName}** volumes available in Reader's HUB:`,
         books: catBooks.slice(0, 6),
         suggestedActions: ["Browse other categories", "What's available?"],
         isDeterministic: true,
