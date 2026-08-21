@@ -3,7 +3,7 @@
 import React, { useEffect, useRef } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Book } from "@/data/books";
+import { Book, BOOKS } from "@/data/books";
 import { useLibrary } from "@/context/LibraryContext";
 import PdfReader from "@/components/PdfReader";
 import BookCard from "@/components/BookCard";
@@ -50,8 +50,11 @@ export default function BookDetailClient({
     }
   };
 
+  // Find other books by the same author if present
+  const authorBooks = BOOKS.filter((b) => b.author === book.author && b.id !== book.id).slice(0, 4);
+
   return (
-    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 text-left">
       {/* Breadcrumb Bar */}
       <nav className="flex items-center gap-2 text-xs text-[var(--text-secondary)] mb-8 overflow-x-auto whitespace-nowrap">
         <Link href="/" className="hover:text-[var(--accent)] transition-colors">
@@ -73,7 +76,7 @@ export default function BookDetailClient({
       </nav>
 
       {/* Book Hero / Overview Card */}
-      <div className="glass-card rounded-3xl p-6 sm:p-10 border border-[var(--border)] bg-[var(--card)] mb-12 shadow-2xl relative overflow-hidden text-left">
+      <div className="glass-card rounded-3xl p-6 sm:p-10 border border-[var(--border)] bg-[var(--card)] mb-12 shadow-2xl relative overflow-hidden">
         {/* Soft Ambient Background Glow */}
         <div
           className="absolute -top-24 -right-24 w-80 h-80 rounded-full blur-[100px] opacity-20 pointer-events-none"
@@ -167,7 +170,7 @@ export default function BookDetailClient({
                         d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
                       />
                     </svg>
-                    <span>{favorited ? "Favorited" : "Favorite"}</span>
+                    <span>{favorited ? "Saved to Shelf" : "Add to Shelf"}</span>
                   </button>
 
                   <button
@@ -193,27 +196,27 @@ export default function BookDetailClient({
               {/* Quick Specs Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 my-6 p-4 rounded-2xl bg-[var(--secondary)] border border-[var(--border)] text-xs">
                 <div>
-                  <span className="text-[var(--text-secondary)] block">Rating</span>
+                  <span className="text-[var(--text-secondary)] block font-medium">Rating</span>
                   <span className="text-[var(--accent)] font-bold text-sm">★ {book.rating.toFixed(1)} / 5.0</span>
                 </div>
                 <div>
-                  <span className="text-[var(--text-secondary)] block">Published</span>
+                  <span className="text-[var(--text-secondary)] block font-medium">Published</span>
                   <span className="text-[var(--foreground)] font-semibold text-sm">{book.year}</span>
                 </div>
                 <div>
-                  <span className="text-[var(--text-secondary)] block">Pages</span>
+                  <span className="text-[var(--text-secondary)] block font-medium">Pages</span>
                   <span className="text-[var(--foreground)] font-semibold text-sm">{book.pages}</span>
                 </div>
                 <div>
-                  <span className="text-[var(--text-secondary)] block">Access</span>
+                  <span className="text-[var(--text-secondary)] block font-medium">Access</span>
                   <span className="text-emerald-400 font-bold text-sm">100% Free</span>
                 </div>
               </div>
 
               {/* Synopsis */}
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <h3 className="text-xs font-bold text-[var(--foreground)] uppercase tracking-wider font-serif">
-                  Synopsis
+                  About this book
                 </h3>
                 <p className="text-sm sm:text-base text-[var(--text-secondary)] leading-relaxed font-normal">
                   {book.description}
@@ -265,7 +268,30 @@ export default function BookDetailClient({
         <PdfReader book={book} />
       </section>
 
-      {/* Related Books */}
+      {/* Author Specific Recommendations */}
+      {authorBooks.length > 0 && (
+        <section className="pt-8 mb-12 border-t border-[var(--border)]">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-bold font-serif text-[var(--foreground)]">
+              More by {book.author}
+            </h2>
+            <Link
+              href={`/library?search=${encodeURIComponent(book.author)}`}
+              className="text-xs text-[var(--accent)] hover:underline font-semibold"
+            >
+              Search author →
+            </Link>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+            {authorBooks.map((aBook) => (
+              <BookCard key={aBook.id} book={aBook} compact />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Category Specific Recommendations */}
       {relatedBooks.length > 0 && (
         <section className="pt-8 border-t border-[var(--border)]">
           <div className="flex items-center justify-between mb-6">

@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { AssistantBook } from "@/lib/library-assistant";
+import { useLibrary } from "@/context/LibraryContext";
 
 interface Message {
   id: string;
@@ -30,6 +31,8 @@ export default function LibraryAssistant() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [hasUnread, setHasUnread] = useState(false);
+
+  const { isFavorite, toggleFavorite } = useLibrary();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -184,7 +187,7 @@ export default function LibraryAssistant() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                 </svg>
               </div>
-              <div>
+              <div className="text-left">
                 <h3 className="text-xs font-bold text-[var(--foreground)] tracking-wide">
                   Reader&#39;s HUB Assistant
                 </h3>
@@ -228,59 +231,76 @@ export default function LibraryAssistant() {
                   <div
                     className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 leading-relaxed shadow-sm ${
                       isUser
-                        ? "bg-[var(--primary)] text-[var(--primary-foreground)] rounded-br-xs font-medium"
-                        : "bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] rounded-bl-xs"
+                        ? "bg-[var(--primary)] text-[var(--primary-foreground)] rounded-br-xs font-medium text-left"
+                        : "bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] rounded-bl-xs text-left"
                     }`}
                   >
                     {formatText(msg.text)}
                   </div>
 
-                  {/* Embedded Book Result Cards */}
+                  {/* Embedded Book Result Cards with [Read Now] & [Favorite] */}
                   {msg.books && msg.books.length > 0 && (
-                    <div className="w-full space-y-2 pt-1 animate-fade-in">
+                    <div className="w-full space-y-2 pt-1 animate-fade-in text-left">
                       <div className="text-[10px] uppercase font-bold tracking-wider text-[var(--text-secondary)] px-1">
-                        Matching Library Books ({msg.books.length})
+                        Matching Library Volumes ({msg.books.length})
                       </div>
                       <div className="grid grid-cols-1 gap-2">
-                        {msg.books.map((b) => (
-                          <div
-                            key={b.id}
-                            className="flex items-center gap-3 p-2 rounded-xl bg-[var(--card)]/90 border border-[var(--border)] hover:border-[var(--accent)]/40 transition-all shadow-sm"
-                          >
-                            <div className="relative w-11 h-15 rounded-lg overflow-hidden flex-shrink-0 bg-[var(--muted)] shadow-inner">
-                              <Image
-                                src={b.cover}
-                                alt={b.title}
-                                fill
-                                className="object-cover"
-                                sizes="50px"
-                              />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <h4 className="text-xs font-bold text-[var(--foreground)] truncate">
-                                {b.title}
-                              </h4>
-                              <p className="text-[10px] text-[var(--text-secondary)] truncate">
-                                by {b.author}
-                              </p>
-                              <div className="flex items-center gap-2 mt-1">
-                                <span className="text-[9px] px-1.5 py-0.2 rounded bg-[var(--secondary)] text-[var(--accent)] font-semibold">
-                                  {b.category}
-                                </span>
-                                <span className="text-[9px] text-[var(--text-secondary)]">
-                                  ★ {b.rating}
-                                </span>
+                        {msg.books.map((b) => {
+                          const favorited = isFavorite(b.id);
+                          return (
+                            <div
+                              key={b.id}
+                              className="flex items-center gap-3 p-2.5 rounded-2xl bg-[var(--card)]/90 border border-[var(--border)] hover:border-[var(--accent)]/40 transition-all shadow-sm"
+                            >
+                              <div className="relative w-11 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-[var(--muted)] shadow-inner">
+                                <Image
+                                  src={b.cover}
+                                  alt={b.title}
+                                  fill
+                                  className="object-cover"
+                                  sizes="50px"
+                                />
+                              </div>
+                              <div className="min-w-0 flex-1 text-left">
+                                <h4 className="text-xs font-bold text-[var(--foreground)] truncate">
+                                  {b.title}
+                                </h4>
+                                <p className="text-[10px] text-[var(--text-secondary)] truncate">
+                                  by {b.author}
+                                </p>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-[var(--secondary)] text-[var(--accent)] font-bold">
+                                    {b.category}
+                                  </span>
+                                  <span className="text-[9px] text-[var(--text-secondary)]">
+                                    ★ {b.rating}
+                                  </span>
+                                </div>
+                              </div>
+
+                              <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+                                <Link
+                                  href={`/book/${b.id}`}
+                                  onClick={() => setIsOpen(false)}
+                                  className="px-2.5 py-1 rounded-lg bg-[var(--primary)] hover:opacity-90 text-[var(--primary-foreground)] font-bold text-[10px] transition-transform hover:scale-105 shadow-xs"
+                                >
+                                  Read Now ↗
+                                </Link>
+                                <button
+                                  onClick={() => toggleFavorite(b.id)}
+                                  className={`p-1 rounded-md text-[10px] border transition-colors cursor-pointer ${
+                                    favorited
+                                      ? "text-rose-400 border-rose-500/40 bg-rose-500/15"
+                                      : "text-[var(--text-secondary)] border-[var(--border)] hover:text-rose-400"
+                                  }`}
+                                  title={favorited ? "Remove from shelf" : "Save to shelf"}
+                                >
+                                  ♥
+                                </button>
                               </div>
                             </div>
-                            <Link
-                              href={`/book/${b.id}`}
-                              onClick={() => setIsOpen(false)}
-                              className="px-2.5 py-1.5 rounded-lg bg-[var(--primary)] hover:opacity-90 text-[var(--primary-foreground)] font-bold text-[10px] flex-shrink-0 transition-transform hover:scale-105"
-                            >
-                              Read ↗
-                            </Link>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   )}
@@ -361,4 +381,3 @@ export default function LibraryAssistant() {
     </>
   );
 }
-
