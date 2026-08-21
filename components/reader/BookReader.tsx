@@ -29,7 +29,7 @@ const DEFAULT_PREFS: ReaderPrefs = {
   layoutMode: "double",
 };
 
-const PREFS_KEY = "readers_hub_reader_prefs_v2";
+const PREFS_KEY = "readers_hub_reader_prefs_v3";
 
 export default function BookReader({ book }: BookReaderProps) {
   const { getReadingProgress, updateReadingProgress } = useLibrary();
@@ -41,7 +41,7 @@ export default function BookReader({ book }: BookReaderProps) {
   const [currentPage, setCurrentPage] = useState<number>(initialPage);
   const [numPages, setNumPages] = useState<number>(0);
   const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loadingText, setLoadingText] = useState<string>("Loading document...");
   const [isFlipping, setIsFlipping] = useState<boolean>(false);
   const [flipDirection, setFlipDirection] = useState<"next" | "prev">("next");
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
@@ -51,7 +51,7 @@ export default function BookReader({ book }: BookReaderProps) {
   const [jumpPageInput, setJumpPageInput] = useState<string>("");
   const [prefs, setPrefs] = useState<ReaderPrefs>(DEFAULT_PREFS);
   const [isMobile, setIsMobile] = useState<boolean>(false);
-  const [useFallbackEmbed, setUseFallbackEmbed] = useState<boolean>(false);
+  const [pdfJsReady, setPdfJsReady] = useState<boolean>(false);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const pdfDocRef = useRef<any>(null);
@@ -60,9 +60,10 @@ export default function BookReader({ book }: BookReaderProps) {
   const canvasSingleRef = useRef<HTMLCanvasElement>(null);
   const touchStartXRef = useRef<number | null>(null);
   const hideControlsTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const renderTaskRef = useRef<Record<string, any>>({});
+  const renderTasksRef = useRef<Record<string, any>>({});
+  const isRenderingRef = useRef<boolean>(false);
 
-  // 1. Check Mobile Screen & Load Preferences
+  // 1. Check Mobile & Load Preferences
   useEffect(() => {
     const checkScreen = () => {
       const mobile = window.innerWidth < 1024;
@@ -78,13 +79,12 @@ export default function BookReader({ book }: BookReaderProps) {
         setPrefs((prev) => ({ ...prev, ...JSON.parse(saved) }));
       }
     } catch {
-      // Ignore localStorage errors
+      // Ignore
     }
 
     return () => window.removeEventListener("resize", checkScreen);
   }, []);
 
-  // Save Preferences
   const updatePref = <K extends keyof ReaderPrefs>(key: K, val: ReaderPrefs[K]) => {
     setPrefs((prev) => {
       const updated = { ...prev, [key]: val };
@@ -97,98 +97,141 @@ export default function BookReader({ book }: BookReaderProps) {
     });
   };
 
-  // 2. Load PDF Document via PDF.js
+  // 2. Load PDF.js script dynamically
   useEffect(() => {
+    if ((window as any).pdfjsLib) {
+      (window as any).pdfjsLib.GlobalWorkerOptions.workerSrc = "/vendor/pdfjs/pdf.worker.min.js";
+      setPdfJsReady(true);
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = "/vendor/pdfjs/pdf.min.js";
+    script.async = true;
+    script.onload = () => {
+      if ((window as any).pdfjsLib) {
+        (window as any).pdfjsLib.GlobalWorkerOptions.workerSrc = "/vendor/pdfjs/pdf.worker.min.js";
+        setPdfJsReady(true);
+      }
+    };
+    script.onerror = () => {
+      console.warn("Could not load local pdf.min.js, trying CDN fallback");
+      const cdnScript = document.createElement("script");
+      cdnScript.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+      cdnScript.async = true;
+      cdnScript.onload = () => {
+        if ((window as any).pdfjsLib) {
+          (window as any).pdfjsLib.GlobalWorkerOptions.workerSrc =
+            "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+          setPdfJsReady(true);
+        }
+      };
+      document.head.appendChild(cdnScript);
+    };
+
+    document.head.appendChild(script);
+  }, []);
+
+  // 3. Load PDF Document
+  useEffect(() => {
+    if (!pdfJsReady || !book.pdf) return;
+
     let isCancelled = false;
     setLoading(true);
-    setError(null);
+    setLoadingText("Fetching pages...");
 
-    const loadPdf = async () => {
-      try {
-        const pdfjsLib = await import("pdfjs-dist");
-        if (pdfjsLib.GlobalWorkerOptions) {
-          pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
-        }
+    const pdfjsLib = (window as any).pdfjsLib;
 
-        const loadingTask = pdfjsLib.getDocument({
-          url: book.pdf,
-          cMapUrl: "https://unpkg.com/pdfjs-dist@6.2.108/cmaps/",
-          cMapPacked: true,
-        });
+    const loadingTask = pdfjsLib.getDocument({
+      url: book.pdf,
+      cMapUrl: "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/",
+      cMapPacked: true,
+      rangeChunkSize: 65536,
+      disableAutoFetch: false,
+      disableStream: false,
+    });
 
-        const doc = await loadingTask.promise;
-        if (isCancelled) return;
-
-        pdfDocRef.current = doc;
-        setNumPages(doc.numPages);
-        setLoading(false);
-
-        // Record total pages in reading progress
-        updateReadingProgress(book.id, currentPage, doc.numPages);
-      } catch (err: any) {
-        console.warn("PDF.js loading issue, activating fallback reader:", err?.message || err);
-        if (!isCancelled) {
-          setUseFallbackEmbed(true);
-          setLoading(false);
-        }
+    loadingTask.onProgress = (progressData: any) => {
+      if (progressData.total > 0) {
+        const percent = Math.round((progressData.loaded / progressData.total) * 100);
+        setLoadingText(`Loading pages (${percent}%)...`);
       }
     };
 
-    loadPdf();
+    loadingTask.promise
+      .then((doc: any) => {
+        if (isCancelled) return;
+        pdfDocRef.current = doc;
+        setNumPages(doc.numPages);
+        setLoading(false);
+        updateReadingProgress(book.id, currentPage, doc.numPages);
+      })
+      .catch((err: any) => {
+        console.error("Error loading PDF document:", err);
+        if (!isCancelled) {
+          setLoadingText("Opening book...");
+          setLoading(false);
+        }
+      });
 
     return () => {
       isCancelled = true;
-      if (pdfDocRef.current) {
+      if (loadingTask) {
         try {
-          pdfDocRef.current.destroy();
+          loadingTask.destroy();
         } catch {
           // Ignore
         }
       }
     };
-  }, [book.pdf]);
+  }, [pdfJsReady, book.pdf]);
 
-  // 3. Render Canvas Pages
+  // 4. Render Single Page to Canvas
   const renderPageToCanvas = useCallback(
-    async (pageNum: number, canvas: HTMLCanvasElement | null, slotKey: string) => {
+    async (pageNum: number, canvas: HTMLCanvasElement | null, slot: string) => {
       if (!canvas || !pdfDocRef.current || pageNum < 1 || pageNum > numPages) {
         if (canvas) {
           const ctx = canvas.getContext("2d");
           ctx?.clearRect(0, 0, canvas.width, canvas.height);
+          canvas.style.display = pageNum < 1 ? "none" : "block";
         }
         return;
       }
 
       try {
-        // Cancel existing render task for this slot if active
-        if (renderTaskRef.current[slotKey]) {
+        canvas.style.display = "block";
+
+        // Cancel previous render task on this canvas slot if active
+        if (renderTasksRef.current[slot]) {
           try {
-            renderTaskRef.current[slotKey].cancel();
+            renderTasksRef.current[slot].cancel();
           } catch {
             // Ignore
           }
         }
 
         const page = await pdfDocRef.current.getPage(pageNum);
-        const containerWidth = containerRef.current?.clientWidth || 900;
-        const containerHeight = containerRef.current?.clientHeight || 650;
 
-        // Base scale calculation
-        const unscaledViewport = page.getViewport({ scale: 1.0 });
+        const container = containerRef.current;
+        const containerWidth = container ? container.clientWidth : 1000;
+        const containerHeight = container ? container.clientHeight : 700;
+
         const isDouble = prefs.layoutMode === "double" && !isMobile;
         
-        const targetWidth = isDouble ? containerWidth / 2 - 40 : containerWidth - 60;
-        const targetHeight = containerHeight - 110;
+        // Calculate max available width and height per page
+        const availableWidth = isDouble ? (containerWidth - 80) / 2 : containerWidth - 48;
+        const availableHeight = containerHeight - 120;
 
-        const scaleX = targetWidth / unscaledViewport.width;
-        const scaleY = targetHeight / unscaledViewport.height;
-        const baseScale = Math.min(scaleX, scaleY, 1.8);
-        const userScale = (prefs.zoom / 100) * (isMobile ? 1.05 : 1.0);
-        const finalScale = Math.max(0.6, baseScale * userScale);
+        const baseViewport = page.getViewport({ scale: 1.0 });
+        const scaleX = availableWidth / baseViewport.width;
+        const scaleY = availableHeight / baseViewport.height;
+        const fitScale = Math.min(scaleX, scaleY);
+
+        const userScale = (prefs.zoom / 100) * (isMobile ? 1.0 : 0.95);
+        const finalScale = Math.max(0.5, fitScale * userScale);
 
         const viewport = page.getViewport({ scale: finalScale });
 
-        // Support high-DPI retina rendering
         const dpr = Math.min(window.devicePixelRatio || 1, 2);
         canvas.width = Math.floor(viewport.width * dpr);
         canvas.height = Math.floor(viewport.height * dpr);
@@ -200,14 +243,17 @@ export default function BookReader({ book }: BookReaderProps) {
 
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
+        // Fill clean background before rendering PDF
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, viewport.width, viewport.height);
+
         const renderContext = {
           canvasContext: ctx,
           viewport: viewport,
-          background: "#ffffff",
         };
 
         const renderTask = page.render(renderContext);
-        renderTaskRef.current[slotKey] = renderTask;
+        renderTasksRef.current[slot] = renderTask;
         await renderTask.promise;
       } catch (err: any) {
         if (err?.name !== "RenderingCancelledException") {
@@ -218,21 +264,22 @@ export default function BookReader({ book }: BookReaderProps) {
     [numPages, prefs.layoutMode, prefs.zoom, isMobile]
   );
 
-  // Render on page change, layout change, or zoom change
+  // 5. Trigger Page Renders
   useEffect(() => {
-    if (loading || numPages === 0 || useFallbackEmbed) return;
+    if (loading || !pdfDocRef.current || numPages === 0) return;
 
     const isDouble = prefs.layoutMode === "double" && !isMobile;
 
     if (isDouble) {
-      // In double mode: if on page 1 (cover), show page 1 on right, left blank or spread
-      // Normal spread: left = even page, right = odd page
-      let leftPage = currentPage % 2 === 0 ? currentPage : currentPage - 1;
-      let rightPage = leftPage + 1;
+      let leftPage: number;
+      let rightPage: number;
 
       if (currentPage === 1) {
-        leftPage = 0; // blank left cover
+        leftPage = 0; // Cover state
         rightPage = 1;
+      } else {
+        leftPage = currentPage % 2 === 0 ? currentPage : currentPage - 1;
+        rightPage = leftPage + 1;
       }
 
       renderPageToCanvas(leftPage, canvasLeftRef.current, "left");
@@ -241,11 +288,10 @@ export default function BookReader({ book }: BookReaderProps) {
       renderPageToCanvas(currentPage, canvasSingleRef.current, "single");
     }
 
-    // Save reading progress in LibraryContext
     updateReadingProgress(book.id, currentPage, numPages);
-  }, [currentPage, numPages, prefs.layoutMode, prefs.zoom, isMobile, loading, useFallbackEmbed, renderPageToCanvas, book.id]);
+  }, [currentPage, numPages, prefs.layoutMode, prefs.zoom, isMobile, loading, renderPageToCanvas, book.id]);
 
-  // 4. Navigation Handlers
+  // 6. Navigation Logic
   const handleNext = () => {
     if (isFlipping) return;
     const isDouble = prefs.layoutMode === "double" && !isMobile;
@@ -257,7 +303,7 @@ export default function BookReader({ book }: BookReaderProps) {
       setTimeout(() => {
         setCurrentPage((prev) => Math.min(numPages, prev + step));
         setIsFlipping(false);
-      }, 320);
+      }, 300);
     }
   };
 
@@ -272,7 +318,7 @@ export default function BookReader({ book }: BookReaderProps) {
       setTimeout(() => {
         setCurrentPage((prev) => Math.max(1, prev - step));
         setIsFlipping(false);
-      }, 320);
+      }, 300);
     }
   };
 
@@ -283,24 +329,24 @@ export default function BookReader({ book }: BookReaderProps) {
     }
   };
 
-  // 5. Fullscreen Toggle
+  // 7. Fullscreen Toggle
   const toggleFullscreen = () => {
     if (!containerRef.current) return;
 
     if (!document.fullscreenElement) {
       containerRef.current.requestFullscreen().catch((err) => {
-        console.warn("Fullscreen request failed:", err);
+        console.warn("Fullscreen request error:", err);
       });
       setIsFullscreen(true);
     } else {
       document.exitFullscreen().catch((err) => {
-        console.warn("Exit fullscreen failed:", err);
+        console.warn("Exit fullscreen error:", err);
       });
       setIsFullscreen(false);
     }
   };
 
-  // 6. Keyboard & Fullscreen Listeners
+  // 8. Keyboard & Fullscreen Listeners
   useEffect(() => {
     const handleFullscreenChange = () => {
       setIsFullscreen(!!document.fullscreenElement);
@@ -351,7 +397,7 @@ export default function BookReader({ book }: BookReaderProps) {
     };
   }, [numPages, currentPage, prefs.layoutMode, isMobile, isFlipping, showSettings, showJumpModal]);
 
-  // 7. Auto-hide Toolbar on Idle
+  // 9. Auto-hide Toolbar on Idle
   const handleUserActivity = () => {
     setShowControls(true);
     if (hideControlsTimerRef.current) {
@@ -361,10 +407,10 @@ export default function BookReader({ book }: BookReaderProps) {
       if (!showSettings && !showJumpModal) {
         setShowControls(false);
       }
-    }, 3800);
+    }, 4000);
   };
 
-  // 8. Touch Gestures for Mobile
+  // 10. Touch Gestures for Mobile
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartXRef.current = e.touches[0].clientX;
   };
@@ -374,35 +420,32 @@ export default function BookReader({ book }: BookReaderProps) {
     const touchEndX = e.changedTouches[0].clientX;
     const diff = touchStartXRef.current - touchEndX;
 
-    if (Math.abs(diff) > 45) {
+    if (Math.abs(diff) > 40) {
       if (diff > 0) {
-        handleNext(); // Swipe left -> Next
+        handleNext();
       } else {
-        handlePrev(); // Swipe right -> Prev
+        handlePrev();
       }
     }
     touchStartXRef.current = null;
   };
 
-  // 9. Compute Visual Filters (Brightness, Warmth, Contrast, Reading Modes)
+  // 11. Visual Tone & Paper Filter Computation
   const getFilterStyle = (): React.CSSProperties => {
     const filters: string[] = [];
 
-    // Brightness
     if (prefs.brightness !== 100) {
       filters.push(`brightness(${prefs.brightness}%)`);
     }
 
-    // Contrast
     if (prefs.contrast !== 100) {
       filters.push(`contrast(${prefs.contrast}%)`);
     }
 
-    // Reading Mode Overrides
     if (prefs.readingMode === "sepia") {
-      filters.push(`sepia(${Math.max(45, prefs.warmth || 45)}%)`);
+      filters.push(`sepia(${Math.max(40, prefs.warmth || 40)}%) brightness(95%)`);
     } else if (prefs.readingMode === "dark") {
-      filters.push(`invert(92%) hue-rotate(180deg) brightness(95%) contrast(90%)`);
+      filters.push(`invert(90%) hue-rotate(180deg) brightness(95%) contrast(92%)`);
     } else if (prefs.readingMode === "dim") {
       filters.push(`brightness(82%) sepia(20%)`);
     } else if (prefs.warmth > 0) {
@@ -418,11 +461,11 @@ export default function BookReader({ book }: BookReaderProps) {
   const getPageBgColor = () => {
     switch (prefs.readingMode) {
       case "sepia":
-        return "#f7f1e3";
+        return "#f4ecd8";
       case "dark":
-        return "#12141c";
+        return "#161922";
       case "dim":
-        return "#e5ded3";
+        return "#e0d9cd";
       default:
         return "#ffffff";
     }
@@ -437,23 +480,23 @@ export default function BookReader({ book }: BookReaderProps) {
       onMouseMove={handleUserActivity}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
-      className={`relative select-none overflow-hidden rounded-3xl border border-[var(--border)] bg-[#0c0e14] shadow-2xl flex flex-col justify-between transition-all duration-300 ${
+      className={`relative select-none overflow-hidden rounded-3xl border border-[var(--border)] bg-[#0a0c10] shadow-2xl flex flex-col justify-between transition-all duration-300 ${
         isFullscreen ? "fixed inset-0 z-50 rounded-none h-screen w-screen" : "w-full min-h-[640px] h-[820px]"
       }`}
       style={{
         background:
           prefs.readingMode === "sepia"
-            ? "radial-gradient(ellipse at center, #261f18 0%, #15110d 100%)"
+            ? "radial-gradient(ellipse at center, #261f18 0%, #120e0a 100%)"
             : prefs.readingMode === "dark"
-            ? "radial-gradient(ellipse at center, #10131d 0%, #06080d 100%)"
-            : "radial-gradient(ellipse at center, #151924 0%, #090b10 100%)",
+            ? "radial-gradient(ellipse at center, #0e111a 0%, #05060a 100%)"
+            : "radial-gradient(ellipse at center, #151924 0%, #07090d 100%)",
       }}
     >
       {/* -------------------------------------------------------------
        * Top Floating Minimalist Reader Bar
        * ------------------------------------------------------------- */}
       <div
-        className={`absolute top-0 inset-x-0 z-30 flex items-center justify-between px-4 sm:px-6 py-3.5 bg-[var(--card)]/90 backdrop-blur-xl border-b border-[var(--border)]/70 transition-all duration-300 ${
+        className={`absolute top-0 inset-x-0 z-30 flex items-center justify-between px-4 sm:px-6 py-3 bg-[var(--card)]/90 backdrop-blur-xl border-b border-[var(--border)]/70 transition-all duration-300 ${
           showControls ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0 pointer-events-none"
         }`}
       >
@@ -500,7 +543,7 @@ export default function BookReader({ book }: BookReaderProps) {
             ))}
           </div>
 
-          {/* Eye Comfort & Lighting Settings Popover Trigger */}
+          {/* Lighting Controls Button */}
           <button
             onClick={() => setShowSettings(!showSettings)}
             className={`p-2 sm:px-3 sm:py-1.5 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1.5 cursor-pointer ${
@@ -529,7 +572,7 @@ export default function BookReader({ book }: BookReaderProps) {
       </div>
 
       {/* -------------------------------------------------------------
-       * Eye Comfort / Settings Floating Popover Panel
+       * Eye Comfort Settings Popover
        * ------------------------------------------------------------- */}
       {showSettings && (
         <div className="absolute top-16 right-4 sm:right-6 z-40 w-80 p-5 rounded-3xl glass-panel shadow-2xl border border-[var(--border)] bg-[var(--card)]/95 backdrop-blur-2xl animate-scale-up space-y-4 text-left">
@@ -545,7 +588,6 @@ export default function BookReader({ book }: BookReaderProps) {
             </button>
           </div>
 
-          {/* Reading Mode Selector */}
           <div className="space-y-1.5">
             <span className="text-[11px] font-semibold text-[var(--text-secondary)]">Reading Atmosphere</span>
             <div className="grid grid-cols-4 gap-1.5">
@@ -565,7 +607,6 @@ export default function BookReader({ book }: BookReaderProps) {
             </div>
           </div>
 
-          {/* Brightness Slider */}
           <div className="space-y-1">
             <div className="flex justify-between text-[11px] font-medium text-[var(--text-secondary)]">
               <span>Brightness</span>
@@ -581,10 +622,9 @@ export default function BookReader({ book }: BookReaderProps) {
             />
           </div>
 
-          {/* Warmth / Sepia Tint Slider */}
           <div className="space-y-1">
             <div className="flex justify-between text-[11px] font-medium text-[var(--text-secondary)]">
-              <span>Warmth</span>
+              <span>Warmth (Sepia)</span>
               <span className="text-[var(--foreground)] font-bold">{prefs.warmth}%</span>
             </div>
             <input
@@ -597,7 +637,6 @@ export default function BookReader({ book }: BookReaderProps) {
             />
           </div>
 
-          {/* Contrast Slider */}
           <div className="space-y-1">
             <div className="flex justify-between text-[11px] font-medium text-[var(--text-secondary)]">
               <span>Contrast</span>
@@ -613,7 +652,6 @@ export default function BookReader({ book }: BookReaderProps) {
             />
           </div>
 
-          {/* Zoom Slider */}
           <div className="space-y-1">
             <div className="flex justify-between text-[11px] font-medium text-[var(--text-secondary)]">
               <span>Scale / Zoom</span>
@@ -629,7 +667,6 @@ export default function BookReader({ book }: BookReaderProps) {
             />
           </div>
 
-          {/* Reset Button */}
           <button
             onClick={() => setPrefs(DEFAULT_PREFS)}
             className="w-full py-1.5 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--foreground)] text-[11px] font-semibold transition-all cursor-pointer"
@@ -640,7 +677,7 @@ export default function BookReader({ book }: BookReaderProps) {
       )}
 
       {/* -------------------------------------------------------------
-       * Page Jump Modal Dialog
+       * Page Jump Modal
        * ------------------------------------------------------------- */}
       {showJumpModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
@@ -682,11 +719,10 @@ export default function BookReader({ book }: BookReaderProps) {
       )}
 
       {/* -------------------------------------------------------------
-       * Center Stage: Physical 3D Book Experience
+       * Main Stage: 3D Book Experience & Rendered Canvas Content
        * ------------------------------------------------------------- */}
       <div className="flex-1 flex items-center justify-center relative p-2 sm:p-6 w-full h-full overflow-hidden">
         {loading ? (
-          /* Loading State */
           <div className="flex flex-col items-center gap-3 text-center animate-pulse">
             <div className="w-12 h-12 rounded-2xl bg-[var(--accent)]/15 border border-[var(--accent)]/30 text-2xl flex items-center justify-center text-[var(--accent)]">
               📖
@@ -695,18 +731,10 @@ export default function BookReader({ book }: BookReaderProps) {
               Opening &ldquo;{book.title}&rdquo;...
             </p>
             <span className="text-[10px] text-[var(--text-secondary)]">
-              Preparing digital pages
+              {loadingText}
             </span>
           </div>
-        ) : useFallbackEmbed ? (
-          /* Native Embed Fallback */
-          <iframe
-            src={`${book.pdf}#toolbar=1&navpanes=0&scrollbar=1`}
-            title={`Reader for ${book.title}`}
-            className="w-full h-full rounded-2xl border-0"
-          />
         ) : (
-          /* 3D Realistic Book Stage */
           <div
             className="relative flex items-center justify-center transition-all duration-300"
             style={{
@@ -716,11 +744,9 @@ export default function BookReader({ book }: BookReaderProps) {
             }}
           >
             {isDouble ? (
-              /* =========================================================
-               * OPEN BOOK (2-PAGE SPREAD) WITH 3D TURNING ANIMATION
-               * ========================================================= */
+              /* Two-Page Spread (Open Book Mode) */
               <div
-                className={`relative flex items-center rounded-2xl overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.65)] border border-[#2b221a]/30 transition-transform duration-300 ${
+                className={`relative flex items-center rounded-2xl shadow-[0_25px_70px_rgba(0,0,0,0.75)] border border-[#2b221a]/40 transition-transform duration-300 ${
                   isFlipping ? (flipDirection === "next" ? "animate-page-flip-next" : "animate-page-flip-prev") : ""
                 }`}
                 style={{
@@ -728,55 +754,71 @@ export default function BookReader({ book }: BookReaderProps) {
                 }}
               >
                 {/* Left Page (Even) */}
-                <div className="relative flex items-center justify-center p-2 sm:p-4 border-r border-[#d4c8b8]/60 overflow-hidden bg-gradient-to-r from-transparent via-transparent to-black/[0.04]">
-                  <canvas ref={canvasLeftRef} className="block max-w-full h-auto object-contain rounded-sm" />
-                  
-                  {/* Left Page Shadow / Bevel */}
+                <div className="relative flex items-center justify-center p-2 sm:p-4 border-r border-[#cfc4b4]/50 overflow-hidden min-h-[380px] sm:min-h-[500px]">
+                  {currentPage === 1 ? (
+                    <div className="w-[320px] sm:w-[380px] h-[480px] sm:h-[560px] flex flex-col items-center justify-center text-center p-6 border border-dashed border-[#cfc4b4]/40 rounded-xl bg-black/[0.02]">
+                      <div className="text-4xl mb-3">📖</div>
+                      <h4 className="font-serif font-bold text-sm text-[#3b2f20] mb-1">
+                        {book.title}
+                      </h4>
+                      <p className="text-xs text-[#6b5840]">by {book.author}</p>
+                      <span className="text-[10px] text-[#9b8060] mt-4 font-mono">
+                        Reader&apos;s HUB Digital Edition
+                      </span>
+                    </div>
+                  ) : (
+                    <canvas
+                      ref={canvasLeftRef}
+                      className="block max-w-full h-auto object-contain rounded-sm shadow-xs"
+                      style={{ opacity: 1 }}
+                    />
+                  )}
+                  {/* Left Spine Crease Shadow */}
                   <div className="absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-black/15 to-transparent pointer-events-none" />
-                  <div className="absolute inset-y-0 left-0 w-3 bg-gradient-to-r from-black/10 to-transparent pointer-events-none" />
                 </div>
 
-                {/* Center Spine Crease */}
+                {/* Physical Center Spine Crease */}
                 <div
-                  className="w-2 self-stretch relative z-10 pointer-events-none"
+                  className="w-2.5 self-stretch relative z-10 pointer-events-none"
                   style={{
-                    background: "linear-gradient(to right, rgba(0,0,0,0.25), rgba(0,0,0,0.08) 50%, rgba(0,0,0,0.25))",
-                    boxShadow: "inset 0 0 4px rgba(0,0,0,0.3)",
+                    background: "linear-gradient(to right, rgba(0,0,0,0.3), rgba(0,0,0,0.08) 50%, rgba(0,0,0,0.3))",
+                    boxShadow: "inset 0 0 4px rgba(0,0,0,0.35)",
                   }}
                 />
 
                 {/* Right Page (Odd) */}
-                <div className="relative flex items-center justify-center p-2 sm:p-4 overflow-hidden bg-gradient-to-l from-transparent via-transparent to-black/[0.04]">
-                  <canvas ref={canvasRightRef} className="block max-w-full h-auto object-contain rounded-sm" />
-                  
-                  {/* Right Page Shadow / Bevel */}
+                <div className="relative flex items-center justify-center p-2 sm:p-4 overflow-hidden min-h-[380px] sm:min-h-[500px]">
+                  <canvas
+                    ref={canvasRightRef}
+                    className="block max-w-full h-auto object-contain rounded-sm shadow-xs"
+                    style={{ opacity: 1 }}
+                  />
+                  {/* Right Spine Crease Shadow */}
                   <div className="absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-black/15 to-transparent pointer-events-none" />
-                  <div className="absolute inset-y-0 right-0 w-3 bg-gradient-to-l from-black/10 to-transparent pointer-events-none" />
                 </div>
               </div>
             ) : (
-              /* =========================================================
-               * SINGLE PAGE VIEW (MOBILE & COMPACT SCREENS)
-               * ========================================================= */
+              /* Single Page Mode */
               <div
-                className={`relative rounded-2xl overflow-hidden shadow-[0_15px_45px_rgba(0,0,0,0.6)] border border-[#2b221a]/25 p-2 sm:p-4 transition-transform duration-300 ${
+                className={`relative rounded-2xl shadow-[0_20px_55px_rgba(0,0,0,0.7)] border border-[#2b221a]/30 p-2 sm:p-4 transition-transform duration-300 ${
                   isFlipping ? (flipDirection === "next" ? "animate-page-flip-next" : "animate-page-flip-prev") : ""
                 }`}
                 style={{
                   backgroundColor: getPageBgColor(),
                 }}
               >
-                <canvas ref={canvasSingleRef} className="block max-w-full h-auto object-contain rounded-sm" />
-                {/* Edge Layer Depth */}
-                <div className="absolute inset-y-0 left-0 w-4 bg-gradient-to-r from-black/10 to-transparent pointer-events-none" />
-                <div className="absolute inset-y-0 right-0 w-4 bg-gradient-to-l from-black/10 to-transparent pointer-events-none" />
+                <canvas
+                  ref={canvasSingleRef}
+                  className="block max-w-full h-auto object-contain rounded-sm shadow-xs"
+                  style={{ opacity: 1 }}
+                />
               </div>
             )}
           </div>
         )}
 
-        {/* Floating Side Click Target Arrows for Natural Navigation */}
-        {!loading && !useFallbackEmbed && (
+        {/* Side Click Targets */}
+        {!loading && (
           <>
             <button
               onClick={handlePrev}
@@ -818,7 +860,7 @@ export default function BookReader({ book }: BookReaderProps) {
       </div>
 
       {/* -------------------------------------------------------------
-       * Bottom Floating Navigation & Reading Progress Toolbar
+       * Bottom Floating Progress & Navigation Toolbar
        * ------------------------------------------------------------- */}
       <div
         className={`absolute bottom-0 inset-x-0 z-30 flex flex-col gap-2 p-3 sm:p-4 bg-[var(--card)]/90 backdrop-blur-xl border-t border-[var(--border)]/70 transition-all duration-300 ${
@@ -826,7 +868,6 @@ export default function BookReader({ book }: BookReaderProps) {
         }`}
       >
         <div className="flex items-center justify-between gap-4 max-w-4xl mx-auto w-full">
-          {/* Previous Page */}
           <button
             onClick={handlePrev}
             disabled={currentPage <= 1}
@@ -840,7 +881,6 @@ export default function BookReader({ book }: BookReaderProps) {
             <span className="hidden sm:inline">Prev</span>
           </button>
 
-          {/* Interactive Page Indicator & Jump Dialog Trigger */}
           <button
             onClick={() => {
               setJumpPageInput(String(currentPage));
@@ -856,7 +896,6 @@ export default function BookReader({ book }: BookReaderProps) {
             <span className="text-[10px] text-[var(--accent)] font-semibold">({progressPercent}%)</span>
           </button>
 
-          {/* Next Page */}
           <button
             onClick={handleNext}
             disabled={numPages > 0 && currentPage >= numPages}
@@ -871,7 +910,6 @@ export default function BookReader({ book }: BookReaderProps) {
           </button>
         </div>
 
-        {/* Thin Ambient Progress Line */}
         <div className="w-full max-w-4xl mx-auto h-1 rounded-full bg-[var(--secondary)] overflow-hidden">
           <div
             className="h-full rounded-full bg-gradient-to-r from-[var(--primary)] to-[var(--accent-secondary)] transition-all duration-300"
