@@ -1,0 +1,283 @@
+@import "tailwindcss";
+
+/* -------------------------------------------------------------
+ * 1. Default / Baseline Theme ("Original" Dark Amber)
+ * ------------------------------------------------------------- */
+:root,
+[data-theme="original"] {
+  --background: #0b0d13;
+  --foreground: #f3f4f6;
+  --card: #131722;
+  --card-foreground: #f3f4f6;
+  --card-border: #232a3b;
+  --primary: #f59e0b;
+  --primary-foreground: #000000;
+  --secondary: #1f293d;
+  --secondary-foreground: #e5e7eb;
+  --accent: #f59e0b;
+  --accent-secondary: #d97706;
+  --accent-glow: #fbbf24;
+  --muted: #181d29;
+  --muted-foreground: #9ca3af;
+  --border: #262f40;
+  --text-primary: #f3f4f6;
+  --text-secondary: #9ca3af;
+  --theme-glow: rgba(245, 158, 11, 0.18);
+  --theme-ambient-1: rgba(245, 158, 11, 0.12);
+  --theme-ambient-2: rgba(217, 119, 6, 0.08);
+}
+
+/* -------------------------------------------------------------
+ * 2. Explicit "Light Mode" (Ivory / Editorial Parchment & Warm Espresso)
+ * ------------------------------------------------------------- */
+[data-theme="light"],
+[data-theme="ivory"] {
+  --background: #fbf9f4;
+  --foreground: #1c1917;
+  --card: #ffffff;
+  --card-foreground: #1c1917;
+  --card-border: #e7e2d7;
+  --primary: #b45309;
+  --primary-foreground: #ffffff;
+  --secondary: #f3eee3;
+  --secondary-foreground: #292524;
+  --accent: #b45309;
+  --accent-secondary: #78350f;
+  --accent-glow: #d97706;
+  --muted: #eee7db;
+  --muted-foreground: #78716c;
+  --border: #e2dbce;
+  --text-primary: #1c1917;
+  --text-secondary: #78716c;
+  --theme-glow: rgba(180, 83, 9, 0.12);
+  --theme-ambient-1: rgba(180, 83, 9, 0.08);
+  --theme-ambient-2: rgba(217, 119, 6, 0.05);
+}
+
+/* -------------------------------------------------------------
+ * 3. Explicit "Dark Mode" (Classic Slate & Pure Charcoal)
+ * ------------------------------------------------------------- */
+[data-theme="dark"] {
+  --background: #090b10;
+  --foreground: #f8fafc;
+  --card: #11141d;
+  --card-foreground: #f8fafc;
+  --card-border: #1e2433;
+  --primary: #60a5fa;
+  --primary-foreground: #000000;
+  --secondary: #1a202c;
+  --secondary-foreground: #e2e8f0;
+  --accent: #60a5fa;
+  --accent-secondary: #3b82f6;
+  --accent-glow: #93c5fd;
+  --muted: #151924;
+  --muted-foreground: #94a3b8;
+  --border: #22293a;
+  --text-primary: #f8fafc;
+  --text-secondary: #94a3b8;
+  --theme-glow: rgba(96, 165, 250, 0.2);
+  --theme-ambient-1: rgba(96, 165, 250, 0.12);
+  --theme-ambient-2: rgba(59, 130, 246, 0.08);
+}
+
+/* -------------------------------------------------------------
+ * 4. "Midnight" (Obsidian & Sapphire Cyan)
+ * ------------------------------------------------------------- */
+[data-theme="midnight"] {
+  --background: #060813;
+  --foreground: #f0f6fc;
+  --card: #0c1020;
+  --card-foreground: #f0f6fc;
+  --card-border: #1a233d;
+  --primary: #38bdf8;
+  --primary-foreground: #000000;
+  --secondary: #131b31;
+  --secondary-foreground: #e2e8f0;
+  --accent: #38bdf8;
+  --accent-secondary: #0284c7;
+  --accent-glow: #7dd3fc;
+  --muted: #10162a;
+  --muted-foreground: #8899ac;
+  --border: #1e2947;
+  --text-primary: #f0f6fc;
+  --text-secondary: #8899ac;
+  --theme-glow: rgba(56, 189, 248, 0.22);
+  --theme-ambient-1: rgba(56, 189, 248, 0.14);
+  --theme-ambient-2: rgba(2, 132, 199, 0.1);
+}
+
+/* -------------------------------------------------------------
+ * 5. "Aurora" (Teal & Luminous Emerald Jade)
+ * ------------------------------------------------------------- */
+[data-theme="aurora"] {
+  --background: #051412;
+  --foreground: #ecfdf5;
+  --card: #0b1f1c;
+  --card-foreground: #ecfdf5;
+  --card-border: #143833;
+  --primary: #2dd4bf;
+  --primary-foreground: #000000;
+  --secondary: #112e29;
+  --secondary-foreground: #ccfbf1;
+  --accent: #2dd4bf;
+  --accent-secondary: #0d9488;
+  --accent-glow: #5eead4;
+  --muted: #0d2622;
+  --muted-foreground: #7ba59f;
+  --border: #1a4841;
+  --text-primary: #ecfdf5;
+  --text-secondary: #7ba59f;
+  --theme-glow: rgba(45, 212, 191, 0.22);
+  --theme-ambient-1: rgba(45, 212, 191, 0.14);
+  --theme-ambient-2: rgba(13, 148, 136, 0.1);
+}
+
+/* -------------------------------------------------------------
+ * 6. "Sunset" (Twilight Dusk & Warm Coral Rose)
+ * ------------------------------------------------------------- */
+[data-theme="sunset"] {
+  --background: #120910;
+  --foreground: #fff1f2;
+  --card: #1f101b;
+  --card-foreground: #fff1f2;
+  --card-border: #381a30;
+  --primary: #fb7185;
+  --primary-foreground: #000000;
+  --secondary: #2b1526;
+  --secondary-foreground: #ffe4e6;
+  --accent: #fb7185;
+  --accent-secondary: #e11d48;
+  --accent-glow: #fda4af;
+  --muted: #241220;
+  --muted-foreground: #aa859e;
+  --border: #44203b;
+  --text-primary: #fff1f2;
+  --text-secondary: #aa859e;
+  --theme-glow: rgba(251, 113, 133, 0.22);
+  --theme-ambient-1: rgba(251, 113, 133, 0.14);
+  --theme-ambient-2: rgba(225, 29, 72, 0.1);
+}
+
+/* -------------------------------------------------------------
+ * 7. "Forest" (Woodland Cedar & Spring Leaf)
+ * ------------------------------------------------------------- */
+[data-theme="forest"] {
+  --background: #08130a;
+  --foreground: #f0fdf4;
+  --card: #0f2113;
+  --card-foreground: #f0fdf4;
+  --card-border: #1c3b23;
+  --primary: #4ade80;
+  --primary-foreground: #000000;
+  --secondary: #16301c;
+  --secondary-foreground: #dcfce7;
+  --accent: #4ade80;
+  --accent-secondary: #16a34a;
+  --accent-glow: #86efac;
+  --muted: #122617;
+  --muted-foreground: #81a489;
+  --border: #234c2c;
+  --text-primary: #f0fdf4;
+  --text-secondary: #81a489;
+  --theme-glow: rgba(74, 222, 128, 0.22);
+  --theme-ambient-1: rgba(74, 222, 128, 0.14);
+  --theme-ambient-2: rgba(22, 163, 74, 0.1);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-card-border: var(--card-border);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-accent: var(--accent);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    -webkit-font-smoothing: antialiased;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+}
+
+/* Glassmorphism & UI Layers */
+.glass-nav {
+  background: color-mix(in srgb, var(--background) 84%, transparent);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+}
+
+.glass-card {
+  background: color-mix(in srgb, var(--card) 78%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.glass-panel {
+  background: color-mix(in srgb, var(--card) 92%, transparent);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+}
+
+/* Book Cover 3D Shadows */
+.book-shadow {
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+}
+
+.book-shadow-lg {
+  box-shadow: 0 20px 35px -10px rgba(0, 0, 0, 0.65), 0 1px 3px 0 var(--border);
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scaleUp {
+  from { opacity: 0; transform: scale(0.96); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.25s ease-out forwards;
+}
+
+.animate-scale-up {
+  animation: scaleUp 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

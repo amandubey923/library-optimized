@@ -1,0 +1,32 @@
+<svg width="64" height="64" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="rh-left" x1="6" y1="12" x2="24" y2="40" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.95" />
+      <stop offset="100%" stop-color="#d97706" stop-opacity="0.7" />
+    </linearGradient>
+    <linearGradient id="rh-right" x1="42" y1="12" x2="24" y2="40" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#fbbf24" stop-opacity="1" />
+      <stop offset="100%" stop-color="#f59e0b" stop-opacity="0.8" />
+    </linearGradient>
+    <linearGradient id="rh-spark" x1="24" y1="4" x2="24" y2="28" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="60%" stop-color="#f59e0b" />
+      <stop offset="100%" stop-color="#b45309" />
+    </linearGradient>
+    <filter id="rh-glow-svg" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="2.5" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <circle cx="24" cy="24" r="22" fill="#f59e0b" fill-opacity="0.08" stroke="#f59e0b" stroke-opacity="0.25" stroke-width="1.2" stroke-dasharray="3 3" />
+  <path d="M24 38C17 34 10 35 6 38V14C10 11 17 10 24 14V38Z" fill="url(#rh-left)" fill-opacity="0.85" />
+  <path d="M24 38C31 34 38 35 42 38V14C38 11 31 10 24 14V38Z" fill="url(#rh-right)" />
+  <path d="M6 38C12 33 18 33 24 38C30 33 36 33 42 38" stroke="#ffffff" stroke-opacity="0.3" stroke-width="1.5" stroke-linecap="round" />
+  <line x1="24" y1="13" x2="24" y2="38" stroke="#0b0d13" stroke-width="2" stroke-linecap="round" />
+  <g filter="url(#rh-glow-svg)">
+    <path d="M24 6L28 14L24 22L20 14Z" fill="url(#rh-spark)" />
+    <circle cx="24" cy="14" r="2" fill="#ffffff" />
+  </g>
+</svg>
+
