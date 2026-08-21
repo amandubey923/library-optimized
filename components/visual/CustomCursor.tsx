@@ -30,13 +30,13 @@ export default function CustomCursor() {
       targetY = e.clientY;
       if (!isVisible) setIsVisible(true);
 
-      // Check if target is interactive
       const target = e.target as HTMLElement | null;
       if (
         target &&
         (target.closest("button") ||
           target.closest("a") ||
           target.closest("input") ||
+          target.closest("textarea") ||
           target.closest("select") ||
           target.closest(".cursor-pointer") ||
           target.tagName === "BUTTON" ||
@@ -53,8 +53,8 @@ export default function CustomCursor() {
 
     const updatePosition = () => {
       setPosition((prev) => ({
-        x: prev.x + (targetX - prev.x) * 0.22,
-        y: prev.y + (targetY - prev.y) * 0.22,
+        x: prev.x + (targetX - prev.x) * 0.28,
+        y: prev.y + (targetY - prev.y) * 0.28,
       }));
       animationFrameId = requestAnimationFrame(updatePosition);
     };
@@ -76,30 +76,62 @@ export default function CustomCursor() {
 
   return (
     <div
-      className="pointer-events-none fixed z-50 transition-opacity duration-300"
+      className="pointer-events-none fixed z-50 transition-opacity duration-300 select-none"
       style={{
         left: `${position.x}px`,
         top: `${position.y}px`,
         transform: "translate(-50%, -50%)",
       }}
+      aria-hidden="true"
     >
-      {/* Outer Halo / Glow Ring */}
+      {/* Refined Diamond / 4-Point Star Element */}
       <div
-        className={`rounded-full border border-[var(--accent)] transition-all duration-200 ${
+        className={`relative flex items-center justify-center transition-all duration-200 ease-out ${
           isHovered
-            ? "w-10 h-10 bg-[var(--accent)]/15 scale-110 shadow-[0_0_15px_var(--theme-glow)]"
-            : "w-6 h-6 bg-transparent scale-100 opacity-60"
+            ? "scale-125 rotate-45"
+            : "scale-100 rotate-0 opacity-80"
         }`}
-      />
-      {/* Inner Pin Dot */}
-      <div
-        className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full transition-all duration-150 ${
-          isHovered
-            ? "w-1.5 h-1.5 bg-[var(--accent-glow)]"
-            : "w-1 h-1 bg-[var(--accent)]"
-        }`}
-      />
+      >
+        {/* Subtle Ambient Glow */}
+        <div
+          className="absolute w-4 h-4 rounded-full blur-[2px] transition-opacity"
+          style={{
+            background: "var(--accent)",
+            opacity: isHovered ? 0.45 : 0.2,
+          }}
+        />
+
+        {/* 4-Point Crosshair Star Lines */}
+        <svg
+          className="w-4 h-4 transition-transform duration-200"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="var(--accent)"
+          strokeWidth={isHovered ? "2" : "1.75"}
+          strokeLinecap="round"
+        >
+          {/* Subtle Diamond Path */}
+          <polygon
+            points="12,3 15,12 12,21 9,12"
+            fill="var(--accent)"
+            fillOpacity={isHovered ? "0.3" : "0.15"}
+          />
+          <polygon
+            points="3,12 12,15 21,12 12,9"
+            fill="var(--accent)"
+            fillOpacity={isHovered ? "0.3" : "0.15"}
+          />
+        </svg>
+
+        {/* Crisp Center Pin Dot */}
+        <div
+          className={`absolute rounded-full transition-all duration-150 ${
+            isHovered
+              ? "w-1.5 h-1.5 bg-[var(--primary-foreground)] shadow-[0_0_8px_var(--accent)]"
+              : "w-1 h-1 bg-[var(--accent)]"
+          }`}
+        />
+      </div>
     </div>
   );
 }
-

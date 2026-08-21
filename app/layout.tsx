@@ -8,6 +8,7 @@ import AmbientEffects from "@/components/visual/AmbientEffects";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import Toast from "@/components/Toast";
+import LibraryAssistant from "@/components/assistant/LibraryAssistant";
 
 export const viewport: Viewport = {
   themeColor: "#0b0d13",
@@ -99,6 +100,7 @@ export default function RootLayout({
               {children}
             </div>
             <Footer />
+            <LibraryAssistant />
             <Toast />
           </LibraryProvider>
         </ThemeProvider>
