@@ -281,3 +281,50 @@
 .animate-scale-up {
   animation: scaleUp 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+/* 3D Realistic Book Page-Turn Animations */
+@keyframes pageFlipNext {
+  0% {
+    transform: perspective(2000px) rotateY(0deg) scale(1);
+    box-shadow: 0 15px 45px rgba(0, 0, 0, 0.6);
+  }
+  50% {
+    transform: perspective(2000px) rotateY(-9deg) scale(0.982);
+    box-shadow: -15px 25px 60px rgba(0, 0, 0, 0.75);
+  }
+  100% {
+    transform: perspective(2000px) rotateY(0deg) scale(1);
+    box-shadow: 0 15px 45px rgba(0, 0, 0, 0.6);
+  }
+}
+
+@keyframes pageFlipPrev {
+  0% {
+    transform: perspective(2000px) rotateY(0deg) scale(1);
+    box-shadow: 0 15px 45px rgba(0, 0, 0, 0.6);
+  }
+  50% {
+    transform: perspective(2000px) rotateY(9deg) scale(0.982);
+    box-shadow: 15px 25px 60px rgba(0, 0, 0, 0.75);
+  }
+  100% {
+    transform: perspective(2000px) rotateY(0deg) scale(1);
+    box-shadow: 0 15px 45px rgba(0, 0, 0, 0.6);
+  }
+}
+
+.animate-page-flip-next {
+  animation: pageFlipNext 0.32s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+.animate-page-flip-prev {
+  animation: pageFlipPrev 0.32s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-page-flip-next,
+  .animate-page-flip-prev {
+    animation: none !important;
+    transform: none !important;
+  }
+}
