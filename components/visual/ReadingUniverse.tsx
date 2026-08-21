@@ -1,0 +1,109 @@
+"use client";
+
+import React, { useState } from "react";
+import Link from "next/link";
+import { BOOKS, CATEGORIES } from "@/data/books";
+
+export default function ReadingUniverse() {
+  const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
+
+  // Group books by category
+  const validCategories = CATEGORIES.filter((c) => c !== "All");
+  
+  const categoryStats = validCategories.map((cat, idx) => {
+    const booksInCat = BOOKS.filter((b) => b.category === cat);
+    return {
+      name: cat,
+      count: booksInCat.length,
+      sampleBooks: booksInCat.slice(0, 3).map((b) => b.title),
+      index: idx,
+    };
+  });
+
+  return (
+    <section className="py-16 sm:py-20 relative overflow-hidden border-t border-[var(--border)]/80 bg-[var(--card)]/30">
+      {/* Background Starfield / Constellation Ambient Glow */}
+      <div
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[350px] rounded-full blur-[140px] opacity-15 pointer-events-none"
+        style={{ background: "var(--accent)" }}
+      />
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-left">
+        {/* Section Header */}
+        <div className="max-w-3xl mb-12 space-y-3">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[var(--accent)]/10 border border-[var(--accent)]/30 text-[var(--accent)] text-xs font-bold uppercase tracking-widest">
+            <span>✨</span>
+            <span>Interactive Reading Universe</span>
+          </div>
+          <h2 className="text-3xl sm:text-4xl font-bold font-serif text-[var(--foreground)] tracking-tight">
+            Explore Literature Across Connected Dimensions
+          </h2>
+          <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
+            Navigate through our 8 curated literary worlds. Hover over any constellation node to reveal top volumes and jump straight into reading.
+          </p>
+        </div>
+
+        {/* Constellation Grid of Interactive Category Nodes */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          {categoryStats.map((item) => {
+            const isHovered = hoveredCategory === item.name;
+            return (
+              <Link
+                key={item.name}
+                href={`/library?category=${encodeURIComponent(item.name)}`}
+                onMouseEnter={() => setHoveredCategory(item.name)}
+                onMouseLeave={() => setHoveredCategory(null)}
+                className={`p-6 rounded-3xl glass-card border transition-all duration-300 flex flex-col justify-between relative overflow-hidden group hover:scale-[1.03] ${
+                  isHovered
+                    ? "border-[var(--accent)] shadow-2xl bg-[var(--card)] ring-1 ring-[var(--accent)]/40"
+                    : "border-[var(--border)] hover:border-[var(--accent)]/40 bg-[var(--card)]/70"
+                }`}
+              >
+                {/* Subtle Ambient Node Glow */}
+                <div
+                  className="absolute -top-8 -right-8 w-24 h-24 rounded-full blur-xl opacity-20 pointer-events-none transition-opacity group-hover:opacity-60"
+                  style={{ background: "var(--accent)" }}
+                />
+
+                <div>
+                  {/* Top Node Pill */}
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="w-8 h-8 rounded-xl bg-[var(--secondary)] text-[var(--accent)] font-mono font-bold text-xs flex items-center justify-center border border-[var(--border)]">
+                      0{item.index + 1}
+                    </span>
+                    <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-[var(--accent)]/15 text-[var(--accent)]">
+                      {item.count} Books
+                    </span>
+                  </div>
+
+                  {/* Category Title */}
+                  <h3 className="text-lg font-bold font-serif text-[var(--foreground)] group-hover:text-[var(--accent)] transition-colors mb-2">
+                    {item.name}
+                  </h3>
+
+                  {/* Sample Books Mini-List */}
+                  <div className="space-y-1 my-3">
+                    <span className="text-[10px] uppercase tracking-wider text-[var(--text-secondary)] font-semibold block">
+                      Notable Volumes:
+                    </span>
+                    {item.sampleBooks.map((title, i) => (
+                      <p key={i} className="text-xs text-[var(--text-secondary)] truncate font-normal">
+                        • {title}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Footer Action */}
+                <div className="pt-3 border-t border-[var(--border)]/60 flex items-center justify-between text-xs text-[var(--accent)] font-semibold">
+                  <span>Enter Genre</span>
+                  <span className="group-hover:translate-x-1 transition-transform">→</span>
+                </div>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+}

@@ -18,10 +18,16 @@ export default function BookCard({ book, compact = false }: BookCardProps) {
 
   return (
     <CardTilt className="h-full">
-      <article className="group relative flex flex-col h-full glass-card rounded-2xl p-4 glass-card-hover overflow-hidden transition-all duration-300">
+      <article className="group relative flex flex-col h-full glass-card rounded-2xl p-4 glass-card-hover overflow-hidden transition-all duration-300 border border-[var(--border)] hover:border-[var(--accent)]/50 hover:shadow-2xl">
+        {/* Subtle Light Sweep Gradient on Hover */}
+        <div
+          className="absolute -inset-full bg-gradient-to-r from-transparent via-[var(--accent)]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none group-hover:translate-x-full ease-in-out"
+          style={{ transitionDuration: "1000ms" }}
+        />
+
         {/* Category Pill & Favorite Button Bar */}
-        <div className="flex items-center justify-between gap-2 mb-3">
-          <span className="text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/20 truncate">
+        <div className="flex items-center justify-between gap-2 mb-3 relative z-10">
+          <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/20 truncate">
             {book.category}
           </span>
           <button
@@ -69,16 +75,17 @@ export default function BookCard({ book, compact = false }: BookCardProps) {
             className="object-cover group-hover/cover:scale-105 transition-transform duration-500 ease-out"
           />
 
-          {/* Hover Quick Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover/cover:opacity-100 transition-opacity duration-300 flex items-end p-3">
-            <span className="w-full py-2 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] text-center text-xs font-bold shadow-lg">
-              Quick Read →
+          {/* Quick Read Overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent opacity-0 group-hover/cover:opacity-100 transition-opacity duration-300 flex items-end p-3">
+            <span className="w-full py-2 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] text-center text-xs font-bold shadow-lg flex items-center justify-center gap-1.5">
+              <span>Read Now</span>
+              <span>→</span>
             </span>
           </div>
         </Link>
 
         {/* Book Details */}
-        <div className="flex-1 flex flex-col justify-between">
+        <div className="flex-1 flex flex-col justify-between relative z-10">
           <div>
             <Link
               href={`/book/${book.id}`}
@@ -90,7 +97,7 @@ export default function BookCard({ book, compact = false }: BookCardProps) {
               </h3>
             </Link>
             <p className="text-xs text-[var(--text-secondary)] font-medium mt-0.5 line-clamp-1">
-              by {book.author}
+              by <span className="text-[var(--foreground)]/90">{book.author}</span>
             </p>
 
             {!compact && (
@@ -104,16 +111,16 @@ export default function BookCard({ book, compact = false }: BookCardProps) {
           <div className="mt-4 pt-3 border-t border-[var(--border)] flex items-center justify-between">
             <div className="flex items-center gap-1.5 text-xs text-[var(--accent)] font-semibold">
               <span>★</span>
-              <span className="text-[var(--foreground)]">{book.rating.toFixed(1)}</span>
+              <span className="text-[var(--foreground)] font-bold">{book.rating.toFixed(1)}</span>
               <span className="text-[var(--text-secondary)] font-normal text-[11px]">({book.year})</span>
             </div>
 
             <Link
               href={`/book/${book.id}`}
               onClick={() => recordReading(book.id)}
-              className="px-3 py-1.5 rounded-lg bg-[var(--accent)]/10 hover:bg-[var(--primary)] text-[var(--accent)] hover:text-[var(--primary-foreground)] border border-[var(--accent)]/30 font-semibold text-xs transition-all"
+              className="px-3 py-1.5 rounded-lg bg-[var(--accent)]/10 hover:bg-[var(--primary)] text-[var(--accent)] hover:text-[var(--primary-foreground)] border border-[var(--accent)]/30 font-semibold text-xs transition-all shadow-xs"
             >
-              Read
+              Read ↗
             </Link>
           </div>
         </div>

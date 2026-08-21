@@ -132,7 +132,7 @@ export function tryDeterministicQuery(rawQuery: string): AssistantResponse | nul
   }
 
   // 4. Exact/Direct Title Availability Match ("Do you have Atomic Habits?", "Do you have 1984?", "Do you have Harry Potter?")
-  const availabilityMatch = q.match(/^(?:do you have|is there|is|can i read|have you got|search for)\s+["']?([^?]+?)["']?\??$/i);
+  const availabilityMatch = q.match(/^(?:do you have|is there|is|can i read|have you got|search for|find)\s+["']?([^?]+?)["']?\??$/i);
   const targetTitleQuery = availabilityMatch ? availabilityMatch[1].trim() : q;
 
   // Check specific negative test cases like "Harry Potter"
@@ -156,7 +156,7 @@ export function tryDeterministicQuery(rawQuery: string): AssistantResponse | nul
     return {
       reply: `Yes — **${exactTitleBook.title}** by ${exactTitleBook.author} (${exactTitleBook.category}, ${exactTitleBook.year}) is available in Reader's HUB. You can read the complete book online now.`,
       books: [exactTitleBook],
-      suggestedActions: [`More by ${exactTitleBook.author}`, `More ${exactTitleBook.category}`, "What's available?"],
+      suggestedActions: [`More by ${exactTitleBook.author}`, `More in ${exactTitleBook.category}`, "What's available?"],
       isDeterministic: true,
     };
   }
@@ -176,14 +176,31 @@ export function tryDeterministicQuery(rawQuery: string): AssistantResponse | nul
     };
   }
 
-  // 5. Author Search ("Which books by Osho are available?", "Books by Plato", "Books by Premchand")
-  const authorPattern = /(?:books by|by author|written by|author|from)\s+([a-zA-Z\s\u0900-\u097F]+)/i;
+  // 5. Author Search ("Find books by Dostoevsky", "Which books by Osho are available?", "Books by Plato", "Books by Premchand")
+  const authorPattern = /(?:find books by|books by|by author|written by|author|from|by)\s+([a-zA-Z\s\u0900-\u097F]+)/i;
   const authorQueryMatch = q.match(authorPattern);
-  const authorQuery = authorQueryMatch ? authorQueryMatch[1].trim().toLowerCase() : (q.startsWith("osho") || q.startsWith("plato") || q.startsWith("premchand") || q.startsWith("nietzsche") || q.startsWith("kant")) ? q : "";
+  let authorQuery = authorQueryMatch ? authorQueryMatch[1].trim().toLowerCase() : "";
+
+  // Common author aliases (e.g. dostoevsky / dostoyevsky)
+  if (!authorQuery) {
+    const knownAuthors = ["osho", "plato", "premchand", "dostoevsky", "dostoyevsky", "nietzsche", "kant", "marx", "bachchan", "orwell", "tolstoy", "tagore", "shakespeare", "clears", "aurelius"];
+    for (const a of knownAuthors) {
+      if (q.includes(a)) {
+        authorQuery = a;
+        break;
+      }
+    }
+  }
 
   if (authorQuery && authorQuery.length >= 3) {
+    // Handle spelling normalization
+    let normalizedSearch = authorQuery;
+    if (authorQuery.includes("dostoyevsky") || authorQuery.includes("dostoevsky")) {
+      normalizedSearch = "dosto";
+    }
+
     const matchedAuthorBooks = ALL_BOOKS.filter((b) =>
-      b.author.toLowerCase().includes(authorQuery)
+      b.author.toLowerCase().includes(normalizedSearch)
     );
 
     if (matchedAuthorBooks.length > 0) {
@@ -217,4 +234,3 @@ export function tryDeterministicQuery(rawQuery: string): AssistantResponse | nul
 
   return null;
 }
-

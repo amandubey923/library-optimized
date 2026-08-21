@@ -6,6 +6,7 @@ import { BOOKS, Category, getBooksByCategory, searchBooks } from "@/data/books";
 import HeroVideo from "@/components/HeroVideo";
 import ContinueReading from "@/components/ContinueReading";
 import FeaturedCarousel from "@/components/FeaturedCarousel";
+import ReadingUniverse from "@/components/visual/ReadingUniverse";
 import CategoryPills from "@/components/CategoryPills";
 import BookCard from "@/components/BookCard";
 
@@ -30,7 +31,7 @@ export default function HomePage() {
 
   return (
     <main className="flex-1">
-      {/* 1. Cinematic Hero with Video Background */}
+      {/* 1. Cinematic Hero with Video Background & 3D Floating Books */}
       <HeroVideo onExploreClick={scrollToLibrary} />
 
       {/* 2. Continue Reading (synced with localStorage) */}
@@ -39,7 +40,10 @@ export default function HomePage() {
       {/* 3. Featured Editorial Spotlight */}
       <FeaturedCarousel />
 
-      {/* 4. Main Library Collection Grid */}
+      {/* 4. Interactive Reading Universe (Constellation Genre Explorer) */}
+      <ReadingUniverse />
+
+      {/* 5. Main Library Collection Grid */}
       <section ref={librarySectionRef} id="library" className="py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Header & Controls */}
@@ -139,7 +143,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 5. Why Reader's HUB / Mission Section */}
+      {/* 6. Why Reader's HUB / Mission Section */}
       <section className="py-16 border-t border-[var(--border)]/80 bg-[var(--background)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-12">
@@ -157,7 +161,7 @@ export default function HomePage() {
                 ⚡
               </div>
               <h3 className="text-base font-bold text-[var(--foreground)] font-serif mb-2">
-                Instant & Barrier-Free
+                Instant &amp; Barrier-Free
               </h3>
               <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
                 Click any book and start reading immediately. No mandatory accounts, email verifications, or passwords to remember.
@@ -181,7 +185,7 @@ export default function HomePage() {
                 🔒
               </div>
               <h3 className="text-base font-bold text-[var(--foreground)] font-serif mb-2">
-                Privacy & Local Sync
+                Privacy &amp; Local Sync
               </h3>
               <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
                 Your bookmarks and reading history remain securely inside your local browser. Zero tracking and zero data collection.
@@ -194,7 +198,7 @@ export default function HomePage() {
               href="/about"
               className="inline-flex items-center gap-2 text-xs font-semibold text-[var(--accent)] hover:underline transition-colors"
             >
-              <span>Learn more about the Reader&apos;s HUB mission & team</span>
+              <span>Learn more about the Reader&apos;s HUB developer &amp; story</span>
               <span>→</span>
             </Link>
           </div>

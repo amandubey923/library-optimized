@@ -69,30 +69,36 @@ export default function BookDetailClient({
           {book.category}
         </Link>
         <span>/</span>
-        <span className="text-[var(--foreground)] font-medium truncate">{book.title}</span>
+        <span className="text-[var(--foreground)] font-semibold truncate">{book.title}</span>
       </nav>
 
       {/* Book Hero / Overview Card */}
-      <div className="glass-card rounded-3xl p-6 sm:p-10 border border-[var(--border)] bg-[var(--card)] mb-12 shadow-2xl relative overflow-hidden">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
-          {/* Left Column: Book Cover with 3D Depth & Quick Actions */}
+      <div className="glass-card rounded-3xl p-6 sm:p-10 border border-[var(--border)] bg-[var(--card)] mb-12 shadow-2xl relative overflow-hidden text-left">
+        {/* Soft Ambient Background Glow */}
+        <div
+          className="absolute -top-24 -right-24 w-80 h-80 rounded-full blur-[100px] opacity-20 pointer-events-none"
+          style={{ background: "var(--accent)" }}
+        />
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start relative z-10">
+          {/* Left Column: Book Cover with 3D Depth & Actions */}
           <div className="lg:col-span-4 flex flex-col items-center">
-            <div className="relative w-56 sm:w-64 aspect-[2/3] rounded-2xl overflow-hidden book-shadow-lg border border-[var(--border)] bg-[var(--background)] mb-6">
+            <div className="relative w-56 sm:w-64 aspect-[2/3] rounded-2xl overflow-hidden book-shadow-lg border border-[var(--border)] bg-[var(--background)] mb-6 group">
               <Image
                 src={book.cover}
                 alt={book.title}
                 fill
                 priority
                 sizes="(max-width: 768px) 240px, 300px"
-                className="object-cover"
+                className="object-cover group-hover:scale-105 transition-transform duration-500"
               />
             </div>
 
-            {/* Quick action buttons under cover */}
+            {/* Quick Action Buttons Under Cover */}
             <div className="w-full max-w-xs flex flex-col gap-2.5">
               <button
                 onClick={handleScrollToReader}
-                className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-[var(--primary)] to-[var(--accent-secondary)] hover:opacity-95 text-[var(--primary-foreground)] font-bold text-sm shadow-xl hover:shadow-[0_0_15px_var(--theme-glow)] hover:scale-[1.02] transition-all cursor-pointer flex items-center justify-center gap-2"
+                className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-[var(--primary)] to-[var(--accent-secondary)] hover:opacity-95 text-[var(--primary-foreground)] font-bold text-sm shadow-xl hover:shadow-[0_0_20px_var(--theme-glow)] hover:scale-[1.02] transition-all cursor-pointer flex items-center justify-center gap-2"
               >
                 <span>Read in Embedded Viewer</span>
                 <span>↓</span>
@@ -103,7 +109,7 @@ export default function BookDetailClient({
                   href={book.pdf}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex-1 py-2.5 px-3 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] border border-[var(--border)] text-xs font-semibold text-center transition-all flex items-center justify-center gap-1.5"
+                  className="flex-1 py-2.5 px-3 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] border border-[var(--border)] text-xs font-semibold text-center transition-all flex items-center justify-center gap-1.5 shadow-xs"
                 >
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -114,7 +120,7 @@ export default function BookDetailClient({
                 <a
                   href={book.pdf}
                   download={`${book.title.replace(/\s+/g, "_")}.pdf`}
-                  className="flex-1 py-2.5 px-3 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] border border-[var(--border)] text-xs font-semibold text-center transition-all flex items-center justify-center gap-1.5"
+                  className="flex-1 py-2.5 px-3 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] border border-[var(--border)] text-xs font-semibold text-center transition-all flex items-center justify-center gap-1.5 shadow-xs"
                 >
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -128,10 +134,10 @@ export default function BookDetailClient({
           {/* Right Column: Title, Metadata, Synopsis, Excerpt */}
           <div className="lg:col-span-8 flex flex-col justify-between">
             <div>
-              {/* Category & Badge */}
+              {/* Category & Badge Header */}
               <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-xs font-semibold px-3 py-1 rounded-full bg-[var(--accent)]/20 text-[var(--accent)] border border-[var(--accent)]/30">
+                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/30">
                     {book.category}
                   </span>
                   <span className="text-xs text-[var(--text-secondary)] font-medium">
@@ -144,12 +150,12 @@ export default function BookDetailClient({
                     onClick={() => toggleFavorite(book.id)}
                     className={`px-3.5 py-1.5 rounded-xl border text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
                       favorited
-                        ? "bg-rose-500/20 text-rose-400 border-rose-500/40"
+                        ? "bg-rose-500/20 text-rose-400 border-rose-500/40 shadow-[0_0_10px_rgba(244,63,94,0.25)]"
                         : "bg-[var(--card)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border-[var(--border)]"
                     }`}
                   >
                     <svg
-                      className={`w-3.5 h-3.5 ${favorited ? "fill-current" : ""}`}
+                      className={`w-3.5 h-3.5 ${favorited ? "fill-current text-rose-400" : ""}`}
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -206,10 +212,10 @@ export default function BookDetailClient({
 
               {/* Synopsis */}
               <div className="space-y-3">
-                <h3 className="text-sm font-semibold text-[var(--foreground)] uppercase tracking-wider font-serif">
+                <h3 className="text-xs font-bold text-[var(--foreground)] uppercase tracking-wider font-serif">
                   Synopsis
                 </h3>
-                <p className="text-sm sm:text-base text-[var(--text-secondary)] leading-relaxed">
+                <p className="text-sm sm:text-base text-[var(--text-secondary)] leading-relaxed font-normal">
                   {book.description}
                 </p>
               </div>
@@ -224,7 +230,7 @@ export default function BookDetailClient({
               {/* Tags */}
               <div className="mt-6">
                 <span className="text-xs text-[var(--text-secondary)] font-medium block mb-2">
-                  Themes & Topics:
+                  Themes &amp; Topics:
                 </span>
                 <div className="flex flex-wrap gap-2">
                   {book.tags.map((tag) => (
@@ -252,7 +258,7 @@ export default function BookDetailClient({
             </h2>
           </div>
           <span className="text-xs text-[var(--text-secondary)]">
-            Scroll or toggle fullscreen for immersive reading
+            Press <kbd className="font-mono px-1.5 py-0.5 rounded bg-[var(--card)] border border-[var(--border)]">F</kbd> for fullscreen
           </span>
         </div>
 
