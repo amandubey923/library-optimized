@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState } from "react";
-import Link from "next/link";
 import { useLibrary } from "@/context/LibraryContext";
 
 export default function ContactPage() {
@@ -23,6 +22,7 @@ export default function ContactPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
+  const [fallbackMailto, setFallbackMailto] = useState<string | null>(null);
 
   const validate = () => {
     const newErrors: { name?: string; email?: string; message?: string } = {};
@@ -46,6 +46,7 @@ export default function ContactPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setServerError(null);
+    setFallbackMailto(null);
 
     if (!validate()) {
       showToast("Please check the form for errors.");
@@ -64,12 +65,23 @@ export default function ContactPage() {
       const data = await res.json();
 
       if (!res.ok || !data.success) {
-        throw new Error(data.error || "Failed to deliver message. Please try again.");
+        if (data.fallbackMailto) {
+          setFallbackMailto(data.fallbackMailto);
+        } else {
+          setFallbackMailto(
+            `mailto:kumaraman19137@gmail.com?subject=${encodeURIComponent(
+              `[Reader's HUB] ${formData.subject}`
+            )}&body=${encodeURIComponent(
+              `Name: ${formData.name}\nEmail: ${formData.email}\n\n${formData.message}`
+            )}`
+          );
+        }
+        throw new Error(data.error || "Failed to deliver email. Please try again or email directly.");
       }
 
       setSubmitted(true);
-      showToast("Message sent to Aman Dubey! 📬");
-      // Clear form only on successful delivery
+      showToast("Message delivered to Aman Dubey! 📬");
+      // Clear form ONLY upon verified server delivery
       setFormData({
         name: "",
         email: "",
@@ -79,8 +91,8 @@ export default function ContactPage() {
       setErrors({});
     } catch (err: any) {
       console.error("Submission error:", err);
-      setServerError(err?.message || "Could not send message. Please try again or email directly.");
-      showToast("Could not send message. Your input has been saved.");
+      setServerError(err?.message || "Could not deliver email. Your entered text has been saved.");
+      showToast("Delivery notice: Please check the options below.");
     } finally {
       setIsSubmitting(false);
     }
@@ -227,16 +239,16 @@ export default function ContactPage() {
         <div className="lg:col-span-7">
           <div className="glass-card rounded-3xl p-6 sm:p-10 border border-[var(--border)] shadow-2xl bg-[var(--card)] relative">
             {submitted ? (
-              /* Success Confirmation Card */
+              /* Verified Delivery Confirmation Card */
               <div className="text-center py-12 space-y-4 animate-scale-up">
                 <div className="w-16 h-16 rounded-3xl bg-emerald-500/10 border border-emerald-500/25 text-3xl flex items-center justify-center mx-auto text-emerald-400 shadow-inner">
                   ✓
                 </div>
                 <h2 className="text-2xl sm:text-3xl font-bold font-serif text-[var(--foreground)]">
-                  Message Received!
+                  Message Sent Successfully!
                 </h2>
                 <p className="text-sm text-[var(--text-secondary)] max-w-md mx-auto leading-relaxed font-normal">
-                  Your note has been delivered directly to <strong className="text-[var(--foreground)]">Aman Dubey</strong> (kumaraman19137@gmail.com). I&apos;ll get back to you soon!
+                  Your message has been delivered to <strong className="text-[var(--foreground)]">Aman Dubey</strong> (kumaraman19137@gmail.com). I&apos;ll get back to you soon!
                 </p>
                 <div className="pt-4">
                   <button
@@ -255,18 +267,32 @@ export default function ContactPage() {
                     Send a Direct Note
                   </h3>
                   <p className="text-xs text-[var(--text-secondary)] mt-1 font-normal">
-                    Fill in the details below. All fields are dispatched securely.
+                    Fill in the details below. Messages are routed straight to kumaraman19137@gmail.com.
                   </p>
                 </div>
 
-                {/* Server Error Alert (Preserves Input) */}
+                {/* Server Alert (Preserves Input + One-Click Mailto Fallback) */}
                 {serverError && (
-                  <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-xs text-rose-300 flex items-start gap-2.5 animate-fade-in">
-                    <span className="text-base flex-shrink-0">⚠️</span>
-                    <div className="flex-1">
-                      <span className="font-semibold block">Delivery Notice</span>
-                      <span>{serverError}</span>
+                  <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-xs text-amber-200 space-y-2 animate-fade-in">
+                    <div className="flex items-start gap-2.5">
+                      <span className="text-base flex-shrink-0">⚠️</span>
+                      <div className="flex-1">
+                        <span className="font-bold block text-amber-300">Delivery Notice</span>
+                        <p className="leading-relaxed">{serverError}</p>
+                      </div>
                     </div>
+
+                    {fallbackMailto && (
+                      <div className="pt-2">
+                        <a
+                          href={fallbackMailto}
+                          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs shadow-md transition-all cursor-pointer"
+                        >
+                          <span>Send Pre-Filled via Mail App</span>
+                          <span>↗</span>
+                        </a>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -379,7 +405,7 @@ export default function ContactPage() {
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
                   <span className="text-[11px] text-[var(--text-secondary)] flex items-center gap-1.5">
                     <span>🔒</span>
-                    <span>Delivered straight to kumaraman19137@gmail.com</span>
+                    <span>Delivered to kumaraman19137@gmail.com</span>
                   </span>
 
                   <button
@@ -394,7 +420,7 @@ export default function ContactPage() {
                     {isSubmitting ? (
                       <>
                         <span className="w-3.5 h-3.5 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                        <span>Sending note...</span>
+                        <span>Sending message...</span>
                       </>
                     ) : (
                       <>
