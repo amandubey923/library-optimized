@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
+import Image from "next/image";
 import { Book } from "@/data/books";
 import { useLibrary } from "@/context/LibraryContext";
 
@@ -15,7 +16,7 @@ interface ReaderPrefs {
   brightness: number; // 60 - 130
   warmth: number;     // 0 - 60
   contrast: number;   // 80 - 120
-  zoom: number;       // 80 - 140
+  zoom: number;       // 70 - 150
   readingMode: ReadingMode;
   layoutMode: LayoutMode;
 }
@@ -61,9 +62,8 @@ export default function BookReader({ book }: BookReaderProps) {
   const touchStartXRef = useRef<number | null>(null);
   const hideControlsTimerRef = useRef<NodeJS.Timeout | null>(null);
   const renderTasksRef = useRef<Record<string, any>>({});
-  const isRenderingRef = useRef<boolean>(false);
 
-  // 1. Check Mobile & Load Preferences
+  // 1. Check Screen Dimensions & Load Saved Preferences
   useEffect(() => {
     const checkScreen = () => {
       const mobile = window.innerWidth < 1024;
@@ -97,7 +97,20 @@ export default function BookReader({ book }: BookReaderProps) {
     });
   };
 
-  // 2. Load PDF.js script dynamically
+  // Zoom Helpers
+  const zoomIn = () => {
+    updatePref("zoom", Math.min(150, prefs.zoom + 10));
+  };
+
+  const zoomOut = () => {
+    updatePref("zoom", Math.max(70, prefs.zoom - 10));
+  };
+
+  const resetZoom = () => {
+    updatePref("zoom", 100);
+  };
+
+  // 2. Load Standalone PDF.js Library
   useEffect(() => {
     if ((window as any).pdfjsLib) {
       (window as any).pdfjsLib.GlobalWorkerOptions.workerSrc = "/vendor/pdfjs/pdf.worker.min.js";
@@ -115,7 +128,7 @@ export default function BookReader({ book }: BookReaderProps) {
       }
     };
     script.onerror = () => {
-      console.warn("Could not load local pdf.min.js, trying CDN fallback");
+      console.warn("Loading CDN fallback for PDF.js...");
       const cdnScript = document.createElement("script");
       cdnScript.src = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
       cdnScript.async = true;
@@ -132,7 +145,7 @@ export default function BookReader({ book }: BookReaderProps) {
     document.head.appendChild(script);
   }, []);
 
-  // 3. Load PDF Document
+  // 3. Load PDF Document with Streaming & Range Requests
   useEffect(() => {
     if (!pdfJsReady || !book.pdf) return;
 
@@ -154,7 +167,7 @@ export default function BookReader({ book }: BookReaderProps) {
     loadingTask.onProgress = (progressData: any) => {
       if (progressData.total > 0) {
         const percent = Math.round((progressData.loaded / progressData.total) * 100);
-        setLoadingText(`Loading pages (${percent}%)...`);
+        setLoadingText(`Loading book (${percent}%)...`);
       }
     };
 
@@ -186,7 +199,7 @@ export default function BookReader({ book }: BookReaderProps) {
     };
   }, [pdfJsReady, book.pdf]);
 
-  // 4. Render Single Page to Canvas
+  // 4. Render Single Page to Canvas with Retina DPI
   const renderPageToCanvas = useCallback(
     async (pageNum: number, canvas: HTMLCanvasElement | null, slot: string) => {
       if (!canvas || !pdfDocRef.current || pageNum < 1 || pageNum > numPages) {
@@ -201,7 +214,7 @@ export default function BookReader({ book }: BookReaderProps) {
       try {
         canvas.style.display = "block";
 
-        // Cancel previous render task on this canvas slot if active
+        // Cancel previous task on this slot
         if (renderTasksRef.current[slot]) {
           try {
             renderTasksRef.current[slot].cancel();
@@ -219,7 +232,7 @@ export default function BookReader({ book }: BookReaderProps) {
         const isDouble = prefs.layoutMode === "double" && !isMobile;
         
         // Calculate max available width and height per page
-        const availableWidth = isDouble ? (containerWidth - 80) / 2 : containerWidth - 48;
+        const availableWidth = isDouble ? (containerWidth - 90) / 2 : containerWidth - 40;
         const availableHeight = containerHeight - 120;
 
         const baseViewport = page.getViewport({ scale: 1.0 });
@@ -227,8 +240,8 @@ export default function BookReader({ book }: BookReaderProps) {
         const scaleY = availableHeight / baseViewport.height;
         const fitScale = Math.min(scaleX, scaleY);
 
-        const userScale = (prefs.zoom / 100) * (isMobile ? 1.0 : 0.95);
-        const finalScale = Math.max(0.5, fitScale * userScale);
+        const userScale = (prefs.zoom / 100) * (isMobile ? 1.0 : 0.96);
+        const finalScale = Math.max(0.4, fitScale * userScale);
 
         const viewport = page.getViewport({ scale: finalScale });
 
@@ -243,7 +256,7 @@ export default function BookReader({ book }: BookReaderProps) {
 
         ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-        // Fill clean background before rendering PDF
+        // Clean white page base
         ctx.fillStyle = "#ffffff";
         ctx.fillRect(0, 0, viewport.width, viewport.height);
 
@@ -275,7 +288,7 @@ export default function BookReader({ book }: BookReaderProps) {
       let rightPage: number;
 
       if (currentPage === 1) {
-        leftPage = 0; // Cover state
+        leftPage = 0; // Show book cover on left
         rightPage = 1;
       } else {
         leftPage = currentPage % 2 === 0 ? currentPage : currentPage - 1;
@@ -303,7 +316,7 @@ export default function BookReader({ book }: BookReaderProps) {
       setTimeout(() => {
         setCurrentPage((prev) => Math.min(numPages, prev + step));
         setIsFlipping(false);
-      }, 300);
+      }, 280);
     }
   };
 
@@ -318,7 +331,7 @@ export default function BookReader({ book }: BookReaderProps) {
       setTimeout(() => {
         setCurrentPage((prev) => Math.max(1, prev - step));
         setIsFlipping(false);
-      }, 300);
+      }, 280);
     }
   };
 
@@ -381,6 +394,19 @@ export default function BookReader({ book }: BookReaderProps) {
           e.preventDefault();
           toggleFullscreen();
           break;
+        case "+":
+        case "=":
+          e.preventDefault();
+          zoomIn();
+          break;
+        case "-":
+          e.preventDefault();
+          zoomOut();
+          break;
+        case "0":
+          e.preventDefault();
+          resetZoom();
+          break;
         case "Escape":
           if (showSettings) setShowSettings(false);
           if (showJumpModal) setShowJumpModal(false);
@@ -395,9 +421,9 @@ export default function BookReader({ book }: BookReaderProps) {
       document.removeEventListener("fullscreenchange", handleFullscreenChange);
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [numPages, currentPage, prefs.layoutMode, isMobile, isFlipping, showSettings, showJumpModal]);
+  }, [numPages, currentPage, prefs.layoutMode, prefs.zoom, isMobile, isFlipping, showSettings, showJumpModal]);
 
-  // 9. Auto-hide Toolbar on Idle
+  // 9. Auto-hide Controls on Inactivity
   const handleUserActivity = () => {
     setShowControls(true);
     if (hideControlsTimerRef.current) {
@@ -407,10 +433,10 @@ export default function BookReader({ book }: BookReaderProps) {
       if (!showSettings && !showJumpModal) {
         setShowControls(false);
       }
-    }, 4000);
+    }, 4500);
   };
 
-  // 10. Touch Gestures for Mobile
+  // 10. Mobile Touch Swipe Handlers
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartXRef.current = e.touches[0].clientX;
   };
@@ -443,11 +469,11 @@ export default function BookReader({ book }: BookReaderProps) {
     }
 
     if (prefs.readingMode === "sepia") {
-      filters.push(`sepia(${Math.max(40, prefs.warmth || 40)}%) brightness(95%)`);
+      filters.push(`sepia(${Math.max(45, prefs.warmth || 45)}%) brightness(95%) contrast(94%)`);
     } else if (prefs.readingMode === "dark") {
-      filters.push(`invert(90%) hue-rotate(180deg) brightness(95%) contrast(92%)`);
+      filters.push(`invert(88%) hue-rotate(180deg) brightness(92%) contrast(88%)`);
     } else if (prefs.readingMode === "dim") {
-      filters.push(`brightness(82%) sepia(20%)`);
+      filters.push(`brightness(80%) sepia(18%)`);
     } else if (prefs.warmth > 0) {
       filters.push(`sepia(${prefs.warmth}%)`);
     }
@@ -461,11 +487,11 @@ export default function BookReader({ book }: BookReaderProps) {
   const getPageBgColor = () => {
     switch (prefs.readingMode) {
       case "sepia":
-        return "#f4ecd8";
+        return "#f5eedd";
       case "dark":
-        return "#161922";
+        return "#151821";
       case "dim":
-        return "#e0d9cd";
+        return "#ded7cc";
       default:
         return "#ffffff";
     }
@@ -481,15 +507,15 @@ export default function BookReader({ book }: BookReaderProps) {
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
       className={`relative select-none overflow-hidden rounded-3xl border border-[var(--border)] bg-[#0a0c10] shadow-2xl flex flex-col justify-between transition-all duration-300 ${
-        isFullscreen ? "fixed inset-0 z-50 rounded-none h-screen w-screen" : "w-full min-h-[640px] h-[820px]"
+        isFullscreen ? "fixed inset-0 z-50 rounded-none h-screen w-screen" : "w-full min-h-[640px] h-[830px]"
       }`}
       style={{
         background:
           prefs.readingMode === "sepia"
-            ? "radial-gradient(ellipse at center, #261f18 0%, #120e0a 100%)"
+            ? "radial-gradient(ellipse at center, #261f18 0%, #100d09 100%)"
             : prefs.readingMode === "dark"
-            ? "radial-gradient(ellipse at center, #0e111a 0%, #05060a 100%)"
-            : "radial-gradient(ellipse at center, #151924 0%, #07090d 100%)",
+            ? "radial-gradient(ellipse at center, #0e111a 0%, #040508 100%)"
+            : "radial-gradient(ellipse at center, #151924 0%, #06080c 100%)",
       }}
     >
       {/* -------------------------------------------------------------
@@ -515,6 +541,31 @@ export default function BookReader({ book }: BookReaderProps) {
 
         {/* Quick Toolbar Actions */}
         <div className="flex items-center gap-2 flex-shrink-0">
+          {/* Zoom Controls */}
+          <div className="hidden sm:flex items-center gap-1 p-1 rounded-xl bg-[var(--secondary)] border border-[var(--border)] text-xs">
+            <button
+              onClick={zoomOut}
+              className="px-2 py-0.5 rounded-lg text-[var(--text-secondary)] hover:text-[var(--foreground)] font-bold cursor-pointer"
+              title="Zoom Out (-)"
+            >
+              −
+            </button>
+            <button
+              onClick={resetZoom}
+              className="px-1.5 py-0.5 text-[10px] font-mono text-[var(--foreground)] hover:text-[var(--accent)] font-semibold cursor-pointer"
+              title="Reset Zoom (0)"
+            >
+              {prefs.zoom}%
+            </button>
+            <button
+              onClick={zoomIn}
+              className="px-2 py-0.5 rounded-lg text-[var(--text-secondary)] hover:text-[var(--foreground)] font-bold cursor-pointer"
+              title="Zoom In (+)"
+            >
+              +
+            </button>
+          </div>
+
           {/* Layout Mode Toggle (Desktop) */}
           {!isMobile && (
             <button
@@ -657,14 +708,22 @@ export default function BookReader({ book }: BookReaderProps) {
               <span>Scale / Zoom</span>
               <span className="text-[var(--foreground)] font-bold">{prefs.zoom}%</span>
             </div>
-            <input
-              type="range"
-              min={80}
-              max={140}
-              value={prefs.zoom}
-              onChange={(e) => updatePref("zoom", Number(e.target.value))}
-              className="w-full accent-[var(--accent)] cursor-pointer"
-            />
+            <div className="flex items-center gap-2">
+              <input
+                type="range"
+                min={70}
+                max={150}
+                value={prefs.zoom}
+                onChange={(e) => updatePref("zoom", Number(e.target.value))}
+                className="w-full accent-[var(--accent)] cursor-pointer"
+              />
+              <button
+                onClick={resetZoom}
+                className="px-2 py-0.5 text-[10px] bg-[var(--secondary)] rounded border border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--foreground)]"
+              >
+                100%
+              </button>
+            </div>
           </div>
 
           <button
@@ -753,12 +812,20 @@ export default function BookReader({ book }: BookReaderProps) {
                   backgroundColor: getPageBgColor(),
                 }}
               >
-                {/* Left Page (Even) */}
+                {/* Left Page (Even or Cover Showcase) */}
                 <div className="relative flex items-center justify-center p-2 sm:p-4 border-r border-[#cfc4b4]/50 overflow-hidden min-h-[380px] sm:min-h-[500px]">
                   {currentPage === 1 ? (
-                    <div className="w-[320px] sm:w-[380px] h-[480px] sm:h-[560px] flex flex-col items-center justify-center text-center p-6 border border-dashed border-[#cfc4b4]/40 rounded-xl bg-black/[0.02]">
-                      <div className="text-4xl mb-3">📖</div>
-                      <h4 className="font-serif font-bold text-sm text-[#3b2f20] mb-1">
+                    <div className="w-[300px] sm:w-[360px] h-[460px] sm:h-[540px] flex flex-col items-center justify-center text-center p-6 border border-dashed border-[#cfc4b4]/40 rounded-xl bg-black/[0.02] relative overflow-hidden">
+                      <div className="relative w-28 h-40 rounded-lg overflow-hidden book-shadow mb-4 border border-[var(--border)]">
+                        <Image
+                          src={book.cover}
+                          alt={book.title}
+                          fill
+                          className="object-cover"
+                          sizes="120px"
+                        />
+                      </div>
+                      <h4 className="font-serif font-bold text-sm text-[#3b2f20] mb-1 line-clamp-2">
                         {book.title}
                       </h4>
                       <p className="text-xs text-[#6b5840]">by {book.author}</p>
