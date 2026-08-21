@@ -437,3 +437,4 @@ export default function AboutClient({ totalBooks, totalCategories }: AboutClient
     </div>
   );
 }
+
