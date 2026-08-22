@@ -389,6 +389,49 @@ export default function FavoritesPage() {
        * ------------------------------------------------------------- */}
       {activeTab === "stats" && (
         <div className="space-y-8">
+          {/* Daily Reading Streak & Habit Banner */}
+          <div className="glass-card rounded-3xl p-6 sm:p-7 border border-[var(--border)] bg-gradient-to-r from-[var(--card)] via-[var(--card)] to-amber-500/5 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-6">
+            <div className="flex items-center gap-4 text-left">
+              <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-3xl border flex-shrink-0 ${
+                stats.isTodayQualified
+                  ? "bg-amber-500/20 border-amber-500/40 text-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.3)]"
+                  : stats.todayReadingSeconds > 0
+                  ? "bg-amber-500/10 border-amber-500/20 text-amber-300"
+                  : "bg-[var(--secondary)] border-[var(--border)] text-[var(--text-secondary)]"
+              }`}>
+                🪔
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-serif font-bold text-lg text-[var(--foreground)]">
+                    {stats.readingStreakDays} Day Reading Streak
+                  </h3>
+                  {stats.isTodayQualified && (
+                    <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[10px] font-bold">
+                      Diya Lit Today ✨
+                    </span>
+                  )}
+                </div>
+                <p className="text-xs text-[var(--text-secondary)] mt-1">
+                  {stats.isTodayQualified
+                    ? `15-minute goal completed today (${Math.floor(stats.todayReadingSeconds / 60)} min read). Keep it up!`
+                    : stats.todayReadingSeconds > 0
+                    ? `${Math.floor(stats.todayReadingSeconds / 60)} / 15 min active reading completed today.`
+                    : "Read for 15 minutes today to ignite your Diwali Diya and advance your streak."}
+                </p>
+              </div>
+            </div>
+
+            <div className="w-full sm:w-auto flex items-center gap-3 bg-[var(--secondary)]/50 px-4 py-3 rounded-2xl border border-[var(--border)]">
+              <div className="text-center">
+                <span className="text-[10px] text-[var(--text-secondary)] block font-medium">Today&apos;s Reading</span>
+                <span className={`text-sm font-bold font-mono ${stats.isTodayQualified ? "text-amber-400" : "text-[var(--foreground)]"}`}>
+                  {Math.floor(stats.todayReadingSeconds / 60)} / 15 min
+                </span>
+              </div>
+            </div>
+          </div>
+
           {/* Real Local Statistics Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div className="p-5 rounded-3xl bg-[var(--card)] border border-[var(--border)] shadow-xl text-center space-y-1">

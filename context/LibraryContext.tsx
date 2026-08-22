@@ -11,7 +11,12 @@ import {
   calculateReadingStats,
   exportAllUserData,
   importUserData,
+  getReadingActivityData,
+  addActiveReadingTime,
+  getLocalDateKey,
+  DAILY_READING_GOAL_SECONDS,
   ReadingStats,
+  ReadingStreakData,
 } from "@/lib/reader-storage";
 
 export interface ReadingProgressItem {
@@ -51,6 +56,16 @@ interface LibraryContextType {
   refreshStats: () => void;
   exportData: () => string;
   importData: (jsonStr: string) => { success: boolean; message: string };
+  // Streak & Active Reading Extensions (Diwali Diya)
+  streakData: ReadingStreakData;
+  todayReadingSeconds: number;
+  isTodayQualified: boolean;
+  recordActiveReading: (seconds: number) => {
+    todaySeconds: number;
+    qualified: boolean;
+    justQualified: boolean;
+    currentStreak: number;
+  };
 }
 
 const LibraryContext = createContext<LibraryContextType | undefined>(undefined);
@@ -62,6 +77,12 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   const [favorites, setFavorites] = useState<string[]>([]);
   const [readingHistory, setReadingHistory] = useState<ReadingProgressItem[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [streakData, setStreakData] = useState<ReadingStreakData>({
+    daily: {},
+    currentStreak: 0,
+    longestStreak: 0,
+    lastQualifiedDate: null,
+  });
   const [stats, setStats] = useState<ReadingStats>({
     booksStarted: 0,
     booksCompleted: 0,
@@ -71,12 +92,17 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     totalNotes: 0,
     totalHighlights: 0,
     totalDrawings: 0,
-    readingStreakDays: 1,
+    readingStreakDays: 0,
+    todayReadingSeconds: 0,
+    isTodayQualified: false,
   });
   const [mounted, setMounted] = useState(false);
 
   const refreshStats = useCallback(() => {
-    setStats(calculateReadingStats());
+    const calculated = calculateReadingStats();
+    const act = getReadingActivityData();
+    setStats(calculated);
+    setStreakData(act);
   }, []);
 
   useEffect(() => {
@@ -108,7 +134,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     setToastMessage(msg);
     setTimeout(() => {
       setToastMessage((prev) => (prev === msg ? null : prev));
-    }, 2800);
+    }, 3200);
   };
 
   const toggleFavorite = (bookId: string) => {
@@ -227,13 +253,25 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
 
   const isBookmarked = (bookId: string, page: number) => checkIsBookmarked(bookId, page);
 
+  // Active Reading Time Tracker (Diwali Diya)
+  const recordActiveReading = useCallback((seconds: number) => {
+    const res = addActiveReadingTime(seconds);
+    setStreakData(getReadingActivityData());
+    setStats((prev) => ({
+      ...prev,
+      todayReadingSeconds: res.todaySeconds,
+      isTodayQualified: res.qualified,
+      readingStreakDays: res.currentStreak,
+    }));
+    return res;
+  }, []);
+
   // Backup & Export Helpers
   const exportData = () => exportAllUserData();
 
   const handleImportData = (jsonStr: string) => {
     const res = importUserData(jsonStr);
     if (res.success) {
-      // Reload state
       const favs = localStorage.getItem(FAVORITES_KEY);
       if (favs) setFavorites(JSON.parse(favs));
       const hist = localStorage.getItem(HISTORY_KEY);
@@ -265,6 +303,10 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
         .filter(Boolean) as RecentBook[])
     : [];
 
+  const todayKey = getLocalDateKey();
+  const todaySeconds = streakData.daily[todayKey]?.seconds || 0;
+  const isTodayQualified = Boolean(streakData.daily[todayKey]?.qualified || todaySeconds >= DAILY_READING_GOAL_SECONDS);
+
   return (
     <LibraryContext.Provider
       value={{
@@ -290,6 +332,10 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
         refreshStats,
         exportData,
         importData: handleImportData,
+        streakData,
+        todayReadingSeconds: todaySeconds,
+        isTodayQualified,
+        recordActiveReading,
       }}
     >
       {children}

@@ -1,6 +1,6 @@
 /**
  * Reader's HUB — Centralized Reader Storage Utility
- * Namespaced browser-local persistence for Reading Progress, Bookmarks, Highlights, Notes, Study Annotations, and Backup/Export.
+ * Namespaced browser-local persistence for Reading Progress, Bookmarks, Highlights, Notes, Study Annotations, Daily Reading Streak (Diwali Diya), and Backup/Export.
  */
 
 export interface BookmarkItem {
@@ -75,6 +75,19 @@ export interface ReadingProgressData {
   lastReadAt: number;
 }
 
+export interface DailyReadingActivity {
+  seconds: number; // Accumulated active reading time in seconds
+  qualified: boolean; // true if >= 15 * 60 seconds (900 seconds)
+  lastUpdated: number;
+}
+
+export interface ReadingStreakData {
+  daily: Record<string, DailyReadingActivity>; // "YYYY-MM-DD" -> activity
+  currentStreak: number;
+  longestStreak: number;
+  lastQualifiedDate: string | null;
+}
+
 export interface ReadingStats {
   booksStarted: number;
   booksCompleted: number;
@@ -85,6 +98,8 @@ export interface ReadingStats {
   totalHighlights: number;
   totalDrawings: number;
   readingStreakDays: number;
+  todayReadingSeconds: number;
+  isTodayQualified: boolean;
 }
 
 export interface ReaderHubExportData {
@@ -94,6 +109,7 @@ export interface ReaderHubExportData {
   readingHistory: ReadingProgressItem[];
   annotations: Record<string, BookAnnotations>;
   bookmarks: Record<string, BookmarkItem[]>;
+  readingActivity?: ReadingStreakData;
   preferences?: any;
 }
 
@@ -108,8 +124,174 @@ export interface ReadingProgressItem {
 const PROGRESS_KEY_PREFIX = "readershub:progress:v1";
 const ANNOTATIONS_KEY_PREFIX = "readershub:annotations:v1";
 const BOOKMARKS_KEY_PREFIX = "readershub:bookmarks:v1";
+const ACTIVITY_KEY = "readershub:reading-activity:v1";
 const FAVORITES_KEY = "readers_hub_favorites_v2";
 const HISTORY_KEY = "readers_hub_reading_progress_v2";
+
+export const DAILY_READING_GOAL_SECONDS = 15 * 60; // 15 minutes = 900 seconds
+
+// -------------------------------------------------------------
+// Date Utility (Local Calendar Date)
+// -------------------------------------------------------------
+
+export function getLocalDateKey(d: Date = new Date()): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+export function getPreviousDateKey(dateKey: string): string {
+  const parts = dateKey.split("-").map(Number);
+  const d = new Date(parts[0], parts[1] - 1, parts[2]);
+  d.setDate(d.getDate() - 1);
+  return getLocalDateKey(d);
+}
+
+// -------------------------------------------------------------
+// Daily Reading Streak Logic (Diwali Diya)
+// -------------------------------------------------------------
+
+export function calculateStreak(dailyMap: Record<string, DailyReadingActivity>): {
+  currentStreak: number;
+  longestStreak: number;
+  lastQualifiedDate: string | null;
+} {
+  const todayKey = getLocalDateKey();
+  const yesterdayKey = getPreviousDateKey(todayKey);
+
+  const isTodayQualified = Boolean(dailyMap[todayKey]?.qualified || (dailyMap[todayKey]?.seconds || 0) >= DAILY_READING_GOAL_SECONDS);
+  const isYesterdayQualified = Boolean(dailyMap[yesterdayKey]?.qualified || (dailyMap[yesterdayKey]?.seconds || 0) >= DAILY_READING_GOAL_SECONDS);
+
+  let currentStreak = 0;
+  let lastQualifiedDate: string | null = null;
+
+  if (isTodayQualified) {
+    currentStreak = 1;
+    lastQualifiedDate = todayKey;
+    let checkKey = yesterdayKey;
+    while (dailyMap[checkKey]?.qualified || (dailyMap[checkKey]?.seconds || 0) >= DAILY_READING_GOAL_SECONDS) {
+      currentStreak += 1;
+      checkKey = getPreviousDateKey(checkKey);
+    }
+  } else if (isYesterdayQualified) {
+    currentStreak = 1;
+    lastQualifiedDate = yesterdayKey;
+    let checkKey = getPreviousDateKey(yesterdayKey);
+    while (dailyMap[checkKey]?.qualified || (dailyMap[checkKey]?.seconds || 0) >= DAILY_READING_GOAL_SECONDS) {
+      currentStreak += 1;
+      checkKey = getPreviousDateKey(checkKey);
+    }
+  }
+
+  // Calculate longest streak across all recorded history
+  const sortedDates = Object.keys(dailyMap)
+    .filter((k) => dailyMap[k]?.qualified || (dailyMap[k]?.seconds || 0) >= DAILY_READING_GOAL_SECONDS)
+    .sort();
+
+  let longestStreak = currentStreak;
+  let tempStreak = 0;
+  let prevDate: string | null = null;
+
+  for (const dateKey of sortedDates) {
+    if (!prevDate) {
+      tempStreak = 1;
+    } else {
+      const expectedPrev = getPreviousDateKey(dateKey);
+      if (prevDate === expectedPrev) {
+        tempStreak += 1;
+      } else {
+        tempStreak = 1;
+      }
+    }
+    prevDate = dateKey;
+    if (tempStreak > longestStreak) {
+      longestStreak = tempStreak;
+    }
+  }
+
+  return { currentStreak, longestStreak, lastQualifiedDate };
+}
+
+export function getReadingActivityData(): ReadingStreakData {
+  const defaultData: ReadingStreakData = {
+    daily: {},
+    currentStreak: 0,
+    longestStreak: 0,
+    lastQualifiedDate: null,
+  };
+
+  if (typeof window === "undefined") return defaultData;
+
+  try {
+    const raw = localStorage.getItem(ACTIVITY_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      const daily = parsed.daily && typeof parsed.daily === "object" ? parsed.daily : {};
+      const { currentStreak, longestStreak, lastQualifiedDate } = calculateStreak(daily);
+      return {
+        daily,
+        currentStreak,
+        longestStreak: Math.max(longestStreak, parsed.longestStreak || 0),
+        lastQualifiedDate,
+      };
+    }
+  } catch (e) {
+    console.warn("[ReaderStorage] Error reading reading activity:", e);
+  }
+
+  return defaultData;
+}
+
+export function addActiveReadingTime(secondsToAdd: number): {
+  todaySeconds: number;
+  qualified: boolean;
+  justQualified: boolean;
+  currentStreak: number;
+} {
+  if (typeof window === "undefined" || secondsToAdd <= 0) {
+    return { todaySeconds: 0, qualified: false, justQualified: false, currentStreak: 0 };
+  }
+
+  const currentData = getReadingActivityData();
+  const todayKey = getLocalDateKey();
+  const todayEntry = currentData.daily[todayKey] || {
+    seconds: 0,
+    qualified: false,
+    lastUpdated: Date.now(),
+  };
+
+  const prevSeconds = todayEntry.seconds;
+  const wasQualified = todayEntry.qualified || prevSeconds >= DAILY_READING_GOAL_SECONDS;
+
+  const newSeconds = prevSeconds + secondsToAdd;
+  const isQualified = newSeconds >= DAILY_READING_GOAL_SECONDS;
+  const justQualified = !wasQualified && isQualified;
+
+  todayEntry.seconds = newSeconds;
+  todayEntry.qualified = isQualified;
+  todayEntry.lastUpdated = Date.now();
+
+  currentData.daily[todayKey] = todayEntry;
+
+  const { currentStreak, longestStreak, lastQualifiedDate } = calculateStreak(currentData.daily);
+  currentData.currentStreak = currentStreak;
+  currentData.longestStreak = Math.max(longestStreak, currentData.longestStreak || 0);
+  currentData.lastQualifiedDate = lastQualifiedDate;
+
+  try {
+    localStorage.setItem(ACTIVITY_KEY, JSON.stringify(currentData));
+  } catch (e) {
+    console.warn("[ReaderStorage] Error saving reading activity:", e);
+  }
+
+  return {
+    todaySeconds: newSeconds,
+    qualified: isQualified,
+    justQualified,
+    currentStreak,
+  };
+}
 
 // -------------------------------------------------------------
 // Reading Progress Storage
@@ -331,6 +513,11 @@ export function clearPageDrawings(bookId: string, page: number): void {
 // -------------------------------------------------------------
 
 export function calculateReadingStats(): ReadingStats {
+  const streakData = getReadingActivityData();
+  const todayKey = getLocalDateKey();
+  const todaySeconds = streakData.daily[todayKey]?.seconds || 0;
+  const isTodayQualified = Boolean(streakData.daily[todayKey]?.qualified || todaySeconds >= DAILY_READING_GOAL_SECONDS);
+
   if (typeof window === "undefined") {
     return {
       booksStarted: 0,
@@ -341,7 +528,9 @@ export function calculateReadingStats(): ReadingStats {
       totalNotes: 0,
       totalHighlights: 0,
       totalDrawings: 0,
-      readingStreakDays: 1,
+      readingStreakDays: streakData.currentStreak,
+      todayReadingSeconds: todaySeconds,
+      isTodayQualified,
     };
   }
 
@@ -409,7 +598,9 @@ export function calculateReadingStats(): ReadingStats {
     totalNotes,
     totalHighlights,
     totalDrawings,
-    readingStreakDays: Math.max(1, booksStarted > 0 ? 2 : 1),
+    readingStreakDays: streakData.currentStreak,
+    todayReadingSeconds: todaySeconds,
+    isTodayQualified,
   };
 }
 
@@ -421,12 +612,13 @@ export function exportAllUserData(): string {
   if (typeof window === "undefined") return "{}";
 
   const exportData: ReaderHubExportData = {
-    version: "1.0.0",
+    version: "1.1.0",
     exportedAt: Date.now(),
     favorites: [],
     readingHistory: [],
     annotations: {},
     bookmarks: {},
+    readingActivity: getReadingActivityData(),
   };
 
   try {
@@ -489,7 +681,11 @@ export function importUserData(jsonString: string): { success: boolean; message:
       }
     }
 
-    return { success: true, message: "Reading data and annotations restored successfully!" };
+    if (data.readingActivity && typeof data.readingActivity === "object") {
+      localStorage.setItem(ACTIVITY_KEY, JSON.stringify(data.readingActivity));
+    }
+
+    return { success: true, message: "Reading data, streak, and annotations restored successfully!" };
   } catch (e: any) {
     return { success: false, message: `Failed to restore data: ${e?.message || "Corrupted file"}` };
   }

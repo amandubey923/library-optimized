@@ -7,6 +7,7 @@ import { useLibrary } from "@/context/LibraryContext";
 import Logo from "./Logo";
 import SearchModal from "./SearchModal";
 import NavbarThemeControl from "./visual/NavbarThemeControl";
+import DiwaliDiya from "./visual/DiwaliDiya";
 
 export default function Navbar() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
@@ -116,6 +117,9 @@ export default function Navbar() {
                 ⌘K
               </kbd>
             </button>
+
+            {/* Daily Reading Streak (Diwali Diya) */}
+            <DiwaliDiya />
 
             {/* MANDATORY THEME SWITCHER CONTROL IN TOP-RIGHT NAVBAR */}
             <NavbarThemeControl />

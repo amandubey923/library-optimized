@@ -61,7 +61,15 @@ const DEFAULT_PREFS: ReaderPrefs = {
 const PREFS_KEY = "readers_hub_reader_prefs_v3";
 
 export default function BookReader({ book }: BookReaderProps) {
-  const { getReadingProgress, updateReadingProgress, showToast } = useLibrary();
+  const { getReadingProgress, updateReadingProgress, showToast, recordActiveReading } = useLibrary();
+
+  // Active Reading Streak Tracker (Diwali Diya)
+  const lastActivityTimestampRef = useRef<number>(Date.now());
+  const accumulatedSecondsRef = useRef<number>(0);
+
+  const registerActivity = useCallback(() => {
+    lastActivityTimestampRef.current = Date.now();
+  }, []);
 
   // Load saved position from centralized storage or context
   const savedContextProgress = getReadingProgress(book.id);
@@ -227,6 +235,45 @@ export default function BookReader({ book }: BookReaderProps) {
   const resetZoom = () => {
     updatePref("zoom", 100);
   };
+
+  // 1.5. Intelligent Active Reading Timer (Diwali Diya Tracker)
+  useEffect(() => {
+    const IDLE_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes grace period for stationary deep reading
+
+    const timer = setInterval(() => {
+      // Only accumulate if tab is visible and reader is active
+      if (
+        typeof document !== "undefined" &&
+        document.visibilityState === "visible" &&
+        !loading &&
+        pdfDocRef.current
+      ) {
+        const now = Date.now();
+        const timeSinceLastActivity = now - lastActivityTimestampRef.current;
+
+        if (timeSinceLastActivity < IDLE_TIMEOUT_MS) {
+          accumulatedSecondsRef.current += 1;
+
+          // Flush to storage every 5 seconds for responsive synchronization
+          if (accumulatedSecondsRef.current >= 5) {
+            const res = recordActiveReading(accumulatedSecondsRef.current);
+            accumulatedSecondsRef.current = 0;
+            if (res.justQualified) {
+              showToast("🪔 15-minute daily reading goal reached! Your Diwali Diya is lit! ✨");
+            }
+          }
+        }
+      }
+    }, 1000);
+
+    return () => {
+      clearInterval(timer);
+      if (accumulatedSecondsRef.current > 0) {
+        recordActiveReading(accumulatedSecondsRef.current);
+        accumulatedSecondsRef.current = 0;
+      }
+    };
+  }, [loading, recordActiveReading, showToast]);
 
   // 2. Load Standalone PDF.js Library
   useEffect(() => {
@@ -781,6 +828,7 @@ export default function BookReader({ book }: BookReaderProps) {
 
   // 12. Fullscreen Integrated Custom Cursor Movement & Auto-Hide Controls
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement> | React.MouseEvent<HTMLDivElement>) => {
+    registerActivity();
     setShowControls(true);
     if (hideControlsTimerRef.current) {
       clearTimeout(hideControlsTimerRef.current);
@@ -820,6 +868,7 @@ export default function BookReader({ book }: BookReaderProps) {
 
   // 13. Mobile Touch Handlers
   const handleTouchStart = (e: React.TouchEvent) => {
+    registerActivity();
     if (!isStudyMode) {
       touchStartXRef.current = e.touches[0].clientX;
     }
