@@ -202,3 +202,4 @@ export function clearPageDrawings(bookId: string, page: number): void {
   delete current.drawings[page];
   saveBookAnnotations(bookId, current);
 }
+
