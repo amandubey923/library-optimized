@@ -328,3 +328,25 @@
     transform: none !important;
   }
 }
+
+/* -------------------------------------------------------------
+ * Desktop Custom Diamond Cursor Override (Hide Native Pointer)
+ * ------------------------------------------------------------- */
+@media (pointer: fine) {
+  html,
+  body,
+  *,
+  *::before,
+  *::after,
+  a,
+  button,
+  input,
+  textarea,
+  select,
+  [role="button"],
+  .cursor-pointer,
+  label,
+  summary {
+    cursor: none !important;
+  }
+}
