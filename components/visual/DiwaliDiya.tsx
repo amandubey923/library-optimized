@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import { useLibrary } from "@/context/LibraryContext";
 import { getLocalDateKey, getPreviousDateKey, DAILY_READING_GOAL_SECONDS } from "@/lib/reader-storage";
 
@@ -10,7 +10,6 @@ export default function DiwaliDiya() {
   const popoverRef = useRef<HTMLDivElement>(null);
 
   const todayMinutes = Math.floor(todayReadingSeconds / 60);
-  const goalMinutes = 15;
   const progressPercent = Math.min(100, Math.round((todayReadingSeconds / DAILY_READING_GOAL_SECONDS) * 100));
 
   // Determine Diya lighting state
@@ -31,7 +30,7 @@ export default function DiwaliDiya() {
   }, [isOpen]);
 
   // Compute Last 7 Days History
-  const last7Days = React.useMemo(() => {
+  const last7Days = useMemo(() => {
     const days: { dateKey: string; label: string; qualified: boolean; minutes: number; isToday: boolean }[] = [];
     const todayKey = getLocalDateKey();
 
@@ -57,22 +56,109 @@ export default function DiwaliDiya() {
     return days;
   }, [streakData, todayReadingSeconds]);
 
-  // Milestones
-  const nextMilestone = [3, 7, 14, 30, 50, 100].find((m) => m > streakData.currentStreak) || 100;
-
   return (
     <div className="relative inline-block text-left" ref={popoverRef}>
+      {/* -------------------------------------------------------------
+       * Embedded CSS Keyframe Animations for Living Diya Flame
+       * ------------------------------------------------------------- */}
+      <style jsx>{`
+        @keyframes flameOuterSway {
+          0%, 100% {
+            transform: scale(1, 1) rotate(0deg);
+            opacity: 0.96;
+          }
+          25% {
+            transform: scale(1.03, 0.98) rotate(-1.2deg);
+            opacity: 0.92;
+          }
+          50% {
+            transform: scale(0.97, 1.03) rotate(0.8deg);
+            opacity: 1;
+          }
+          75% {
+            transform: scale(1.02, 0.99) rotate(-0.5deg);
+            opacity: 0.94;
+          }
+        }
+
+        @keyframes flameCoreFlicker {
+          0%, 100% {
+            transform: scale(1, 1) translateY(0);
+            opacity: 1;
+          }
+          30% {
+            transform: scale(0.96, 1.05) translateY(-0.3px);
+            opacity: 0.94;
+          }
+          65% {
+            transform: scale(1.05, 0.96) translateY(0.2px);
+            opacity: 1;
+          }
+        }
+
+        @keyframes diyaAuraPulse {
+          0%, 100% {
+            transform: scale(1) translate(-50%, -50%);
+            opacity: 0.45;
+          }
+          50% {
+            transform: scale(1.22) translate(-50%, -50%);
+            opacity: 0.72;
+          }
+        }
+
+        @keyframes diyaSparkPulse {
+          0%, 100% {
+            transform: scale(1);
+            opacity: 0.7;
+          }
+          50% {
+            transform: scale(1.18);
+            opacity: 0.95;
+          }
+        }
+
+        .animate-flame-outer {
+          transform-origin: 16px 18px;
+          animation: flameOuterSway 1.5s ease-in-out infinite;
+        }
+
+        .animate-flame-core {
+          transform-origin: 16px 16px;
+          animation: flameCoreFlicker 0.95s ease-in-out infinite;
+        }
+
+        .animate-diya-aura {
+          transform-origin: 0 0;
+          animation: diyaAuraPulse 2.2s ease-in-out infinite;
+        }
+
+        .animate-diya-spark {
+          transform-origin: 16px 16px;
+          animation: diyaSparkPulse 1.6s ease-in-out infinite;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+          .animate-flame-outer,
+          .animate-flame-core,
+          .animate-diya-aura,
+          .animate-diya-spark {
+            animation: none !important;
+          }
+        }
+      `}</style>
+
       {/* -------------------------------------------------------------
        * Navbar Diya Trigger Button
        * ------------------------------------------------------------- */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`group relative flex items-center gap-2 px-2.5 sm:px-3.5 py-1.5 rounded-2xl border transition-all cursor-pointer select-none ${
+        className={`group relative flex items-center gap-2 px-2.5 sm:px-3.5 py-1.5 rounded-2xl border transition-all duration-300 cursor-pointer select-none ${
           isLit
-            ? "bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/15 border-amber-500/40 shadow-[0_0_15px_rgba(245,158,11,0.25)] hover:border-amber-400"
+            ? "bg-gradient-to-r from-amber-500/15 via-orange-500/10 to-amber-500/15 border-amber-500/40 shadow-[0_0_18px_rgba(245,158,11,0.28)] hover:border-amber-400 hover:shadow-[0_0_24px_rgba(245,158,11,0.45)]"
             : isPartiallyLit
             ? "bg-amber-500/10 border-amber-500/25 hover:border-amber-500/40 text-[var(--foreground)]"
-            : "bg-[var(--card)] hover:bg-[var(--secondary)] border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--foreground)]"
+            : "bg-[var(--card)] hover:bg-[var(--secondary)] border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--foreground)] hover:border-[var(--accent)]/30"
         }`}
         title={
           isLit
@@ -83,93 +169,184 @@ export default function DiwaliDiya() {
         }
         aria-label="Daily Reading Streak"
       >
-        {/* Custom Handcrafted SVG Diwali Diya Icon */}
-        <div className="relative w-6 h-6 flex items-center justify-center flex-shrink-0">
-          {/* Ambient Flame Glow (When Lit) */}
+        {/* Prominent Handcrafted SVG Diwali Diya Icon */}
+        <div className="relative w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center flex-shrink-0 transition-transform duration-300 group-hover:scale-105">
+          {/* Ambient Warm Golden Aura Glow (When Lit) */}
           {isLit && (
-            <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-4 h-4 rounded-full bg-amber-400/40 blur-xs animate-pulse" />
+            <div
+              className="absolute top-2.5 left-1/2 w-6 h-6 rounded-full bg-amber-400/45 blur-[5px] pointer-events-none animate-diya-aura"
+              aria-hidden="true"
+            />
           )}
 
-          <svg className="w-5 h-5 overflow-visible" viewBox="0 0 28 28" fill="none">
-            {/* Clay / Brass Diya Body */}
+          {/* SVG Artwork */}
+          <svg
+            className="w-7 h-7 sm:w-8 sm:h-8 overflow-visible"
+            viewBox="0 0 32 32"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <defs>
+              {/* Lit Diya Lamp Body Gradient */}
+              <linearGradient id="diyaBodyLit" x1="4" y1="16.5" x2="28" y2="28" gradientUnits="userSpaceOnUse">
+                <stop stopColor="#f59e0b" />
+                <stop offset="0.45" stopColor="#d97706" />
+                <stop offset="0.85" stopColor="#92400e" />
+                <stop offset="1" stopColor="#78350f" />
+              </linearGradient>
+
+              {/* Partially Lit Body Gradient */}
+              <linearGradient id="diyaBodyPartial" x1="4" y1="16.5" x2="28" y2="28" gradientUnits="userSpaceOnUse">
+                <stop stopColor="#b45309" />
+                <stop offset="0.5" stopColor="#92400e" />
+                <stop offset="1" stopColor="#78350f" />
+              </linearGradient>
+
+              {/* Unlit Dark Terracotta/Brass Body Gradient */}
+              <linearGradient id="diyaBodyUnlit" x1="4" y1="16.5" x2="28" y2="28" gradientUnits="userSpaceOnUse">
+                <stop stopColor="#78716c" />
+                <stop offset="0.6" stopColor="#57534e" />
+                <stop offset="1" stopColor="#44403c" />
+              </linearGradient>
+
+              {/* Outer Radiant Flame Gradient */}
+              <linearGradient id="flameOuterGrad" x1="16" y1="2.5" x2="16" y2="19" gradientUnits="userSpaceOnUse">
+                <stop stopColor="#fef08a" />
+                <stop offset="0.25" stopColor="#fde047" />
+                <stop offset="0.6" stopColor="#f59e0b" />
+                <stop offset="0.88" stopColor="#ea580c" />
+                <stop offset="1" stopColor="#dc2626" stopOpacity="0.85" />
+              </linearGradient>
+
+              {/* Middle Flame Gradient */}
+              <linearGradient id="flameMidGrad" x1="16" y1="6.5" x2="16" y2="17.8" gradientUnits="userSpaceOnUse">
+                <stop stopColor="#ffffff" />
+                <stop offset="0.3" stopColor="#fef9c3" />
+                <stop offset="0.65" stopColor="#fde047" />
+                <stop offset="1" stopColor="#f59e0b" />
+              </linearGradient>
+
+              {/* Inner White Core Flame Gradient */}
+              <linearGradient id="flameCoreGrad" x1="16" y1="9.5" x2="16" y2="16.8" gradientUnits="userSpaceOnUse">
+                <stop stopColor="#ffffff" />
+                <stop offset="0.6" stopColor="#fef08a" />
+                <stop offset="1" stopColor="#facc15" />
+              </linearGradient>
+
+              {/* Rim Polish Highlight Gradient */}
+              <linearGradient id="rimHighlight" x1="4" y1="17" x2="28" y2="17" gradientUnits="userSpaceOnUse">
+                <stop stopColor="#fef08a" stopOpacity="0.8" />
+                <stop offset="0.5" stopColor="#f59e0b" stopOpacity="0.9" />
+                <stop offset="1" stopColor="#fbbf24" stopOpacity="0.6" />
+              </linearGradient>
+            </defs>
+
+            {/* ----------------- Diya Lamp Stand & Bowl ----------------- */}
+            {/* Base Stand Ring */}
             <path
-              d="M4 16C4 22 10 24 14 24C18 24 24 22 24 16C24 14.5 22 14 14 14C6 14 4 14.5 4 16Z"
-              fill={isLit ? "url(#diyaBodyLit)" : isPartiallyLit ? "#b45309" : "#78716c"}
+              d="M11 27.5C11 29 21 29 21 27.5"
+              stroke={isLit ? "#b45309" : isPartiallyLit ? "#78350f" : "#44403c"}
+              strokeWidth="1.6"
+              strokeLinecap="round"
+            />
+
+            {/* Oil Lamp Bowl (Diya Base) */}
+            <path
+              d="M4 18.5C4 25.5 10 27.5 16 27.5C22 27.5 28 25.5 28 18.5C28 16.8 24.5 16 16 16C7.5 16 4 16.8 4 18.5Z"
+              fill={isLit ? "url(#diyaBodyLit)" : isPartiallyLit ? "url(#diyaBodyPartial)" : "url(#diyaBodyUnlit)"}
               stroke={isLit ? "#f59e0b" : isPartiallyLit ? "#d97706" : "#57534e"}
               strokeWidth="1.2"
             />
-            {/* Decorative Rim */}
-            <path
-              d="M5 15C8 16 20 16 23 15"
-              stroke={isLit ? "#fbbf24" : "#a8a29e"}
-              strokeWidth="1"
-              strokeLinecap="round"
-              opacity="0.8"
-            />
-            {/* Diya Base Ring */}
-            <path
-              d="M10 24C10 25.5 18 25.5 18 24"
-              stroke={isLit ? "#d97706" : "#57534e"}
-              strokeWidth="1.2"
+
+            {/* Inner Oil Pool Surface */}
+            <ellipse
+              cx="16"
+              cy="17.2"
+              rx="9.5"
+              ry="1.6"
+              fill={isLit ? "#78350f" : isPartiallyLit ? "#451a03" : "#292524"}
+              opacity="0.75"
             />
 
-            {/* Flame Component */}
+            {/* Polished Rim Accent */}
+            <path
+              d="M5 17.5C9 19 23 19 27 17.5"
+              stroke={isLit ? "url(#rimHighlight)" : isPartiallyLit ? "#d97706" : "#a8a29e"}
+              strokeWidth="1.1"
+              strokeLinecap="round"
+              opacity={isLit ? 0.95 : 0.6}
+            />
+
+            {/* ----------------- Flame Components ----------------- */}
             {isLit ? (
-              /* Golden Flickering Flame */
-              <g className="animate-bounce-subtle origin-bottom">
-                {/* Outer Flame Halo */}
+              /* Living Burning Flame (Multi-Layered with Natural Sway) */
+              <g>
+                {/* Outer Golden/Orange Radiant Flame */}
                 <path
-                  d="M14 2C14 2 19 8 19 12C19 14.8 16.8 15.5 14 15.5C11.2 15.5 9 14.8 9 12C9 8 14 2 14 2Z"
-                  fill="url(#flameOuter)"
-                  opacity="0.95"
+                  d="M16 2.5C16 2.5 22.5 10 22.5 14.5C22.5 18 19.6 19 16 19C12.4 19 9.5 18 9.5 14.5C9.5 10 16 2.5 16 2.5Z"
+                  fill="url(#flameOuterGrad)"
+                  className="animate-flame-outer"
+                  style={{ filter: "drop-shadow(0 0 4px rgba(245, 158, 11, 0.75))" }}
                 />
-                {/* Inner Core Flame */}
+
+                {/* Middle Warm Yellow Flame */}
                 <path
-                  d="M14 6C14 6 17 9.5 17 12C17 13.7 15.7 14.5 14 14.5C12.3 14.5 11 13.7 11 12C11 9.5 14 6 14 6Z"
-                  fill="url(#flameInner)"
+                  d="M16 6.5C16 6.5 20.5 11.5 20.5 14.5C20.5 17 18.5 17.8 16 17.8C13.5 17.8 11.5 17 11.5 14.5C11.5 11.5 16 6.5 16 6.5Z"
+                  fill="url(#flameMidGrad)"
+                  className="animate-flame-core"
                 />
-                {/* Bright White Center Dot */}
-                <ellipse cx="14" cy="12" rx="1.2" ry="1.8" fill="#ffffff" />
+
+                {/* Inner White/Gold Core Flame */}
+                <path
+                  d="M16 9.5C16 9.5 18.5 12.8 18.5 14.8C18.5 16.2 17.2 16.8 16 16.8C14.8 16.8 13.5 16.2 13.5 14.8C13.5 12.8 16 9.5 16 9.5Z"
+                  fill="url(#flameCoreGrad)"
+                  className="animate-flame-core"
+                />
+
+                {/* Bright Seed Center Point */}
+                <ellipse cx="16" cy="14.8" rx="1.2" ry="1.6" fill="#ffffff" />
               </g>
             ) : isPartiallyLit ? (
-              /* Emerging Spark Flame */
-              <g>
+              /* In-Progress Glowing Spark / Ember (1–14 min) */
+              <g className="animate-diya-spark">
                 <path
-                  d="M14 7C14 7 16.5 10.5 16.5 12.5C16.5 14 15.4 14.8 14 14.8C12.6 14.8 11.5 14 11.5 12.5C11.5 10.5 14 7 14 7Z"
+                  d="M16 9C16 9 19 13 19 15.5C19 17.5 17.6 18.2 16 18.2C14.4 18.2 13 17.5 13 15.5C13 13 16 9 16 9Z"
                   fill="#f59e0b"
-                  opacity="0.75"
+                  opacity="0.85"
+                  style={{ filter: "drop-shadow(0 0 3px rgba(245, 158, 11, 0.6))" }}
                 />
-                <circle cx="14" cy="12.5" r="1.2" fill="#fef08a" />
+                <path
+                  d="M16 12C16 12 17.8 14.2 17.8 15.6C17.8 16.8 17 17.2 16 17.2C15 17.2 14.2 16.8 14.2 15.6C14.2 14.2 16 12 16 12Z"
+                  fill="#fef08a"
+                />
+                <circle cx="16" cy="15.5" r="1.1" fill="#ffffff" />
               </g>
             ) : (
-              /* Unlit Dark Wick */
-              <line x1="14" y1="11" x2="14" y2="14" stroke="#44403c" strokeWidth="1.6" strokeLinecap="round" />
+              /* Unlit Dark Wick (0 min) */
+              <g>
+                <line
+                  x1="16"
+                  y1="13.5"
+                  x2="16"
+                  y2="17.2"
+                  stroke="#44403c"
+                  strokeWidth="1.8"
+                  strokeLinecap="round"
+                />
+                {/* Subtle metallic ember tip */}
+                <circle cx="16" cy="13.5" r="0.7" fill="#78716c" opacity="0.8" />
+              </g>
             )}
-
-            {/* Gradients */}
-            <defs>
-              <linearGradient id="diyaBodyLit" x1="4" y1="14" x2="24" y2="24" gradientUnits="userSpaceOnUse">
-                <stop stopColor="#d97706" />
-                <stop offset="0.5" stopColor="#b45309" />
-                <stop offset="1" stopColor="#78350f" />
-              </linearGradient>
-              <linearGradient id="flameOuter" x1="14" y1="2" x2="14" y2="15.5" gradientUnits="userSpaceOnUse">
-                <stop stopColor="#fef08a" />
-                <stop offset="0.3" stopColor="#f59e0b" />
-                <stop offset="1" stopColor="#ef4444" />
-              </linearGradient>
-              <linearGradient id="flameInner" x1="14" y1="6" x2="14" y2="14.5" gradientUnits="userSpaceOnUse">
-                <stop stopColor="#ffffff" />
-                <stop offset="0.5" stopColor="#fef08a" />
-                <stop offset="1" stopColor="#f59e0b" />
-              </linearGradient>
-            </defs>
           </svg>
         </div>
 
         {/* Text & Streak Count */}
         <div className="flex items-center gap-1.5">
-          <span className={`text-xs font-bold font-mono ${isLit ? "text-amber-400 font-extrabold" : "text-[var(--foreground)]"}`}>
+          <span
+            className={`text-xs font-bold font-mono ${
+              isLit ? "text-amber-400 font-extrabold" : "text-[var(--foreground)]"
+            }`}
+          >
             {streakData.currentStreak > 0 ? `${streakData.currentStreak}d` : "0d"}
           </span>
 
@@ -179,7 +356,7 @@ export default function DiwaliDiya() {
           </span>
         </div>
 
-        {/* Small Glowing Indicator when Lit */}
+        {/* Small Glowing Indicator Dot when Lit */}
         {isLit && (
           <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping absolute -top-0.5 -right-0.5" />
         )}
@@ -193,13 +370,15 @@ export default function DiwaliDiya() {
           {/* Header with Diya Showcase */}
           <div className="flex items-start justify-between pb-3 border-b border-[var(--border)]">
             <div className="flex items-center gap-3">
-              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl border ${
-                isLit
-                  ? "bg-amber-500/20 border-amber-500/40 text-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.3)]"
-                  : isPartiallyLit
-                  ? "bg-amber-500/10 border-amber-500/20 text-amber-300"
-                  : "bg-[var(--secondary)] border-[var(--border)] text-[var(--text-secondary)]"
-              }`}>
+              <div
+                className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl border ${
+                  isLit
+                    ? "bg-amber-500/20 border-amber-500/40 text-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.3)]"
+                    : isPartiallyLit
+                    ? "bg-amber-500/10 border-amber-500/20 text-amber-300"
+                    : "bg-[var(--secondary)] border-[var(--border)] text-[var(--text-secondary)]"
+                }`}
+              >
                 🪔
               </div>
               <div>
@@ -244,7 +423,9 @@ export default function DiwaliDiya() {
               />
             </div>
             <p className="text-[10px] text-[var(--text-secondary)] italic text-right">
-              {isLit ? "Goal completed! Extra reading time continues to record." : "Time accumulates only while actively reading."}
+              {isLit
+                ? "Goal completed! Extra reading time continues to record."
+                : "Time accumulates only while actively reading."}
             </p>
           </div>
 
@@ -277,7 +458,7 @@ export default function DiwaliDiya() {
             </div>
           </div>
 
-          {/* Streak Stats & Milestone */}
+          {/* Streak Stats */}
           <div className="grid grid-cols-2 gap-2 pt-1 border-t border-[var(--border)] text-center text-xs">
             <div className="p-2.5 rounded-xl bg-[var(--secondary)]/40 border border-[var(--border)]">
               <span className="text-[10px] text-[var(--text-secondary)] block">Current Streak</span>
