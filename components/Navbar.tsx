@@ -23,10 +23,13 @@ export default function Navbar() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Global keyboard shortcut (Ctrl+K or Cmd+K)
+  // Global keyboard shortcut (Ctrl+K, Cmd+K, or /)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
+      const isInput = ["INPUT", "TEXTAREA"].includes((e.target as HTMLElement)?.tagName);
+      if (isInput) return;
+
+      if (((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") || e.key === "/") {
         e.preventDefault();
         setIsSearchOpen((prev) => !prev);
       }
@@ -38,7 +41,7 @@ export default function Navbar() {
   const navLinks = [
     { name: "Home", href: "/" },
     { name: "Library", href: "/library" },
-    { name: "Favorites", href: "/favorites", count: favorites.length },
+    { name: "My Shelf", href: "/favorites", count: favorites.length },
     { name: "About", href: "/about" },
     { name: "Contact", href: "/contact" },
   ];

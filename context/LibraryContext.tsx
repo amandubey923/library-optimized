@@ -1,7 +1,18 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from "react";
 import { Book, BOOKS } from "@/data/books";
+import {
+  BookmarkItem,
+  getBookmarks as getStoredBookmarks,
+  saveBookmark as storeBookmark,
+  deleteBookmark as deleteStoredBookmark,
+  isPageBookmarked as checkIsBookmarked,
+  calculateReadingStats,
+  exportAllUserData,
+  importUserData,
+  ReadingStats,
+} from "@/lib/reader-storage";
 
 export interface ReadingProgressItem {
   bookId: string;
@@ -31,6 +42,15 @@ interface LibraryContextType {
   clearHistory: () => void;
   toastMessage: string | null;
   showToast: (msg: string) => void;
+  // Bookmarks & Stats Extensions
+  getBookmarks: (bookId: string) => BookmarkItem[];
+  addBookmark: (bookId: string, page: number, label?: string) => BookmarkItem;
+  removeBookmark: (bookId: string, bookmarkId: string) => void;
+  isBookmarked: (bookId: string, page: number) => boolean;
+  stats: ReadingStats;
+  refreshStats: () => void;
+  exportData: () => string;
+  importData: (jsonStr: string) => { success: boolean; message: string };
 }
 
 const LibraryContext = createContext<LibraryContextType | undefined>(undefined);
@@ -42,7 +62,22 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   const [favorites, setFavorites] = useState<string[]>([]);
   const [readingHistory, setReadingHistory] = useState<ReadingProgressItem[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [stats, setStats] = useState<ReadingStats>({
+    booksStarted: 0,
+    booksCompleted: 0,
+    pagesRead: 0,
+    totalFavorites: 0,
+    totalBookmarks: 0,
+    totalNotes: 0,
+    totalHighlights: 0,
+    totalDrawings: 0,
+    readingStreakDays: 1,
+  });
   const [mounted, setMounted] = useState(false);
+
+  const refreshStats = useCallback(() => {
+    setStats(calculateReadingStats());
+  }, []);
 
   useEffect(() => {
     try {
@@ -65,8 +100,9 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     } catch (e) {
       console.warn("Could not read from localStorage", e);
     }
+    refreshStats();
     setMounted(true);
-  }, []);
+  }, [refreshStats]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
@@ -94,6 +130,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       } catch (e) {
         console.warn("Could not save favorites", e);
       }
+      refreshStats();
       return updated;
     });
   };
@@ -106,6 +143,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       } catch (e) {
         console.warn("Could not remove favorite", e);
       }
+      refreshStats();
       return updated;
     });
   };
@@ -128,12 +166,13 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
         lastReadAt: Date.now(),
       };
 
-      const updated = [newItem, ...filtered].slice(0, 12);
+      const updated = [newItem, ...filtered].slice(0, 16);
       try {
         localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
       } catch (e) {
         console.warn("Could not save reading progress", e);
       }
+      refreshStats();
       return updated;
     });
   };
@@ -154,6 +193,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       } catch (e) {
         console.warn("Could not save reading history", e);
       }
+      refreshStats();
       return updated;
     });
   };
@@ -165,7 +205,43 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     } catch (e) {
       console.warn("Could not clear history", e);
     }
+    refreshStats();
     showToast("Reading history cleared");
+  };
+
+  // Bookmarks Wrapper
+  const getBookmarks = (bookId: string) => getStoredBookmarks(bookId);
+
+  const addBookmark = (bookId: string, page: number, label?: string) => {
+    const item = storeBookmark(bookId, page, label);
+    showToast(`Bookmarked Page ${page} 🔖`);
+    refreshStats();
+    return item;
+  };
+
+  const removeBookmark = (bookId: string, bookmarkId: string) => {
+    deleteStoredBookmark(bookId, bookmarkId);
+    showToast(`Bookmark removed 🔖`);
+    refreshStats();
+  };
+
+  const isBookmarked = (bookId: string, page: number) => checkIsBookmarked(bookId, page);
+
+  // Backup & Export Helpers
+  const exportData = () => exportAllUserData();
+
+  const handleImportData = (jsonStr: string) => {
+    const res = importUserData(jsonStr);
+    if (res.success) {
+      // Reload state
+      const favs = localStorage.getItem(FAVORITES_KEY);
+      if (favs) setFavorites(JSON.parse(favs));
+      const hist = localStorage.getItem(HISTORY_KEY);
+      if (hist) setReadingHistory(JSON.parse(hist));
+      refreshStats();
+    }
+    showToast(res.message);
+    return res;
   };
 
   // Derive actual book objects
@@ -206,6 +282,14 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
         clearHistory,
         toastMessage,
         showToast,
+        getBookmarks,
+        addBookmark,
+        removeBookmark,
+        isBookmarked,
+        stats,
+        refreshStats,
+        exportData,
+        importData: handleImportData,
       }}
     >
       {children}

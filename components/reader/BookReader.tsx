@@ -17,7 +17,11 @@ import {
   clearPageDrawings,
   getSavedProgress,
   saveProgress,
+  getBookmarks,
+  saveBookmark,
+  deleteBookmark,
   BookAnnotations,
+  BookmarkItem,
   HighlightItem,
   DrawingStroke,
   DrawingPoint,
@@ -38,6 +42,11 @@ interface ReaderPrefs {
   zoom: number;       // 70 - 150
   readingMode: ReadingMode;
   layoutMode: LayoutMode;
+}
+
+interface TocItem {
+  title: string;
+  page: number;
 }
 
 const DEFAULT_PREFS: ReaderPrefs = {
@@ -79,14 +88,20 @@ export default function BookReader({ book }: BookReaderProps) {
   const [isMobile, setIsMobile] = useState<boolean>(false);
   const [pdfJsReady, setPdfJsReady] = useState<boolean>(false);
 
+  // Table of Contents State
+  const [isTocOpen, setIsTocOpen] = useState<boolean>(false);
+  const [tableOfContents, setTableOfContents] = useState<TocItem[]>([]);
+
   // -------------------------------------------------------------
-  // Advanced Study & Annotations State
+  // Advanced Study, Annotations & Bookmarks State
   // -------------------------------------------------------------
   const [annotations, setAnnotations] = useState<BookAnnotations>({
     highlights: [],
     notes: [],
     drawings: {},
+    bookmarks: [],
   });
+  const [bookmarks, setBookmarks] = useState<BookmarkItem[]>([]);
   const [isAnnotationDrawerOpen, setIsAnnotationDrawerOpen] = useState<boolean>(false);
   const [showAnnotationsOverlay, setShowAnnotationsOverlay] = useState<boolean>(true);
 
@@ -161,10 +176,12 @@ export default function BookReader({ book }: BookReaderProps) {
   const renderTasksRef = useRef<Record<string, any>>({});
   const cursorDotRef = useRef<HTMLDivElement>(null);
 
-  // 1. Load Initial Annotations & Screen Size
+  // 1. Load Initial Annotations, Bookmarks & Screen Size
   useEffect(() => {
     const loaded = getBookAnnotations(book.id);
+    const bms = getBookmarks(book.id);
     setAnnotations(loaded);
+    setBookmarks(bms);
 
     const checkScreen = () => {
       const mobile = window.innerWidth < 1024;
@@ -246,7 +263,7 @@ export default function BookReader({ book }: BookReaderProps) {
     document.head.appendChild(script);
   }, []);
 
-  // 3. Load PDF Document with Streaming & Range Requests
+  // 3. Load PDF Document & Extract Table of Contents / Outline
   useEffect(() => {
     if (!pdfJsReady || !book.pdf) return;
 
@@ -273,7 +290,7 @@ export default function BookReader({ book }: BookReaderProps) {
     };
 
     loadingTask.promise
-      .then((doc: any) => {
+      .then(async (doc: any) => {
         if (isCancelled) return;
         pdfDocRef.current = doc;
         setNumPages(doc.numPages);
@@ -284,6 +301,55 @@ export default function BookReader({ book }: BookReaderProps) {
         setCurrentPage(targetPage);
         updateReadingProgress(book.id, targetPage, doc.numPages);
         saveProgress(book.id, targetPage, doc.numPages);
+
+        // Extract PDF Outline (Chapters) if available
+        try {
+          const outline = await doc.getOutline();
+          if (outline && outline.length > 0) {
+            const parsedToc: TocItem[] = [];
+            for (const item of outline) {
+              if (item.title) {
+                let pageIndex = 1;
+                if (typeof item.dest === "string") {
+                  const dest = await doc.getDestination(item.dest);
+                  if (dest) {
+                    const pageRef = dest[0];
+                    pageIndex = (await doc.getPageIndex(pageRef)) + 1;
+                  }
+                } else if (Array.isArray(item.dest)) {
+                  const pageRef = item.dest[0];
+                  pageIndex = (await doc.getPageIndex(pageRef)) + 1;
+                }
+                parsedToc.push({ title: item.title, page: Math.max(1, pageIndex) });
+              }
+            }
+            if (parsedToc.length > 0) {
+              setTableOfContents(parsedToc);
+            }
+          } else {
+            // Generate clean milestone sections for ease of navigation
+            const step = Math.max(10, Math.ceil(doc.numPages / 8));
+            const milestones: TocItem[] = [];
+            for (let p = 1; p <= doc.numPages; p += step) {
+              milestones.push({
+                title: p === 1 ? "Opening & Front Matter" : `Section — Page ${p}`,
+                page: p,
+              });
+            }
+            setTableOfContents(milestones);
+          }
+        } catch {
+          // Fallback milestones
+          const step = Math.max(10, Math.ceil(doc.numPages / 8));
+          const milestones: TocItem[] = [];
+          for (let p = 1; p <= doc.numPages; p += step) {
+            milestones.push({
+              title: p === 1 ? "Opening & Front Matter" : `Section — Page ${p}`,
+              page: p,
+            });
+          }
+          setTableOfContents(milestones);
+        }
       })
       .catch((err: any) => {
         console.error("Error loading PDF document:", err);
@@ -450,6 +516,7 @@ export default function BookReader({ book }: BookReaderProps) {
       setSelectionPopover(null);
       setCurrentPage(target);
       setShowJumpModal(false);
+      setIsTocOpen(false);
     }
   };
 
@@ -470,19 +537,34 @@ export default function BookReader({ book }: BookReaderProps) {
     }
   };
 
-  // -------------------------------------------------------------
-  // Undo & Redo Handlers
-  // -------------------------------------------------------------
+  // 8. Bookmarks Toggle
+  const handleToggleBookmark = () => {
+    const isCurrentBookmarked = bookmarks.some((b) => b.page === currentPage);
+    if (isCurrentBookmarked) {
+      const bm = bookmarks.find((b) => b.page === currentPage);
+      if (bm) {
+        deleteBookmark(book.id, bm.id);
+        const updated = getBookmarks(book.id);
+        setBookmarks(updated);
+        showToast(`Removed bookmark from Page ${currentPage} 🔖`);
+      }
+    } else {
+      saveBookmark(book.id, currentPage, `Page ${currentPage} Bookmark`);
+      const updated = getBookmarks(book.id);
+      setBookmarks(updated);
+      showToast(`Bookmarked Page ${currentPage} 🔖`);
+    }
+  };
+
+  // 9. Undo & Redo Handlers
   const handleStrokesChange = (page: number, newStrokes: DrawingStroke[]) => {
     const prevStrokes = annotations.drawings[page] || [];
 
-    // Push to undo stack
     setUndoStack((prev) => ({
       ...prev,
       [page]: [...(prev[page] || []), prevStrokes],
     }));
 
-    // Clear redo stack
     setRedoStack((prev) => ({
       ...prev,
       [page]: [],
@@ -499,13 +581,11 @@ export default function BookReader({ book }: BookReaderProps) {
     const previousState = pageUndo[pageUndo.length - 1];
     const currentStrokes = annotations.drawings[page] || [];
 
-    // Push current to redo stack
     setRedoStack((prev) => ({
       ...prev,
       [page]: [...(prev[page] || []), currentStrokes],
     }));
 
-    // Pop from undo stack
     setUndoStack((prev) => ({
       ...prev,
       [page]: pageUndo.slice(0, -1),
@@ -523,13 +603,11 @@ export default function BookReader({ book }: BookReaderProps) {
     const nextState = pageRedo[pageRedo.length - 1];
     const currentStrokes = annotations.drawings[page] || [];
 
-    // Push current to undo stack
     setUndoStack((prev) => ({
       ...prev,
       [page]: [...(prev[page] || []), currentStrokes],
     }));
 
-    // Pop from redo stack
     setRedoStack((prev) => ({
       ...prev,
       [page]: pageRedo.slice(0, -1),
@@ -550,7 +628,7 @@ export default function BookReader({ book }: BookReaderProps) {
     }
   };
 
-  // 8. Text Box Placement Handler
+  // 10. Text Box Placement Handler
   const handleSaveTextBox = () => {
     if (!textBoxDialog.text.trim() || !textBoxDialog.point) return;
 
@@ -570,7 +648,7 @@ export default function BookReader({ book }: BookReaderProps) {
     showToast("Text annotation placed 🔤");
   };
 
-  // 9. Keyboard & Fullscreen Listeners
+  // 11. Keyboard & Fullscreen Listeners
   useEffect(() => {
     const handleFullscreenChange = () => {
       setIsFullscreen(!!document.fullscreenElement);
@@ -598,6 +676,10 @@ export default function BookReader({ book }: BookReaderProps) {
 
       // Quick Tool Shortcuts
       switch (e.key.toLowerCase()) {
+        case "b":
+          e.preventDefault();
+          handleToggleBookmark();
+          break;
         case "p":
           setIsStudyMode(true);
           setActiveTool("pen");
@@ -661,6 +743,7 @@ export default function BookReader({ book }: BookReaderProps) {
           if (showSettings) setShowSettings(false);
           if (showJumpModal) setShowJumpModal(false);
           if (isAnnotationDrawerOpen) setIsAnnotationDrawerOpen(false);
+          if (isTocOpen) setIsTocOpen(false);
           if (selectionPopover) setSelectionPopover(null);
           if (noteModal.isOpen) setNoteModal((prev) => ({ ...prev, isOpen: false }));
           if (textBoxDialog.isOpen) setTextBoxDialog((prev) => ({ ...prev, isOpen: false }));
@@ -686,15 +769,17 @@ export default function BookReader({ book }: BookReaderProps) {
     showSettings,
     showJumpModal,
     isAnnotationDrawerOpen,
+    isTocOpen,
     selectionPopover,
     noteModal.isOpen,
     textBoxDialog.isOpen,
     isStudyMode,
     undoStack,
     redoStack,
+    bookmarks,
   ]);
 
-  // 10. Fullscreen Integrated Custom Cursor Movement & Auto-Hide Controls
+  // 12. Fullscreen Integrated Custom Cursor Movement & Auto-Hide Controls
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement> | React.MouseEvent<HTMLDivElement>) => {
     setShowControls(true);
     if (hideControlsTimerRef.current) {
@@ -705,6 +790,7 @@ export default function BookReader({ book }: BookReaderProps) {
         !showSettings &&
         !showJumpModal &&
         !isAnnotationDrawerOpen &&
+        !isTocOpen &&
         !isStudyMode &&
         !selectionPopover?.visible
       ) {
@@ -732,7 +818,7 @@ export default function BookReader({ book }: BookReaderProps) {
     setCursorPos((prev) => ({ ...prev, visible: false }));
   };
 
-  // 11. Mobile Touch Handlers
+  // 13. Mobile Touch Handlers
   const handleTouchStart = (e: React.TouchEvent) => {
     if (!isStudyMode) {
       touchStartXRef.current = e.touches[0].clientX;
@@ -754,7 +840,7 @@ export default function BookReader({ book }: BookReaderProps) {
     touchStartXRef.current = null;
   };
 
-  // 12. Text Selection & Floating Annotation Popover Handling
+  // 14. Text Selection & Floating Annotation Popover Handling
   const handlePageMouseUp = (e: React.MouseEvent, pageNum: number) => {
     if (isStudyMode) return;
 
@@ -868,23 +954,28 @@ export default function BookReader({ book }: BookReaderProps) {
 
   const isDouble = prefs.layoutMode === "double" && !isMobile;
   const progressPercent = numPages > 0 ? Math.round((currentPage / numPages) * 100) : 0;
+  const isBookComplete = numPages > 0 && currentPage >= numPages;
 
   // Active page numbers for rendering overlays
   const activeLeftPage = isDouble ? (currentPage === 1 ? 0 : currentPage % 2 === 0 ? currentPage : currentPage - 1) : currentPage;
   const activeRightPage = isDouble ? (currentPage === 1 ? 1 : activeLeftPage + 1) : currentPage;
 
-  // Check if current pages have annotations
+  // Check if current pages have annotations or bookmarks
   const pageHasAnnotations = (p: number) => {
     const hasHl = annotations.highlights.some((h) => h.page === p);
     const hasNote = annotations.notes.some((n) => n.page === p);
     const hasDraw = (annotations.drawings[p]?.length || 0) > 0;
-    return hasHl || hasNote || hasDraw;
+    const hasBm = bookmarks.some((b) => b.page === p);
+    return hasHl || hasNote || hasDraw || hasBm;
   };
+
+  const isCurrentPageBookmarked = bookmarks.some((b) => b.page === currentPage);
 
   const totalAnnotationsCount =
     (annotations.highlights?.length || 0) +
     (annotations.notes?.length || 0) +
-    Object.keys(annotations.drawings || {}).length;
+    Object.keys(annotations.drawings || {}).length +
+    bookmarks.length;
 
   const currentColor = activeTool === "highlighter" ? highlighterColor : penColor;
 
@@ -919,7 +1010,6 @@ export default function BookReader({ book }: BookReaderProps) {
         aria-hidden="true"
       >
         {isStudyMode ? (
-          /* Study Tool Reticle Cursor */
           <div className="relative flex items-center justify-center -translate-x-1/2 -translate-y-1/2">
             <div
               className="rounded-full border border-white shadow-md transition-all"
@@ -951,7 +1041,6 @@ export default function BookReader({ book }: BookReaderProps) {
             </span>
           </div>
         ) : (
-          /* Futuristic Diamond HUD Pointer */
           <div className="relative flex items-center justify-center -translate-x-1/2 -translate-y-1/2">
             <div
               className="absolute w-4 h-4 rounded-full blur-[2px]"
@@ -974,11 +1063,19 @@ export default function BookReader({ book }: BookReaderProps) {
           showControls ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0 pointer-events-none"
         }`}
       >
-        {/* Book Title & Metadata */}
-        <div className="flex items-center gap-3 min-w-0">
-          <span className="w-2.5 h-2.5 rounded-full bg-[var(--accent)] animate-pulse flex-shrink-0" />
+        {/* Book Title & Chapter Outline Toggle */}
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <button
+            onClick={() => setIsTocOpen(true)}
+            className="p-1.5 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] border border-[var(--border)] transition-all cursor-pointer flex items-center gap-1 text-xs"
+            title="Table of Contents & Chapters"
+          >
+            <span>📑</span>
+            <span className="hidden sm:inline font-semibold">Chapters</span>
+          </button>
+
           <div className="flex flex-col text-left truncate">
-            <h3 className="text-xs sm:text-sm font-bold font-serif text-[var(--foreground)] truncate max-w-[150px] sm:max-w-md">
+            <h3 className="text-xs sm:text-sm font-bold font-serif text-[var(--foreground)] truncate max-w-[130px] sm:max-w-xs">
               {book.title}
             </h3>
             <p className="text-[10px] text-[var(--text-secondary)] truncate">
@@ -988,7 +1085,21 @@ export default function BookReader({ book }: BookReaderProps) {
         </div>
 
         {/* Quick Toolbar Actions */}
-        <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+        <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
+          {/* Bookmark Button */}
+          <button
+            onClick={handleToggleBookmark}
+            className={`p-2 sm:px-3 sm:py-1.5 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1.5 cursor-pointer ${
+              isCurrentPageBookmarked
+                ? "bg-amber-500/20 text-amber-400 border-amber-500/40 shadow-xs"
+                : "bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border-[var(--border)]"
+            }`}
+            title="Bookmark this Page (B)"
+          >
+            <span>{isCurrentPageBookmarked ? "🔖" : "📑"}</span>
+            <span className="hidden sm:inline">{isCurrentPageBookmarked ? "Saved" : "Bookmark"}</span>
+          </button>
+
           {/* Zoom Controls */}
           <div className="hidden sm:flex items-center gap-1 p-1 rounded-xl bg-[var(--secondary)] border border-[var(--border)] text-xs">
             <button
@@ -1033,7 +1144,7 @@ export default function BookReader({ book }: BookReaderProps) {
                 ? "bg-[var(--accent)] text-[var(--primary-foreground)] border-[var(--accent)] shadow-md"
                 : "bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] border-[var(--border)]"
             }`}
-            title="Toggle Study & Annotation Workspace (P)"
+            title="Toggle Study & Annotation Suite (P)"
           >
             <span>{isStudyMode ? "🎨 Study Mode" : "✏️ Study Tools"}</span>
           </button>
@@ -1058,7 +1169,7 @@ export default function BookReader({ book }: BookReaderProps) {
           <button
             onClick={() => setIsAnnotationDrawerOpen(true)}
             className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] text-xs font-semibold border border-[var(--border)] transition-all flex items-center gap-1.5 cursor-pointer"
-            title="View Highlights, Notes & Study Elements"
+            title="View Highlights, Notes & Bookmarks"
           >
             <span>📌</span>
             <span className="hidden sm:inline">Notes</span>
@@ -1098,11 +1209,52 @@ export default function BookReader({ book }: BookReaderProps) {
       </div>
 
       {/* -------------------------------------------------------------
+       * Table of Contents / Chapters Slide-over Drawer
+       * ------------------------------------------------------------- */}
+      {isTocOpen && (
+        <div className="fixed inset-0 z-50 flex justify-start bg-black/60 backdrop-blur-sm animate-fade-in text-left">
+          <div className="w-full max-w-sm h-full bg-[var(--card)] border-r border-[var(--border)] shadow-2xl flex flex-col justify-between overflow-hidden animate-slide-left z-50">
+            <div className="p-5 border-b border-[var(--border)] flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-base">📑</span>
+                <h4 className="font-serif font-bold text-sm text-[var(--foreground)]">
+                  Table of Contents
+                </h4>
+              </div>
+              <button
+                onClick={() => setIsTocOpen(false)}
+                className="w-7 h-7 rounded-xl bg-[var(--secondary)] text-xs hover:text-[var(--foreground)] flex items-center justify-center cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 space-y-2">
+              {tableOfContents.map((item, idx) => (
+                <button
+                  key={`${item.page}_${idx}`}
+                  onClick={() => handleJumpToPage(item.page)}
+                  className={`w-full p-3 rounded-2xl text-left text-xs transition-all flex items-center justify-between border cursor-pointer ${
+                    currentPage >= item.page && (idx === tableOfContents.length - 1 || currentPage < tableOfContents[idx + 1].page)
+                      ? "bg-[var(--accent)]/15 border-[var(--accent)] text-[var(--accent)] font-bold shadow-xs"
+                      : "bg-[var(--secondary)]/40 hover:bg-[var(--secondary)] border-[var(--border)] text-[var(--foreground)] font-medium"
+                  }`}
+                >
+                  <span className="truncate mr-3">{item.title}</span>
+                  <span className="text-[10px] font-mono opacity-80 whitespace-nowrap">Page {item.page}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex-1" onClick={() => setIsTocOpen(false)} />
+        </div>
+      )}
+
+      {/* -------------------------------------------------------------
        * Study & Annotation Suite Sub-Toolbar (When Study Mode Active)
        * ------------------------------------------------------------- */}
       {isStudyMode && (
         <div className="absolute top-14 inset-x-0 z-30 flex flex-wrap items-center justify-between p-2 sm:px-6 bg-[var(--card)]/95 backdrop-blur-xl border-b border-[var(--border)] gap-2 animate-fade-in text-xs shadow-lg">
-          {/* Tool Selector Pills */}
           <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0">
             {[
               { id: "pen", label: "Pen", icon: "✏️", shortcut: "P" },
@@ -1132,9 +1284,7 @@ export default function BookReader({ book }: BookReaderProps) {
             ))}
           </div>
 
-          {/* Palette, Width & Fill Controls */}
           <div className="flex items-center gap-3">
-            {/* Color Swatches */}
             <div className="flex items-center gap-1">
               {(activeTool === "highlighter"
                 ? ["#facc15", "#34d399", "#38bdf8", "#f472b6", "#c084fc"]
@@ -1158,7 +1308,6 @@ export default function BookReader({ book }: BookReaderProps) {
 
             <div className="h-4 w-px bg-[var(--border)]" />
 
-            {/* Stroke Width Selector */}
             <div className="flex items-center gap-1">
               {(activeTool === "highlighter" ? [14, 20, 28] : [2, 4, 7]).map((w) => (
                 <button
@@ -1175,7 +1324,6 @@ export default function BookReader({ book }: BookReaderProps) {
               ))}
             </div>
 
-            {/* Fill Mode for Shapes */}
             {["circle", "rectangle", "square", "diamond"].includes(activeTool) && (
               <button
                 onClick={() => setFillMode(!fillMode)}
@@ -1190,7 +1338,6 @@ export default function BookReader({ book }: BookReaderProps) {
 
             <div className="h-4 w-px bg-[var(--border)]" />
 
-            {/* Undo / Redo Actions */}
             <div className="flex items-center gap-1">
               <button
                 onClick={() => handleUndo(currentPage)}
@@ -1218,7 +1365,6 @@ export default function BookReader({ book }: BookReaderProps) {
               </button>
             </div>
 
-            {/* Clear Page Action */}
             <button
               onClick={() => handleClearPageWithConfirmation(currentPage)}
               className="px-2 py-1 rounded-lg bg-[var(--secondary)] hover:bg-rose-500/20 hover:text-rose-400 text-[var(--text-secondary)] font-bold transition-all cursor-pointer text-[11px]"
@@ -1489,7 +1635,7 @@ export default function BookReader({ book }: BookReaderProps) {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in">
           <div className="glass-card rounded-3xl p-6 border border-[var(--border)] bg-[var(--card)] max-w-xs w-full shadow-2xl text-left space-y-4">
             <h4 className="font-serif font-bold text-sm text-[var(--foreground)]">
-              Jump to Page
+              Go to Page
             </h4>
             <div className="flex items-center gap-2">
               <input
@@ -1500,6 +1646,9 @@ export default function BookReader({ book }: BookReaderProps) {
                 onChange={(e) => setJumpPageInput(e.target.value)}
                 placeholder={`1 - ${numPages}`}
                 autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleJumpToPage(Number(jumpPageInput));
+                }}
                 className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl px-3 py-2 text-sm text-[var(--foreground)] focus:outline-none focus:border-[var(--accent)]"
               />
               <span className="text-xs text-[var(--text-secondary)] whitespace-nowrap">
@@ -1525,13 +1674,14 @@ export default function BookReader({ book }: BookReaderProps) {
       )}
 
       {/* -------------------------------------------------------------
-       * Slide-over Annotation Drawer
+       * Slide-over Annotation & Bookmarks Drawer
        * ------------------------------------------------------------- */}
       <AnnotationDrawer
         isOpen={isAnnotationDrawerOpen}
         onClose={() => setIsAnnotationDrawerOpen(false)}
         bookTitle={book.title}
         annotations={annotations}
+        bookmarks={bookmarks}
         onJumpToPage={handleJumpToPage}
         onDeleteHighlight={(id) => {
           deleteHighlight(book.id, id);
@@ -1548,6 +1698,10 @@ export default function BookReader({ book }: BookReaderProps) {
         onClearDrawing={(page) => {
           clearPageDrawings(book.id, page);
           setAnnotations(getBookAnnotations(book.id));
+        }}
+        onDeleteBookmark={(id) => {
+          deleteBookmark(book.id, id);
+          setBookmarks(getBookmarks(book.id));
         }}
       />
 
@@ -1815,23 +1969,32 @@ export default function BookReader({ book }: BookReaderProps) {
             <span className="hidden sm:inline">Prev</span>
           </button>
 
-          <button
-            onClick={() => {
-              setJumpPageInput(String(currentPage));
-              setShowJumpModal(true);
-            }}
-            className="px-4 py-1.5 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] border border-[var(--border)] text-xs font-bold text-[var(--foreground)] transition-all cursor-pointer flex items-center gap-2 shadow-xs"
-            title="Click to jump to specific page"
-          >
-            <span>
-              Page {currentPage}
-              {isDouble && currentPage < numPages ? `–${currentPage + 1}` : ""} of {numPages || "..."}
-            </span>
-            {pageHasAnnotations(currentPage) && (
-              <span className="w-2 h-2 rounded-full bg-[var(--accent)] animate-pulse" title="This page contains study notes" />
-            )}
-            <span className="text-[10px] text-[var(--accent)] font-semibold">({progressPercent}%)</span>
-          </button>
+          {/* Center Page Indicator & Direct Jump */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                setJumpPageInput(String(currentPage));
+                setShowJumpModal(true);
+              }}
+              className="px-4 py-1.5 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] border border-[var(--border)] text-xs font-bold text-[var(--foreground)] transition-all cursor-pointer flex items-center gap-2 shadow-xs"
+              title="Click to jump to specific page"
+            >
+              <span>
+                Page {currentPage}
+                {isDouble && currentPage < numPages ? `–${currentPage + 1}` : ""} of {numPages || "..."}
+              </span>
+              {pageHasAnnotations(currentPage) && (
+                <span className="w-2 h-2 rounded-full bg-[var(--accent)] animate-pulse" title="This page contains study notes or bookmarks" />
+              )}
+              {isBookComplete ? (
+                <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold">
+                  Completed ✓
+                </span>
+              ) : (
+                <span className="text-[10px] text-[var(--accent)] font-semibold">({progressPercent}%)</span>
+              )}
+            </button>
+          </div>
 
           <button
             onClick={handleNext}
@@ -1849,7 +2012,11 @@ export default function BookReader({ book }: BookReaderProps) {
 
         <div className="w-full max-w-4xl mx-auto h-1 rounded-full bg-[var(--secondary)] overflow-hidden">
           <div
-            className="h-full rounded-full bg-gradient-to-r from-[var(--primary)] to-[var(--accent-secondary)] transition-all duration-300"
+            className={`h-full rounded-full transition-all duration-300 ${
+              isBookComplete
+                ? "bg-gradient-to-r from-emerald-500 to-teal-400"
+                : "bg-gradient-to-r from-[var(--primary)] to-[var(--accent-secondary)]"
+            }`}
             style={{ width: `${progressPercent}%` }}
           />
         </div>

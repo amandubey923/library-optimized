@@ -1,34 +1,36 @@
 "use client";
 
 import React, { useState } from "react";
-import { BookAnnotations, HighlightItem, NoteItem, DrawingStroke } from "@/lib/reader-storage";
+import { BookAnnotations, HighlightItem, NoteItem, BookmarkItem } from "@/lib/reader-storage";
 
 interface AnnotationDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   bookTitle: string;
   annotations: BookAnnotations;
+  bookmarks?: BookmarkItem[];
   onJumpToPage: (page: number) => void;
   onDeleteHighlight: (id: string) => void;
   onUpdateNote: (id: string, text: string) => void;
   onDeleteNote: (id: string) => void;
   onClearDrawing: (page: number) => void;
-  onDeleteStroke?: (page: number, strokeId: string) => void;
+  onDeleteBookmark?: (id: string) => void;
 }
 
-type TabType = "all" | "highlights" | "notes" | "drawings";
+type TabType = "all" | "highlights" | "notes" | "drawings" | "bookmarks";
 
 export default function AnnotationDrawer({
   isOpen,
   onClose,
   bookTitle,
   annotations,
+  bookmarks = [],
   onJumpToPage,
   onDeleteHighlight,
   onUpdateNote,
   onDeleteNote,
   onClearDrawing,
-  onDeleteStroke,
+  onDeleteBookmark,
 }: AnnotationDrawerProps) {
   const [activeTab, setActiveTab] = useState<TabType>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -42,7 +44,7 @@ export default function AnnotationDrawer({
   const drawings = annotations.drawings || {};
   const drawingPages = Object.keys(drawings).map(Number).filter((p) => drawings[p]?.length > 0);
 
-  const totalCount = highlights.length + notes.length + drawingPages.length;
+  const totalCount = highlights.length + notes.length + drawingPages.length + bookmarks.length;
 
   const filteredHighlights = highlights.filter(
     (h) => !searchQuery || h.text.toLowerCase().includes(searchQuery.toLowerCase())
@@ -53,6 +55,10 @@ export default function AnnotationDrawer({
       !searchQuery ||
       n.note.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (n.selectedText && n.selectedText.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
+  const filteredBookmarks = bookmarks.filter(
+    (b) => !searchQuery || (b.label && b.label.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   const getColorClass = (color: HighlightItem["color"]) => {
@@ -115,7 +121,7 @@ export default function AnnotationDrawer({
             <div className="flex items-center gap-2">
               <span className="text-base">📌</span>
               <h3 className="font-serif font-bold text-sm text-[var(--foreground)] truncate">
-                Study Annotations &amp; Notes
+                Study Annotations &amp; Bookmarks
               </h3>
             </div>
             <p className="text-[11px] text-[var(--text-secondary)] truncate mt-0.5">
@@ -154,7 +160,7 @@ export default function AnnotationDrawer({
           </div>
 
           {/* Filter Pills */}
-          <div className="grid grid-cols-4 gap-1 p-1 rounded-xl bg-[var(--background)] border border-[var(--border)] text-[11px] font-semibold">
+          <div className="grid grid-cols-5 gap-1 p-1 rounded-xl bg-[var(--background)] border border-[var(--border)] text-[10px] sm:text-[11px] font-semibold">
             <button
               onClick={() => setActiveTab("all")}
               className={`py-1 rounded-lg transition-all capitalize cursor-pointer ${
@@ -193,7 +199,17 @@ export default function AnnotationDrawer({
                   : "text-[var(--text-secondary)] hover:text-[var(--foreground)]"
               }`}
             >
-              Drawings ({drawingPages.length})
+              Sketches ({drawingPages.length})
+            </button>
+            <button
+              onClick={() => setActiveTab("bookmarks")}
+              className={`py-1 rounded-lg transition-all capitalize cursor-pointer ${
+                activeTab === "bookmarks"
+                  ? "bg-[var(--card)] text-[var(--accent)] shadow-xs border border-[var(--border)]"
+                  : "text-[var(--text-secondary)] hover:text-[var(--foreground)]"
+              }`}
+            >
+              Saved ({bookmarks.length})
             </button>
           </div>
         </div>
@@ -206,14 +222,59 @@ export default function AnnotationDrawer({
                 📚
               </div>
               <h4 className="font-serif font-bold text-xs text-[var(--foreground)]">
-                No Study Annotations Yet
+                No Annotations or Bookmarks Yet
               </h4>
               <p className="text-[11px] text-[var(--text-secondary)] max-w-xs leading-relaxed">
-                Highlight quotes, add notes, or use the study toolbar to draw diagrams, shapes, and arrows.
+                Highlight text, attach notes, bookmark favorite pages, or use the study toolbar to draw diagrams.
               </p>
             </div>
           ) : (
             <>
+              {/* ----------------- Bookmarks Section ----------------- */}
+              {(activeTab === "all" || activeTab === "bookmarks") && (
+                <>
+                  {filteredBookmarks.map((bm) => (
+                    <div
+                      key={bm.id}
+                      className="p-3.5 rounded-2xl bg-[var(--card)] border border-[var(--border)] hover:border-[var(--accent)]/40 transition-all shadow-xs flex items-center justify-between group"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <span className="text-lg text-[var(--accent)]">🔖</span>
+                        <div>
+                          <h5 className="text-xs font-bold text-[var(--foreground)]">
+                            Page {bm.page}
+                          </h5>
+                          <p className="text-[10px] text-[var(--text-secondary)]">
+                            {bm.label || `Bookmark on Page ${bm.page}`}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          onClick={() => {
+                            onJumpToPage(bm.page);
+                            onClose();
+                          }}
+                          className="px-2.5 py-1 rounded-lg bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] font-bold text-xs cursor-pointer"
+                        >
+                          Jump →
+                        </button>
+                        {onDeleteBookmark && (
+                          <button
+                            onClick={() => onDeleteBookmark(bm.id)}
+                            className="p-1.5 rounded-lg text-[var(--text-secondary)] hover:text-rose-400 hover:bg-rose-500/10 cursor-pointer"
+                            title="Remove Bookmark"
+                          >
+                            🗑️
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
+
               {/* ----------------- Highlights Section ----------------- */}
               {(activeTab === "all" || activeTab === "highlights") && (
                 <>
