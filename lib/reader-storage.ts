@@ -1,6 +1,6 @@
 /**
  * Reader's HUB — Centralized Reader Storage Utility
- * Namespaced browser-local persistence for Reading Progress, Highlights, Notes, and Drawings.
+ * Namespaced browser-local persistence for Reading Progress, Highlights, Notes, and Study Annotations.
  */
 
 export interface HighlightItem {
@@ -29,17 +29,33 @@ export interface DrawingPoint {
   y: number; // Normalized 0-1 coordinate
 }
 
+export type AnnotationToolType =
+  | "pen"
+  | "highlighter"
+  | "line"
+  | "arrow"
+  | "circle"
+  | "rectangle"
+  | "square"
+  | "diamond"
+  | "text";
+
 export interface DrawingStroke {
   id: string;
+  type?: AnnotationToolType; // Defaults to "pen" for backward compatibility
   points: DrawingPoint[];
   color: string;
   width: number;
+  opacity?: number; // 0.1 to 1.0 (default 1.0, highlighters default 0.35)
+  fill?: boolean; // For shapes: true = fill with semi-transparent color, false = outline only
+  text?: string; // For text box annotations
+  fontSize?: number;
 }
 
 export interface BookAnnotations {
   highlights: HighlightItem[];
   notes: NoteItem[];
-  drawings: Record<number, DrawingStroke[]>; // pageNumber -> strokes
+  drawings: Record<number, DrawingStroke[]>; // pageNumber -> strokes/shapes
 }
 
 export interface ReadingProgressData {
@@ -88,7 +104,7 @@ export function saveProgress(bookId: string, page: number, totalPages: number): 
 }
 
 // -------------------------------------------------------------
-// Annotations Storage (Highlights, Notes, Drawings)
+// Annotations Storage (Highlights, Notes, Drawings, Shapes)
 // -------------------------------------------------------------
 
 export function getBookAnnotations(bookId: string): BookAnnotations {
@@ -184,7 +200,7 @@ export function deleteNote(bookId: string, noteId: string): void {
 }
 
 // -------------------------------------------------------------
-// Drawing Helpers
+// Drawing & Shapes Helpers
 // -------------------------------------------------------------
 
 export function savePageDrawings(bookId: string, page: number, strokes: DrawingStroke[]): void {
@@ -202,4 +218,3 @@ export function clearPageDrawings(bookId: string, page: number): void {
   delete current.drawings[page];
   saveBookAnnotations(bookId, current);
 }
-

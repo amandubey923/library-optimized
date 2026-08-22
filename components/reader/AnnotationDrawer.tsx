@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { BookAnnotations, HighlightItem, NoteItem } from "@/lib/reader-storage";
+import { BookAnnotations, HighlightItem, NoteItem, DrawingStroke } from "@/lib/reader-storage";
 
 interface AnnotationDrawerProps {
   isOpen: boolean;
@@ -13,6 +13,7 @@ interface AnnotationDrawerProps {
   onUpdateNote: (id: string, text: string) => void;
   onDeleteNote: (id: string) => void;
   onClearDrawing: (page: number) => void;
+  onDeleteStroke?: (page: number, strokeId: string) => void;
 }
 
 type TabType = "all" | "highlights" | "notes" | "drawings";
@@ -27,6 +28,7 @@ export default function AnnotationDrawer({
   onUpdateNote,
   onDeleteNote,
   onClearDrawing,
+  onDeleteStroke,
 }: AnnotationDrawerProps) {
   const [activeTab, setActiveTab] = useState<TabType>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -66,6 +68,28 @@ export default function AnnotationDrawer({
     }
   };
 
+  const getToolIcon = (type?: string) => {
+    switch (type) {
+      case "highlighter":
+        return "🖍️";
+      case "line":
+        return "📏";
+      case "arrow":
+        return "↗️";
+      case "circle":
+        return "⭕";
+      case "rectangle":
+      case "square":
+        return "▭";
+      case "diamond":
+        return "💎";
+      case "text":
+        return "🔤";
+      default:
+        return "✏️";
+    }
+  };
+
   const handleStartEditNote = (note: NoteItem) => {
     setEditingNoteId(note.id);
     setEditNoteText(note.note);
@@ -91,7 +115,7 @@ export default function AnnotationDrawer({
             <div className="flex items-center gap-2">
               <span className="text-base">📌</span>
               <h3 className="font-serif font-bold text-sm text-[var(--foreground)] truncate">
-                Annotations &amp; Notes
+                Study Annotations &amp; Notes
               </h3>
             </div>
             <p className="text-[11px] text-[var(--text-secondary)] truncate mt-0.5">
@@ -115,7 +139,7 @@ export default function AnnotationDrawer({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search highlights & notes..."
+              placeholder="Search highlights, notes, and topics..."
               className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl pl-9 pr-3 py-2 text-xs text-[var(--foreground)] placeholder-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent)]"
             />
             <span className="absolute left-3 top-2.5 text-xs text-[var(--text-secondary)]">🔍</span>
@@ -169,7 +193,7 @@ export default function AnnotationDrawer({
                   : "text-[var(--text-secondary)] hover:text-[var(--foreground)]"
               }`}
             >
-              Sketches ({drawingPages.length})
+              Drawings ({drawingPages.length})
             </button>
           </div>
         </div>
@@ -179,13 +203,13 @@ export default function AnnotationDrawer({
           {totalCount === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-2">
               <div className="w-12 h-12 rounded-2xl bg-[var(--secondary)] text-2xl flex items-center justify-center text-[var(--accent)]">
-                ✏️
+                📚
               </div>
               <h4 className="font-serif font-bold text-xs text-[var(--foreground)]">
-                No Annotations Yet
+                No Study Annotations Yet
               </h4>
               <p className="text-[11px] text-[var(--text-secondary)] max-w-xs leading-relaxed">
-                Select text on any page to highlight or add a note, or toggle the pen tool to draw diagrams.
+                Highlight quotes, add notes, or use the study toolbar to draw diagrams, shapes, and arrows.
               </p>
             </div>
           ) : (
@@ -314,46 +338,70 @@ export default function AnnotationDrawer({
                 </>
               )}
 
-              {/* ----------------- Sketches Section ----------------- */}
+              {/* ----------------- Drawings & Shapes Section ----------------- */}
               {(activeTab === "all" || activeTab === "drawings") && (
                 <>
-                  {drawingPages.map((pageNum) => (
-                    <div
-                      key={`draw_${pageNum}`}
-                      className="p-3.5 rounded-2xl bg-[var(--card)] border border-[var(--border)] hover:border-[var(--accent)]/40 transition-all shadow-xs flex items-center justify-between"
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <span className="text-lg">🎨</span>
-                        <div>
-                          <h5 className="text-xs font-bold text-[var(--foreground)]">
-                            Page {pageNum} Sketch
-                          </h5>
-                          <p className="text-[10px] text-[var(--text-secondary)]">
-                            {drawings[pageNum]?.length || 0} drawing strokes
-                          </p>
+                  {drawingPages.map((pageNum) => {
+                    const pageStrokes = drawings[pageNum] || [];
+                    return (
+                      <div
+                        key={`draw_${pageNum}`}
+                        className="p-3.5 rounded-2xl bg-[var(--card)] border border-[var(--border)] hover:border-[var(--accent)]/40 transition-all shadow-xs space-y-2.5"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-base">🎨</span>
+                            <div>
+                              <h5 className="text-xs font-bold text-[var(--foreground)]">
+                                Page {pageNum} Study Layer
+                              </h5>
+                              <p className="text-[10px] text-[var(--text-secondary)]">
+                                {pageStrokes.length} elements (diagrams, shapes, lines)
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => {
+                                onJumpToPage(pageNum);
+                                onClose();
+                              }}
+                              className="px-2.5 py-1 rounded-lg bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] font-bold text-xs cursor-pointer"
+                            >
+                              View →
+                            </button>
+                            <button
+                              onClick={() => onClearDrawing(pageNum)}
+                              className="p-1.5 rounded-lg text-[var(--text-secondary)] hover:text-rose-400 hover:bg-rose-500/10 cursor-pointer"
+                              title="Clear All Drawings on this Page"
+                            >
+                              🗑️
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Stroke previews badges */}
+                        <div className="flex flex-wrap gap-1 pt-1">
+                          {pageStrokes.slice(0, 6).map((s, idx) => (
+                            <span
+                              key={s.id || idx}
+                              className="px-2 py-0.5 rounded-md bg-[var(--secondary)] text-[10px] text-[var(--text-secondary)] flex items-center gap-1 border border-[var(--border)]"
+                            >
+                              <span>{getToolIcon(s.type)}</span>
+                              <span className="capitalize">{s.type || "pen"}</span>
+                              {s.text && <span className="italic max-w-[80px] truncate">&ldquo;{s.text}&rdquo;</span>}
+                            </span>
+                          ))}
+                          {pageStrokes.length > 6 && (
+                            <span className="px-1.5 py-0.5 text-[10px] text-[var(--text-secondary)]">
+                              +{pageStrokes.length - 6} more
+                            </span>
+                          )}
                         </div>
                       </div>
-
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          onClick={() => {
-                            onJumpToPage(pageNum);
-                            onClose();
-                          }}
-                          className="px-2.5 py-1 rounded-lg bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] font-bold text-xs cursor-pointer"
-                        >
-                          View →
-                        </button>
-                        <button
-                          onClick={() => onClearDrawing(pageNum)}
-                          className="p-1.5 rounded-lg text-[var(--text-secondary)] hover:text-rose-400 hover:bg-rose-500/10 cursor-pointer"
-                          title="Clear Drawing"
-                        >
-                          🗑️
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </>
               )}
             </>
@@ -363,4 +411,3 @@ export default function AnnotationDrawer({
     </div>
   );
 }
-

@@ -19,6 +19,9 @@ import {
   saveProgress,
   BookAnnotations,
   HighlightItem,
+  DrawingStroke,
+  DrawingPoint,
+  AnnotationToolType,
 } from "@/lib/reader-storage";
 
 interface BookReaderProps {
@@ -49,7 +52,7 @@ const DEFAULT_PREFS: ReaderPrefs = {
 const PREFS_KEY = "readers_hub_reader_prefs_v3";
 
 export default function BookReader({ book }: BookReaderProps) {
-  const { getReadingProgress, updateReadingProgress } = useLibrary();
+  const { getReadingProgress, updateReadingProgress, showToast } = useLibrary();
 
   // Load saved position from centralized storage or context
   const savedContextProgress = getReadingProgress(book.id);
@@ -77,7 +80,7 @@ export default function BookReader({ book }: BookReaderProps) {
   const [pdfJsReady, setPdfJsReady] = useState<boolean>(false);
 
   // -------------------------------------------------------------
-  // Annotations, Drawing & Notes State
+  // Advanced Study & Annotations State
   // -------------------------------------------------------------
   const [annotations, setAnnotations] = useState<BookAnnotations>({
     highlights: [],
@@ -85,14 +88,36 @@ export default function BookReader({ book }: BookReaderProps) {
     drawings: {},
   });
   const [isAnnotationDrawerOpen, setIsAnnotationDrawerOpen] = useState<boolean>(false);
+  const [showAnnotationsOverlay, setShowAnnotationsOverlay] = useState<boolean>(true);
 
-  // Drawing Toolbar State
-  const [isDrawingMode, setIsDrawingMode] = useState<boolean>(false);
-  const [drawColor, setDrawColor] = useState<string>("#f59e0b"); // Amber
-  const [drawWidth, setDrawWidth] = useState<number>(3);
-  const [isEraser, setIsEraser] = useState<boolean>(false);
+  // Study Tools State
+  const [isStudyMode, setIsStudyMode] = useState<boolean>(false);
+  const [activeTool, setActiveTool] = useState<AnnotationToolType | "eraser" | "select">("pen");
+  const [penColor, setPenColor] = useState<string>("#f59e0b");
+  const [highlighterColor, setHighlighterColor] = useState<string>("#facc15");
+  const [strokeWidth, setStrokeWidth] = useState<number>(3);
+  const [opacity, setOpacity] = useState<number>(1.0);
+  const [fillMode, setFillMode] = useState<boolean>(false);
+  const [selectedStrokeId, setSelectedStrokeId] = useState<string | null>(null);
 
-  // Text Selection & Floating Annotation Popover
+  // Undo / Redo Stacks per page
+  const [undoStack, setUndoStack] = useState<Record<number, DrawingStroke[][]>>({});
+  const [redoStack, setRedoStack] = useState<Record<number, DrawingStroke[][]>>({});
+
+  // Text Box Annotation Dialog State
+  const [textBoxDialog, setTextBoxDialog] = useState<{
+    isOpen: boolean;
+    page: number;
+    point: DrawingPoint | null;
+    text: string;
+  }>({
+    isOpen: false,
+    page: 1,
+    point: null,
+    text: "",
+  });
+
+  // Text Selection & Floating Annotation Popover (Existing Text Highlight)
   const [selectionPopover, setSelectionPopover] = useState<{
     visible: boolean;
     x: number;
@@ -445,7 +470,107 @@ export default function BookReader({ book }: BookReaderProps) {
     }
   };
 
-  // 8. Keyboard & Fullscreen Listeners
+  // -------------------------------------------------------------
+  // Undo & Redo Handlers
+  // -------------------------------------------------------------
+  const handleStrokesChange = (page: number, newStrokes: DrawingStroke[]) => {
+    const prevStrokes = annotations.drawings[page] || [];
+
+    // Push to undo stack
+    setUndoStack((prev) => ({
+      ...prev,
+      [page]: [...(prev[page] || []), prevStrokes],
+    }));
+
+    // Clear redo stack
+    setRedoStack((prev) => ({
+      ...prev,
+      [page]: [],
+    }));
+
+    savePageDrawings(book.id, page, newStrokes);
+    setAnnotations(getBookAnnotations(book.id));
+  };
+
+  const handleUndo = (page: number) => {
+    const pageUndo = undoStack[page] || [];
+    if (pageUndo.length === 0) return;
+
+    const previousState = pageUndo[pageUndo.length - 1];
+    const currentStrokes = annotations.drawings[page] || [];
+
+    // Push current to redo stack
+    setRedoStack((prev) => ({
+      ...prev,
+      [page]: [...(prev[page] || []), currentStrokes],
+    }));
+
+    // Pop from undo stack
+    setUndoStack((prev) => ({
+      ...prev,
+      [page]: pageUndo.slice(0, -1),
+    }));
+
+    savePageDrawings(book.id, page, previousState);
+    setAnnotations(getBookAnnotations(book.id));
+    showToast("Undo action ↩️");
+  };
+
+  const handleRedo = (page: number) => {
+    const pageRedo = redoStack[page] || [];
+    if (pageRedo.length === 0) return;
+
+    const nextState = pageRedo[pageRedo.length - 1];
+    const currentStrokes = annotations.drawings[page] || [];
+
+    // Push current to undo stack
+    setUndoStack((prev) => ({
+      ...prev,
+      [page]: [...(prev[page] || []), currentStrokes],
+    }));
+
+    // Pop from redo stack
+    setRedoStack((prev) => ({
+      ...prev,
+      [page]: pageRedo.slice(0, -1),
+    }));
+
+    savePageDrawings(book.id, page, nextState);
+    setAnnotations(getBookAnnotations(book.id));
+    showToast("Redo action ↪️");
+  };
+
+  const handleClearPageWithConfirmation = (page: number) => {
+    const currentStrokes = annotations.drawings[page] || [];
+    if (currentStrokes.length === 0) return;
+
+    if (window.confirm(`Clear all drawings and shapes on Page ${page}? (You can Undo with Ctrl+Z)`)) {
+      handleStrokesChange(page, []);
+      showToast(`Page ${page} drawings cleared 🗑️`);
+    }
+  };
+
+  // 8. Text Box Placement Handler
+  const handleSaveTextBox = () => {
+    if (!textBoxDialog.text.trim() || !textBoxDialog.point) return;
+
+    const currentStrokes = annotations.drawings[textBoxDialog.page] || [];
+    const newStroke: DrawingStroke = {
+      id: `text_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      type: "text",
+      points: [textBoxDialog.point],
+      color: penColor,
+      width: 2,
+      text: textBoxDialog.text.trim(),
+      fontSize: 14,
+    };
+
+    handleStrokesChange(textBoxDialog.page, [...currentStrokes, newStroke]);
+    setTextBoxDialog({ isOpen: false, page: 1, point: null, text: "" });
+    showToast("Text annotation placed 🔤");
+  };
+
+  // 9. Keyboard & Fullscreen Listeners
   useEffect(() => {
     const handleFullscreenChange = () => {
       setIsFullscreen(!!document.fullscreenElement);
@@ -455,61 +580,91 @@ export default function BookReader({ book }: BookReaderProps) {
       const isInput = ["INPUT", "TEXTAREA"].includes((e.target as HTMLElement)?.tagName);
       if (isInput) return;
 
-      switch (e.key) {
-        case "ArrowRight":
-        case "PageDown":
+      // Undo / Redo Shortcuts
+      if ((e.ctrlKey || e.metaKey) && (e.key === "z" || e.key === "Z")) {
+        e.preventDefault();
+        if (e.shiftKey) {
+          handleRedo(currentPage);
+        } else {
+          handleUndo(currentPage);
+        }
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === "y" || e.key === "Y")) {
+        e.preventDefault();
+        handleRedo(currentPage);
+        return;
+      }
+
+      // Quick Tool Shortcuts
+      switch (e.key.toLowerCase()) {
+        case "p":
+          setIsStudyMode(true);
+          setActiveTool("pen");
+          break;
+        case "h":
+          setIsStudyMode(true);
+          setActiveTool("highlighter");
+          break;
+        case "l":
+          setIsStudyMode(true);
+          setActiveTool("line");
+          break;
+        case "a":
+          setIsStudyMode(true);
+          setActiveTool("arrow");
+          break;
+        case "c":
+          setIsStudyMode(true);
+          setActiveTool("circle");
+          break;
+        case "r":
+          setIsStudyMode(true);
+          setActiveTool("rectangle");
+          break;
+        case "t":
+          setIsStudyMode(true);
+          setActiveTool("text");
+          break;
+        case "e":
+          setIsStudyMode(true);
+          setActiveTool("eraser");
+          break;
+        case "arrowright":
+        case "pagedown":
         case " ":
-          if (!isDrawingMode) {
+          if (!isStudyMode) {
             e.preventDefault();
             handleNext();
           }
           break;
-        case "ArrowLeft":
-        case "PageUp":
-          if (!isDrawingMode) {
+        case "arrowleft":
+        case "pageup":
+          if (!isStudyMode) {
             e.preventDefault();
             handlePrev();
           }
           break;
-        case "Home":
+        case "home":
           e.preventDefault();
           setCurrentPage(1);
           break;
-        case "End":
+        case "end":
           e.preventDefault();
           if (numPages > 0) setCurrentPage(numPages);
           break;
         case "f":
-        case "F":
           e.preventDefault();
           toggleFullscreen();
           break;
-        case "d":
-        case "D":
-          if (!e.metaKey && !e.ctrlKey) {
-            setIsDrawingMode((prev) => !prev);
-          }
-          break;
-        case "+":
-        case "=":
-          e.preventDefault();
-          zoomIn();
-          break;
-        case "-":
-          e.preventDefault();
-          zoomOut();
-          break;
-        case "0":
-          e.preventDefault();
-          resetZoom();
-          break;
-        case "Escape":
+        case "escape":
           if (showSettings) setShowSettings(false);
           if (showJumpModal) setShowJumpModal(false);
           if (isAnnotationDrawerOpen) setIsAnnotationDrawerOpen(false);
           if (selectionPopover) setSelectionPopover(null);
           if (noteModal.isOpen) setNoteModal((prev) => ({ ...prev, isOpen: false }));
-          if (isDrawingMode) setIsDrawingMode(false);
+          if (textBoxDialog.isOpen) setTextBoxDialog((prev) => ({ ...prev, isOpen: false }));
+          if (isStudyMode) setIsStudyMode(false);
           break;
       }
     };
@@ -533,17 +688,26 @@ export default function BookReader({ book }: BookReaderProps) {
     isAnnotationDrawerOpen,
     selectionPopover,
     noteModal.isOpen,
-    isDrawingMode,
+    textBoxDialog.isOpen,
+    isStudyMode,
+    undoStack,
+    redoStack,
   ]);
 
-  // 9. Fullscreen Integrated Custom Cursor Movement & Auto-Hide Controls
+  // 10. Fullscreen Integrated Custom Cursor Movement & Auto-Hide Controls
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement> | React.MouseEvent<HTMLDivElement>) => {
     setShowControls(true);
     if (hideControlsTimerRef.current) {
       clearTimeout(hideControlsTimerRef.current);
     }
     hideControlsTimerRef.current = setTimeout(() => {
-      if (!showSettings && !showJumpModal && !isAnnotationDrawerOpen && !isDrawingMode && !selectionPopover?.visible) {
+      if (
+        !showSettings &&
+        !showJumpModal &&
+        !isAnnotationDrawerOpen &&
+        !isStudyMode &&
+        !selectionPopover?.visible
+      ) {
         setShowControls(false);
       }
     }, 4500);
@@ -568,15 +732,15 @@ export default function BookReader({ book }: BookReaderProps) {
     setCursorPos((prev) => ({ ...prev, visible: false }));
   };
 
-  // 10. Mobile Touch Handlers
+  // 11. Mobile Touch Handlers
   const handleTouchStart = (e: React.TouchEvent) => {
-    if (!isDrawingMode) {
+    if (!isStudyMode) {
       touchStartXRef.current = e.touches[0].clientX;
     }
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
-    if (isDrawingMode || touchStartXRef.current === null) return;
+    if (isStudyMode || touchStartXRef.current === null) return;
     const touchEndX = e.changedTouches[0].clientX;
     const diff = touchStartXRef.current - touchEndX;
 
@@ -590,9 +754,9 @@ export default function BookReader({ book }: BookReaderProps) {
     touchStartXRef.current = null;
   };
 
-  // 11. Annotation & Text Selection Handling
+  // 12. Text Selection & Floating Annotation Popover Handling
   const handlePageMouseUp = (e: React.MouseEvent, pageNum: number) => {
-    if (isDrawingMode) return;
+    if (isStudyMode) return;
 
     const selection = window.getSelection();
     const selectedText = selection ? selection.toString().trim() : "";
@@ -612,7 +776,6 @@ export default function BookReader({ book }: BookReaderProps) {
     }
   };
 
-  // Add Highlight Handler
   const handleCreateHighlight = (color: HighlightItem["color"]) => {
     if (!selectionPopover) return;
     const newItem = addHighlight(book.id, {
@@ -629,9 +792,9 @@ export default function BookReader({ book }: BookReaderProps) {
 
     window.getSelection()?.removeAllRanges();
     setSelectionPopover(null);
+    showToast("Text highlighted 🌟");
   };
 
-  // Add Note from Selection
   const handleOpenNoteModal = () => {
     if (!selectionPopover) return;
     setNoteModal({
@@ -659,6 +822,7 @@ export default function BookReader({ book }: BookReaderProps) {
     }));
 
     setNoteModal({ isOpen: false, page: 1, noteText: "" });
+    showToast("Note saved 📝");
   };
 
   // Visual Tone & Paper Filter Computation
@@ -709,10 +873,20 @@ export default function BookReader({ book }: BookReaderProps) {
   const activeLeftPage = isDouble ? (currentPage === 1 ? 0 : currentPage % 2 === 0 ? currentPage : currentPage - 1) : currentPage;
   const activeRightPage = isDouble ? (currentPage === 1 ? 1 : activeLeftPage + 1) : currentPage;
 
+  // Check if current pages have annotations
+  const pageHasAnnotations = (p: number) => {
+    const hasHl = annotations.highlights.some((h) => h.page === p);
+    const hasNote = annotations.notes.some((n) => n.page === p);
+    const hasDraw = (annotations.drawings[p]?.length || 0) > 0;
+    return hasHl || hasNote || hasDraw;
+  };
+
   const totalAnnotationsCount =
     (annotations.highlights?.length || 0) +
     (annotations.notes?.length || 0) +
     Object.keys(annotations.drawings || {}).length;
+
+  const currentColor = activeTool === "highlighter" ? highlighterColor : penColor;
 
   return (
     <div
@@ -744,19 +918,36 @@ export default function BookReader({ book }: BookReaderProps) {
         }`}
         aria-hidden="true"
       >
-        {isDrawingMode ? (
-          /* Drawing Reticle Cursor */
+        {isStudyMode ? (
+          /* Study Tool Reticle Cursor */
           <div className="relative flex items-center justify-center -translate-x-1/2 -translate-y-1/2">
             <div
-              className="rounded-full border border-white shadow-md"
+              className="rounded-full border border-white shadow-md transition-all"
               style={{
-                width: `${Math.max(8, drawWidth * 2.5)}px`,
-                height: `${Math.max(8, drawWidth * 2.5)}px`,
-                backgroundColor: isEraser ? "rgba(255,255,255,0.7)" : drawColor,
+                width: `${activeTool === "highlighter" ? Math.max(14, strokeWidth * 3) : Math.max(8, strokeWidth * 2)}px`,
+                height: `${activeTool === "highlighter" ? Math.max(14, strokeWidth * 3) : Math.max(8, strokeWidth * 2)}px`,
+                backgroundColor: activeTool === "eraser" ? "rgba(255,255,255,0.75)" : currentColor,
+                opacity: activeTool === "highlighter" ? 0.6 : 1.0,
               }}
             />
-            <span className="absolute -top-3 -right-3 text-[10px]">
-              {isEraser ? "🧹" : "✏️"}
+            <span className="absolute -top-3.5 -right-3.5 text-[10px]">
+              {activeTool === "eraser"
+                ? "🧹"
+                : activeTool === "highlighter"
+                ? "🖍️"
+                : activeTool === "text"
+                ? "🔤"
+                : activeTool === "circle"
+                ? "⭕"
+                : activeTool === "rectangle" || activeTool === "square"
+                ? "▭"
+                : activeTool === "arrow"
+                ? "↗️"
+                : activeTool === "line"
+                ? "📏"
+                : activeTool === "diamond"
+                ? "💎"
+                : "✏️"}
             </span>
           </div>
         ) : (
@@ -783,7 +974,7 @@ export default function BookReader({ book }: BookReaderProps) {
           showControls ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0 pointer-events-none"
         }`}
       >
-        {/* Book Title & Page Metadata */}
+        {/* Book Title & Metadata */}
         <div className="flex items-center gap-3 min-w-0">
           <span className="w-2.5 h-2.5 rounded-full bg-[var(--accent)] animate-pulse flex-shrink-0" />
           <div className="flex flex-col text-left truncate">
@@ -834,25 +1025,40 @@ export default function BookReader({ book }: BookReaderProps) {
             </button>
           )}
 
-          {/* Freehand Draw Tool Toggle */}
+          {/* Study / Annotate Mode Toggle Button */}
           <button
-            onClick={() => setIsDrawingMode(!isDrawingMode)}
+            onClick={() => setIsStudyMode(!isStudyMode)}
             className={`p-2 sm:px-3 sm:py-1.5 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1.5 cursor-pointer ${
-              isDrawingMode
+              isStudyMode
                 ? "bg-[var(--accent)] text-[var(--primary-foreground)] border-[var(--accent)] shadow-md"
                 : "bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] border-[var(--border)]"
             }`}
-            title="Toggle Freehand Drawing / Diagrams (D)"
+            title="Toggle Study & Annotation Workspace (P)"
           >
-            <span>✏️</span>
-            <span className="hidden sm:inline">Draw</span>
+            <span>{isStudyMode ? "🎨 Study Mode" : "✏️ Study Tools"}</span>
+          </button>
+
+          {/* Annotations Visibility Toggle */}
+          <button
+            onClick={() => {
+              setShowAnnotationsOverlay(!showAnnotationsOverlay);
+              showToast(showAnnotationsOverlay ? "Annotations Hidden 👁️" : "Annotations Visible 👁️");
+            }}
+            className={`p-2 rounded-xl text-xs border transition-all cursor-pointer ${
+              showAnnotationsOverlay
+                ? "bg-[var(--secondary)] text-[var(--foreground)] border-[var(--border)]"
+                : "bg-amber-500/20 text-amber-400 border-amber-500/40"
+            }`}
+            title={showAnnotationsOverlay ? "Hide Annotations" : "Show Annotations"}
+          >
+            <span>{showAnnotationsOverlay ? "👁️" : "🙈"}</span>
           </button>
 
           {/* Annotations Drawer Toggle */}
           <button
             onClick={() => setIsAnnotationDrawerOpen(true)}
             className="p-2 sm:px-3 sm:py-1.5 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] text-xs font-semibold border border-[var(--border)] transition-all flex items-center gap-1.5 cursor-pointer"
-            title="View Highlights, Notes & Sketches"
+            title="View Highlights, Notes & Study Elements"
           >
             <span>📌</span>
             <span className="hidden sm:inline">Notes</span>
@@ -892,66 +1098,171 @@ export default function BookReader({ book }: BookReaderProps) {
       </div>
 
       {/* -------------------------------------------------------------
-       * Drawing Controls Sub-Toolbar (When Pen Tool Active)
+       * Study & Annotation Suite Sub-Toolbar (When Study Mode Active)
        * ------------------------------------------------------------- */}
-      {isDrawingMode && (
-        <div className="absolute top-14 inset-x-0 z-30 flex items-center justify-center p-2 bg-[var(--card)]/95 backdrop-blur-md border-b border-[var(--border)] gap-3 animate-fade-in text-xs">
-          <span className="text-[11px] font-bold text-[var(--text-secondary)]">Pen Color:</span>
-          <div className="flex items-center gap-1.5">
-            {["#f59e0b", "#10b981", "#06b6d4", "#f43f5e", "#ffffff"].map((color) => (
+      {isStudyMode && (
+        <div className="absolute top-14 inset-x-0 z-30 flex flex-wrap items-center justify-between p-2 sm:px-6 bg-[var(--card)]/95 backdrop-blur-xl border-b border-[var(--border)] gap-2 animate-fade-in text-xs shadow-lg">
+          {/* Tool Selector Pills */}
+          <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0">
+            {[
+              { id: "pen", label: "Pen", icon: "✏️", shortcut: "P" },
+              { id: "highlighter", label: "Highlighter", icon: "🖍️", shortcut: "H" },
+              { id: "line", label: "Line", icon: "📏", shortcut: "L" },
+              { id: "arrow", label: "Arrow", icon: "↗️", shortcut: "A" },
+              { id: "circle", label: "Circle", icon: "⭕", shortcut: "C" },
+              { id: "rectangle", label: "Rect", icon: "▭", shortcut: "R" },
+              { id: "square", label: "Square", icon: "▢", shortcut: "" },
+              { id: "diamond", label: "Diamond", icon: "💎", shortcut: "D" },
+              { id: "text", label: "Text", icon: "🔤", shortcut: "T" },
+              { id: "eraser", label: "Eraser", icon: "🧹", shortcut: "E" },
+            ].map((t) => (
               <button
-                key={color}
-                onClick={() => {
-                  setDrawColor(color);
-                  setIsEraser(false);
-                }}
-                className={`w-5 h-5 rounded-full border transition-transform cursor-pointer ${
-                  drawColor === color && !isEraser ? "scale-125 ring-2 ring-white" : "opacity-80 hover:opacity-100"
+                key={t.id}
+                onClick={() => setActiveTool(t.id as any)}
+                className={`px-2.5 py-1 rounded-xl font-bold transition-all flex items-center gap-1 cursor-pointer whitespace-nowrap ${
+                  activeTool === t.id
+                    ? "bg-[var(--accent)] text-[var(--primary-foreground)] shadow-xs"
+                    : "bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--foreground)]"
                 }`}
-                style={{ backgroundColor: color }}
-              />
-            ))}
-          </div>
-
-          <div className="h-4 w-px bg-[var(--border)]" />
-
-          {/* Stroke Width Selector */}
-          <div className="flex items-center gap-1">
-            {[2, 4, 7].map((w) => (
-              <button
-                key={w}
-                onClick={() => setDrawWidth(w)}
-                className={`px-2 py-0.5 rounded-md text-[10px] font-bold border transition-all cursor-pointer ${
-                  drawWidth === w ? "bg-[var(--accent)] text-[var(--primary-foreground)]" : "bg-[var(--secondary)]"
-                }`}
+                title={`${t.label} ${t.shortcut ? `(${t.shortcut})` : ""}`}
               >
-                {w}px
+                <span>{t.icon}</span>
+                <span className="hidden md:inline">{t.label}</span>
               </button>
             ))}
           </div>
 
-          <div className="h-4 w-px bg-[var(--border)]" />
+          {/* Palette, Width & Fill Controls */}
+          <div className="flex items-center gap-3">
+            {/* Color Swatches */}
+            <div className="flex items-center gap-1">
+              {(activeTool === "highlighter"
+                ? ["#facc15", "#34d399", "#38bdf8", "#f472b6", "#c084fc"]
+                : ["#f59e0b", "#10b981", "#06b6d4", "#f43f5e", "#a855f7", "#ffffff"]
+              ).map((color) => (
+                <button
+                  key={color}
+                  onClick={() => {
+                    if (activeTool === "highlighter") setHighlighterColor(color);
+                    else setPenColor(color);
+                  }}
+                  className={`w-4 h-4 sm:w-5 sm:h-5 rounded-full border transition-transform cursor-pointer ${
+                    (activeTool === "highlighter" ? highlighterColor : penColor) === color
+                      ? "scale-125 ring-2 ring-white"
+                      : "opacity-80 hover:opacity-100"
+                  }`}
+                  style={{ backgroundColor: color }}
+                />
+              ))}
+            </div>
 
-          {/* Eraser Tool */}
-          <button
-            onClick={() => setIsEraser(!isEraser)}
-            className={`px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
-              isEraser ? "bg-rose-500 text-white" : "bg-[var(--secondary)] text-[var(--foreground)]"
-            }`}
-          >
-            🧹 Eraser
-          </button>
+            <div className="h-4 w-px bg-[var(--border)]" />
 
-          {/* Clear Current Page Drawing */}
-          <button
-            onClick={() => {
-              clearPageDrawings(book.id, currentPage);
-              setAnnotations(getBookAnnotations(book.id));
-            }}
-            className="px-2.5 py-1 rounded-lg bg-[var(--secondary)] hover:bg-rose-500/20 hover:text-rose-400 text-[var(--text-secondary)] font-bold transition-all cursor-pointer"
-          >
-            🗑️ Clear Page
-          </button>
+            {/* Stroke Width Selector */}
+            <div className="flex items-center gap-1">
+              {(activeTool === "highlighter" ? [14, 20, 28] : [2, 4, 7]).map((w) => (
+                <button
+                  key={w}
+                  onClick={() => setStrokeWidth(w)}
+                  className={`px-2 py-0.5 rounded-md text-[10px] font-bold border transition-all cursor-pointer ${
+                    strokeWidth === w
+                      ? "bg-[var(--accent)] text-[var(--primary-foreground)]"
+                      : "bg-[var(--secondary)] text-[var(--text-secondary)]"
+                  }`}
+                >
+                  {w}px
+                </button>
+              ))}
+            </div>
+
+            {/* Fill Mode for Shapes */}
+            {["circle", "rectangle", "square", "diamond"].includes(activeTool) && (
+              <button
+                onClick={() => setFillMode(!fillMode)}
+                className={`px-2 py-0.5 rounded-md text-[10px] font-bold border transition-all cursor-pointer ${
+                  fillMode ? "bg-amber-500/20 text-amber-400 border-amber-500/40" : "bg-[var(--secondary)]"
+                }`}
+                title="Toggle Shape Fill Mode"
+              >
+                {fillMode ? "⬢ Fill" : "⬚ Outline"}
+              </button>
+            )}
+
+            <div className="h-4 w-px bg-[var(--border)]" />
+
+            {/* Undo / Redo Actions */}
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => handleUndo(currentPage)}
+                disabled={(undoStack[currentPage] || []).length === 0}
+                className={`p-1.5 rounded-lg border transition-all ${
+                  (undoStack[currentPage] || []).length > 0
+                    ? "bg-[var(--secondary)] text-[var(--foreground)] hover:border-[var(--accent)] cursor-pointer"
+                    : "opacity-40 cursor-not-allowed border-transparent text-[var(--text-secondary)]"
+                }`}
+                title="Undo (Ctrl+Z)"
+              >
+                ↩️
+              </button>
+              <button
+                onClick={() => handleRedo(currentPage)}
+                disabled={(redoStack[currentPage] || []).length === 0}
+                className={`p-1.5 rounded-lg border transition-all ${
+                  (redoStack[currentPage] || []).length > 0
+                    ? "bg-[var(--secondary)] text-[var(--foreground)] hover:border-[var(--accent)] cursor-pointer"
+                    : "opacity-40 cursor-not-allowed border-transparent text-[var(--text-secondary)]"
+                }`}
+                title="Redo (Ctrl+Y)"
+              >
+                ↪️
+              </button>
+            </div>
+
+            {/* Clear Page Action */}
+            <button
+              onClick={() => handleClearPageWithConfirmation(currentPage)}
+              className="px-2 py-1 rounded-lg bg-[var(--secondary)] hover:bg-rose-500/20 hover:text-rose-400 text-[var(--text-secondary)] font-bold transition-all cursor-pointer text-[11px]"
+              title="Clear All Study Markings on this Page"
+            >
+              🗑️ Clear
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* -------------------------------------------------------------
+       * Text Box Insertion Dialog
+       * ------------------------------------------------------------- */}
+      {textBoxDialog.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in text-left">
+          <div className="glass-card rounded-3xl p-6 border border-[var(--border)] bg-[var(--card)] max-w-sm w-full shadow-2xl space-y-4">
+            <h4 className="font-serif font-bold text-sm text-[var(--foreground)] flex items-center gap-2">
+              <span>🔤</span>
+              <span>Place Text Annotation — Page {textBoxDialog.page}</span>
+            </h4>
+            <input
+              type="text"
+              value={textBoxDialog.text}
+              onChange={(e) => setTextBoxDialog({ ...textBoxDialog, text: e.target.value })}
+              placeholder="e.g. Key formula, exam note, key concept..."
+              autoFocus
+              className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl p-3 text-xs sm:text-sm text-[var(--foreground)] focus:outline-none focus:border-[var(--accent)]"
+            />
+            <div className="flex justify-end gap-2 text-xs">
+              <button
+                onClick={() => setTextBoxDialog({ isOpen: false, page: 1, point: null, text: "" })}
+                className="px-3.5 py-1.5 rounded-xl text-[var(--text-secondary)] hover:text-[var(--foreground)] cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveTextBox}
+                className="px-4 py-1.5 rounded-xl bg-[var(--primary)] text-[var(--primary-foreground)] font-bold shadow-md hover:scale-105 transition-transform cursor-pointer"
+              >
+                Place Text →
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -966,7 +1277,6 @@ export default function BookReader({ book }: BookReaderProps) {
             top: `${selectionPopover.y}px`,
           }}
         >
-          {/* Highlight Color Buttons */}
           <button
             onClick={() => handleCreateHighlight("amber")}
             className="w-6 h-6 rounded-full bg-amber-400/80 hover:scale-110 border border-amber-300 shadow-sm transition-transform cursor-pointer"
@@ -990,7 +1300,6 @@ export default function BookReader({ book }: BookReaderProps) {
 
           <div className="h-4 w-px bg-[var(--border)] mx-1" />
 
-          {/* Add Note Button */}
           <button
             onClick={handleOpenNoteModal}
             className="px-2.5 py-1 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] font-bold transition-all flex items-center gap-1 cursor-pointer"
@@ -1037,7 +1346,7 @@ export default function BookReader({ book }: BookReaderProps) {
               rows={4}
               value={noteModal.noteText}
               onChange={(e) => setNoteModal({ ...noteModal, noteText: e.target.value })}
-              placeholder="Write your personal thoughts, summary, or question..."
+              placeholder="Write your personal thoughts, study notes, or questions..."
               autoFocus
               className="w-full bg-[var(--background)] border border-[var(--border)] rounded-2xl p-3.5 text-xs sm:text-sm text-[var(--foreground)] focus:outline-none focus:border-[var(--accent)]"
             />
@@ -1309,20 +1618,30 @@ export default function BookReader({ book }: BookReaderProps) {
                         style={{ opacity: 1 }}
                       />
 
-                      {/* Freehand Drawing Overlay for Left Page */}
+                      {/* Study & Drawing Overlay for Left Page */}
                       <DrawingCanvas
                         pageNumber={activeLeftPage}
                         initialStrokes={annotations.drawings[activeLeftPage] || []}
-                        onStrokesChange={(strokes) => {
-                          savePageDrawings(book.id, activeLeftPage, strokes);
-                          setAnnotations(getBookAnnotations(book.id));
-                        }}
+                        onStrokesChange={(strokes) => handleStrokesChange(activeLeftPage, strokes)}
                         width={pageCanvasSize.width}
                         height={pageCanvasSize.height}
-                        isDrawingActive={isDrawingMode}
-                        activeColor={drawColor}
-                        strokeWidth={drawWidth}
-                        isEraser={isEraser}
+                        isDrawingActive={isStudyMode}
+                        activeTool={activeTool}
+                        activeColor={currentColor}
+                        strokeWidth={strokeWidth}
+                        opacity={opacity}
+                        fillMode={fillMode}
+                        selectedStrokeId={selectedStrokeId}
+                        onSelectStroke={setSelectedStrokeId}
+                        visible={showAnnotationsOverlay}
+                        onTextPrompt={(pt) => {
+                          setTextBoxDialog({
+                            isOpen: true,
+                            page: activeLeftPage,
+                            point: pt,
+                            text: "",
+                          });
+                        }}
                       />
                     </div>
                   )}
@@ -1352,20 +1671,30 @@ export default function BookReader({ book }: BookReaderProps) {
                       style={{ opacity: 1 }}
                     />
 
-                    {/* Freehand Drawing Overlay for Right Page */}
+                    {/* Study & Drawing Overlay for Right Page */}
                     <DrawingCanvas
                       pageNumber={activeRightPage}
                       initialStrokes={annotations.drawings[activeRightPage] || []}
-                      onStrokesChange={(strokes) => {
-                        savePageDrawings(book.id, activeRightPage, strokes);
-                        setAnnotations(getBookAnnotations(book.id));
-                      }}
+                      onStrokesChange={(strokes) => handleStrokesChange(activeRightPage, strokes)}
                       width={pageCanvasSize.width}
                       height={pageCanvasSize.height}
-                      isDrawingActive={isDrawingMode}
-                      activeColor={drawColor}
-                      strokeWidth={drawWidth}
-                      isEraser={isEraser}
+                      isDrawingActive={isStudyMode}
+                      activeTool={activeTool}
+                      activeColor={currentColor}
+                      strokeWidth={strokeWidth}
+                      opacity={opacity}
+                      fillMode={fillMode}
+                      selectedStrokeId={selectedStrokeId}
+                      onSelectStroke={setSelectedStrokeId}
+                      visible={showAnnotationsOverlay}
+                      onTextPrompt={(pt) => {
+                        setTextBoxDialog({
+                          isOpen: true,
+                          page: activeRightPage,
+                          point: pt,
+                          text: "",
+                        });
+                      }}
                     />
                   </div>
 
@@ -1391,20 +1720,30 @@ export default function BookReader({ book }: BookReaderProps) {
                     style={{ opacity: 1 }}
                   />
 
-                  {/* Freehand Drawing Overlay for Single Page */}
+                  {/* Study & Drawing Overlay for Single Page */}
                   <DrawingCanvas
                     pageNumber={currentPage}
                     initialStrokes={annotations.drawings[currentPage] || []}
-                    onStrokesChange={(strokes) => {
-                      savePageDrawings(book.id, currentPage, strokes);
-                      setAnnotations(getBookAnnotations(book.id));
-                    }}
+                    onStrokesChange={(strokes) => handleStrokesChange(currentPage, strokes)}
                     width={pageCanvasSize.width}
                     height={pageCanvasSize.height}
-                    isDrawingActive={isDrawingMode}
-                    activeColor={drawColor}
-                    strokeWidth={drawWidth}
-                    isEraser={isEraser}
+                    isDrawingActive={isStudyMode}
+                    activeTool={activeTool}
+                    activeColor={currentColor}
+                    strokeWidth={strokeWidth}
+                    opacity={opacity}
+                    fillMode={fillMode}
+                    selectedStrokeId={selectedStrokeId}
+                    onSelectStroke={setSelectedStrokeId}
+                    visible={showAnnotationsOverlay}
+                    onTextPrompt={(pt) => {
+                      setTextBoxDialog({
+                        isOpen: true,
+                        page: currentPage,
+                        point: pt,
+                        text: "",
+                      });
+                    }}
                   />
                 </div>
               </div>
@@ -1488,6 +1827,9 @@ export default function BookReader({ book }: BookReaderProps) {
               Page {currentPage}
               {isDouble && currentPage < numPages ? `–${currentPage + 1}` : ""} of {numPages || "..."}
             </span>
+            {pageHasAnnotations(currentPage) && (
+              <span className="w-2 h-2 rounded-full bg-[var(--accent)] animate-pulse" title="This page contains study notes" />
+            )}
             <span className="text-[10px] text-[var(--accent)] font-semibold">({progressPercent}%)</span>
           </button>
 
