@@ -8,6 +8,15 @@ import { useLibrary } from "@/context/LibraryContext";
 import DrawingCanvas from "@/components/reader/DrawingCanvas";
 import AnnotationDrawer from "@/components/reader/AnnotationDrawer";
 import BookReadingMemory from "@/components/memory/BookReadingMemory";
+import { TranslationDrawer, TranslationPosition } from "@/components/reader/TranslationDrawer";
+import {
+  TranslationTarget,
+  TranslationResult,
+  PageExtract,
+  normalizePdfText,
+  translatePageSpread,
+  getCachedTranslation,
+} from "@/lib/translator";
 import {
   getBookAnnotations,
   addHighlight,
@@ -138,6 +147,18 @@ export default function BookReader({ book }: BookReaderProps) {
   const [isThumbnailDrawerOpen, setIsThumbnailDrawerOpen] = useState<boolean>(false);
   const [thumbnailFilter, setThumbnailFilter] = useState<"all" | "annotated" | "bookmarked">("all");
   const [pdfLoadError, setPdfLoadError] = useState<string | null>(null);
+
+  // -------------------------------------------------------------
+  // Contextual Page Translation State
+  // -------------------------------------------------------------
+  const [isTranslateOpen, setIsTranslateOpen] = useState<boolean>(false);
+  const [translationTarget, setTranslationTarget] = useState<TranslationTarget>("hindi");
+  const [translationResult, setTranslationResult] = useState<TranslationResult | null>(null);
+  const [isTranslating, setIsTranslating] = useState<boolean>(false);
+  const [currentSpreadExtracts, setCurrentSpreadExtracts] = useState<PageExtract[]>([]);
+  const [translationPosition, setTranslationPosition] = useState<TranslationPosition>("right");
+  const translationAbortControllerRef = useRef<AbortController | null>(null);
+  const translationReqIdRef = useRef<number>(0);
 
   // -------------------------------------------------------------
   // Advanced Study, Annotations & Bookmarks State
@@ -735,6 +756,116 @@ export default function BookReader({ book }: BookReaderProps) {
     [isFocusMode, showToast]
   );
 
+  // 7c. Contextual Page Spread Text Extractor (Current Spread Only)
+  const extractSpreadText = useCallback(async () => {
+    if (!pdfDocRef.current || numPages === 0) return [];
+    const isDouble = prefs.layoutMode === "double" && !isMobile;
+    const pageNums: number[] = [];
+
+    if (isDouble) {
+      const left = currentPage === 1 ? 0 : currentPage % 2 === 0 ? currentPage : currentPage - 1;
+      const right = currentPage === 1 ? 1 : left + 1;
+      if (left >= 1 && left <= numPages) pageNums.push(left);
+      if (right >= 1 && right <= numPages) pageNums.push(right);
+    } else {
+      if (currentPage >= 1 && currentPage <= numPages) pageNums.push(currentPage);
+    }
+
+    const extracts: PageExtract[] = [];
+    for (const pNum of pageNums) {
+      try {
+        const page = await pdfDocRef.current.getPage(pNum);
+        const textContent = await page.getTextContent();
+        const text = normalizePdfText(textContent.items as any);
+        extracts.push({ pageNum: pNum, text });
+      } catch (err) {
+        console.warn(`Failed to extract text for page ${pNum}`, err);
+      }
+    }
+    return extracts;
+  }, [currentPage, numPages, prefs.layoutMode, isMobile]);
+
+  // 7d. Perform Contextual Translation
+  const handlePerformTranslation = useCallback(
+    async (target?: TranslationTarget) => {
+      const targetLang = target || translationTarget;
+      if (translationAbortControllerRef.current) {
+        translationAbortControllerRef.current.abort();
+      }
+
+      const abortController = new AbortController();
+      translationAbortControllerRef.current = abortController;
+      const reqId = ++translationReqIdRef.current;
+
+      setIsTranslating(true);
+      const extracts = await extractSpreadText();
+      setCurrentSpreadExtracts(extracts);
+
+      // Check cache first for instant load
+      const cached = getCachedTranslation(book.id, extracts, targetLang);
+      if (cached) {
+        setTranslationResult(cached);
+        setIsTranslating(false);
+        return;
+      }
+
+      const res = await translatePageSpread({
+        bookId: book.id,
+        pages: extracts,
+        targetLanguage: targetLang,
+        signal: abortController.signal,
+      });
+
+      // Stale request protection (Phase 37)
+      if (reqId === translationReqIdRef.current) {
+        setTranslationResult(res);
+        setIsTranslating(false);
+      }
+    },
+    [book.id, extractSpreadText, translationTarget]
+  );
+
+  // 7e. Auto-Reset Translation on Page Flip (Phase 4 & 36)
+  useEffect(() => {
+    setTranslationResult(null);
+    setIsTranslating(false);
+    if (translationAbortControllerRef.current) {
+      translationAbortControllerRef.current.abort();
+    }
+  }, [currentPage]);
+
+  // 7f. Fullscreen-Only Translation Handler (Requirement 1: Smooth Fullscreen + Translation)
+  const handleOpenTranslation = useCallback(async () => {
+    if (!document.fullscreenElement && containerRef.current) {
+      try {
+        await containerRef.current.requestFullscreen();
+        setIsFullscreen(true);
+      } catch (err) {
+        console.warn("Fullscreen request error:", err);
+      }
+    }
+    setIsTranslateOpen(true);
+    const extracts = await extractSpreadText();
+    setCurrentSpreadExtracts(extracts);
+    const cached = getCachedTranslation(book.id, extracts, translationTarget);
+    if (cached) {
+      setTranslationResult(cached);
+    }
+  }, [book.id, extractSpreadText, translationTarget]);
+
+  // 7g. Fullscreen change listener to auto-close translation on exit
+  useEffect(() => {
+    const handleFsChange = () => {
+      const isFs = !!document.fullscreenElement;
+      setIsFullscreen(isFs);
+      if (!isFs) {
+        setIsTranslateOpen(false);
+      }
+    };
+    document.addEventListener("fullscreenchange", handleFsChange);
+    return () => document.removeEventListener("fullscreenchange", handleFsChange);
+  }, []);
+
   // 8. Bookmarks Toggle
   const handleToggleBookmark = () => {
     registerActivity();
@@ -1011,8 +1142,16 @@ export default function BookReader({ book }: BookReaderProps) {
           setActiveTool("rectangle");
           break;
         case "t":
-          setIsStudyMode(true);
-          setActiveTool("text");
+          if (isStudyMode) {
+            setActiveTool("text");
+          } else {
+            e.preventDefault();
+            if (isTranslateOpen) {
+              setIsTranslateOpen(false);
+            } else {
+              handleOpenTranslation();
+            }
+          }
           break;
         case "e":
           setIsStudyMode(true);
@@ -1042,6 +1181,7 @@ export default function BookReader({ book }: BookReaderProps) {
           if (numPages > 0) setCurrentPage(numPages);
           break;
         case "escape":
+          if (isTranslateOpen) setIsTranslateOpen(false);
           if (isSearchInBookOpen) setIsSearchInBookOpen(false);
           if (showSettings) setShowSettings(false);
           if (showJumpModal) setShowJumpModal(false);
@@ -1319,12 +1459,28 @@ export default function BookReader({ book }: BookReaderProps) {
             />
           </div>
         ) : (
-          <div className="relative flex items-center justify-center -translate-x-1/2 -translate-y-1/2">
-            <div className="absolute w-4 h-4 rounded-full blur-[2px] bg-[var(--accent)]/35" />
-            <svg className="w-4 h-4 overflow-visible filter drop-shadow-[0_0_3px_var(--accent)]" viewBox="0 0 24 24" fill="none">
-              <polygon points="12,2 22,12 12,22 2,12" stroke="var(--accent)" strokeWidth="1.6" fill="var(--accent)" fillOpacity="0.2" />
+          <div
+            className="relative will-change-transform filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] select-none pointer-events-none"
+            style={{ transform: "translate(-5.5px, 0px)" }}
+          >
+            <svg
+              width="25"
+              height="27"
+              viewBox="0 0 24 26"
+              fill="none"
+            >
+              <path
+                d="M7 1.5C7 0.671573 6.32843 0 5.5 0C4.67157 0 4 0.671573 4 1.5V11.5L2.6 10.1C2.01421 9.51421 1.06447 9.51421 0.47868 10.1C-0.107107 10.6858 -0.107107 11.6355 0.47868 12.2213L5.68579 17.4284C6.73289 18.4755 8.15264 19.0625 9.63301 19.0625H13.25C15.7353 19.0625 17.75 17.0478 17.75 14.5625V10C17.75 9.17157 17.0784 8.5 16.25 8.5C15.4216 8.5 14.75 9.17157 14.75 10V9C14.75 8.17157 14.0784 7.5 13.25 7.5C12.4216 7.5 11.75 8.17157 11.75 9V8C11.75 7.17157 11.0784 6.5 10.25 6.5C9.42157 6.5 8.75 7.17157 8.75 8V1.5C8.75 0.671573 8.07843 0 7.25 0C6.42157 0 5.75 0.671573 5.75 1.5Z"
+                fill="#FFFFFF"
+                stroke="#18181B"
+                strokeWidth="1.35"
+                strokeLinejoin="round"
+              />
+              <path d="M5.5 2.2V5" stroke="#E4E4E7" strokeWidth="0.8" strokeLinecap="round" />
+              <path d="M8.75 9.5H10.25" stroke="#D4D4D8" strokeWidth="0.8" strokeLinecap="round" />
+              <path d="M11.75 10.5H13.25" stroke="#D4D4D8" strokeWidth="0.8" strokeLinecap="round" />
+              <path d="M14.75 11.5H16.25" stroke="#D4D4D8" strokeWidth="0.8" strokeLinecap="round" />
             </svg>
-            <div className="absolute w-1.5 h-1.5 rounded-full bg-[var(--foreground)]" />
           </div>
         )}
       </div>
@@ -1334,6 +1490,26 @@ export default function BookReader({ book }: BookReaderProps) {
        * ------------------------------------------------------------- */}
       {isFocusMode && (
         <div className="absolute top-4 right-4 z-40 flex items-center gap-2 animate-fade-in">
+          <button
+            onClick={() => {
+              if (isTranslateOpen) {
+                setIsTranslateOpen(false);
+              } else {
+                handleOpenTranslation();
+              }
+            }}
+            aria-label="Translate Current Spread in Focus Mode"
+            className={`px-3 py-1.5 rounded-2xl backdrop-blur-xl border text-xs font-bold transition-all shadow-xl flex items-center gap-1.5 cursor-pointer ${
+              isTranslateOpen
+                ? "bg-[var(--accent)] text-[var(--primary-foreground)] border-[var(--accent)]"
+                : "bg-[var(--card)]/90 border-[var(--border)] text-[var(--foreground)] hover:border-[var(--accent)]"
+            }`}
+            title="Translate Current Spread (T)"
+          >
+            <span>🌐</span>
+            <span className="hidden sm:inline">Translate</span>
+          </button>
+
           <button
             onClick={() => toggleFocusMode(false)}
             className="px-3.5 py-1.5 rounded-2xl bg-[var(--card)]/90 backdrop-blur-xl border border-[var(--border)] text-xs font-bold text-[var(--foreground)] hover:border-[var(--accent)] shadow-xl flex items-center gap-1.5 cursor-pointer"
@@ -1484,6 +1660,27 @@ export default function BookReader({ book }: BookReaderProps) {
                 <span>{isDouble ? "📖" : "📄"}</span>
               </button>
             )}
+
+            {/* Contextual Translation Button */}
+            <button
+              onClick={() => {
+                if (isTranslateOpen) {
+                  setIsTranslateOpen(false);
+                } else {
+                  handleOpenTranslation();
+                }
+              }}
+              aria-label="Translate Current Page Spread"
+              className={`p-2 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1 cursor-pointer ${
+                isTranslateOpen
+                  ? "bg-[var(--accent)] text-[var(--primary-foreground)] border-[var(--accent)] shadow-md"
+                  : "bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] border-[var(--border)]"
+              }`}
+              title="Translate Current Pages (T)"
+            >
+              <span>🌐</span>
+              <span className="hidden md:inline">Translate</span>
+            </button>
 
             {/* Study Mode Toggle */}
             <button
@@ -2304,7 +2501,27 @@ export default function BookReader({ book }: BookReaderProps) {
       />
 
       {/* -------------------------------------------------------------
-       * Main Book Viewport Canvas
+       * Movable Contextual Translation Overlay Panel (Docked Left/Right)
+       * ------------------------------------------------------------- */}
+      <TranslationDrawer
+        isOpen={isTranslateOpen}
+        onClose={() => setIsTranslateOpen(false)}
+        pages={currentSpreadExtracts}
+        selectedTarget={translationTarget}
+        onTargetChange={(newTarget) => {
+          setTranslationTarget(newTarget);
+          handlePerformTranslation(newTarget);
+        }}
+        onTranslate={() => handlePerformTranslation()}
+        isLoading={isTranslating}
+        result={translationResult}
+        theme={prefs.readingMode}
+        position={translationPosition}
+        onPositionChange={setTranslationPosition}
+      />
+
+      {/* -------------------------------------------------------------
+       * Main Book Viewport Canvas (100% Stable, Full Size)
        * ------------------------------------------------------------- */}
       <div className="flex-1 flex items-center justify-center relative p-2 sm:p-6 w-full h-full overflow-hidden">
         {pdfLoadError ? (

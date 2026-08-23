@@ -11,14 +11,14 @@ export default function CustomCursor() {
   const [enabled, setEnabled] = useState(false);
 
   const cursorRef = useRef<HTMLDivElement>(null);
-  const coreDiamondRef = useRef<HTMLDivElement>(null);
+  const handPointerRef = useRef<HTMLDivElement>(null);
+  const clickRippleRef = useRef<HTMLDivElement>(null);
   const trailContainerRef = useRef<HTMLDivElement>(null);
 
-  // Particle trails refs (5 micro energy particles)
+  // Micro trail points for subtle tactile tracking
   const trailDotsRef = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
-    // Check if the device has a fine pointer (desktop mouse/trackpad) and not reduced motion
     const finePointerQuery = window.matchMedia("(pointer: fine)");
     const reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
 
@@ -41,7 +41,7 @@ export default function CustomCursor() {
     let isVisible = false;
     let animFrameId: number;
 
-    const numTrailPoints = 5;
+    const numTrailPoints = 2;
     const trailHistory: TrailPoint[] = Array.from({ length: numTrailPoints }, () => ({
       x: -100,
       y: -100,
@@ -63,7 +63,7 @@ export default function CustomCursor() {
         }
       }
 
-      // Check hover state efficiently
+      // Check clickable element state
       const target = e.target as HTMLElement | null;
       if (
         target &&
@@ -86,6 +86,15 @@ export default function CustomCursor() {
 
     const handleMouseDown = () => {
       isMouseDown = true;
+      if (clickRippleRef.current && !prefersReducedMotion) {
+        clickRippleRef.current.style.transition = "none";
+        clickRippleRef.current.style.transform = "translate(-5.5px, 0px) scale(0.6)";
+        clickRippleRef.current.style.opacity = "0.7";
+        void clickRippleRef.current.offsetHeight; // force reflow
+        clickRippleRef.current.style.transition = "transform 160ms cubic-bezier(0.1, 0.9, 0.2, 1), opacity 160ms ease-out";
+        clickRippleRef.current.style.transform = "translate(-5.5px, 0px) scale(1.3)";
+        clickRippleRef.current.style.opacity = "0";
+      }
     };
 
     const handleMouseUp = () => {
@@ -106,11 +115,11 @@ export default function CustomCursor() {
       }
     };
 
-    // 60-120 FPS Ultra-Smooth Animation Loop without React re-renders
+    // Ultra-Responsive 60-120 FPS Animation Loop
     const renderLoop = () => {
       if (isVisible) {
-        // Smooth lerp movement for main diamond
-        const ease = 0.38;
+        // Fast, zero-lag pointer tracking
+        const ease = 0.6;
         currentX += (targetX - currentX) * ease;
         currentY += (targetY - currentY) * ease;
 
@@ -119,25 +128,25 @@ export default function CustomCursor() {
           cursorRef.current.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
         }
 
-        // Diamond state transformations (hover/click)
-        if (coreDiamondRef.current) {
-          let scale = 1;
+        // Hand Pointer Transformations (Subtle 5-8% scale on hover and tactile click pulse)
+        if (handPointerRef.current) {
+          let scale = 1.0;
           if (isMouseDown) {
-            scale = 0.85;
+            scale = 0.92;
           } else if (isHovered) {
-            scale = 1.25;
+            scale = 1.06;
           }
-          coreDiamondRef.current.style.transform = `translate(-50%, -50%) scale(${scale})`;
-          coreDiamondRef.current.setAttribute("data-hover", isHovered ? "true" : "false");
+          handPointerRef.current.style.transform = `translate(-5.5px, 0px) scale(${scale})`;
+          handPointerRef.current.setAttribute("data-hover", isHovered ? "true" : "false");
         }
 
-        // Update trail particles lerp history (unless reduced motion is enabled)
+        // Update subtle trail points (unless reduced motion)
         if (!prefersReducedMotion) {
           let prevX = currentX;
           let prevY = currentY;
 
           for (let i = 0; i < numTrailPoints; i++) {
-            const trailEase = 0.45 - i * 0.05;
+            const trailEase = 0.6 - i * 0.12;
             trailHistory[i].x += (prevX - trailHistory[i].x) * trailEase;
             trailHistory[i].y += (prevY - trailHistory[i].y) * trailEase;
 
@@ -146,7 +155,7 @@ export default function CustomCursor() {
 
             const dotEl = trailDotsRef.current[i];
             if (dotEl) {
-              dotEl.style.transform = `translate3d(${trailHistory[i].x}px, ${trailHistory[i].y}px, 0) translate(-50%, -50%)`;
+              dotEl.style.transform = `translate3d(${trailHistory[i].x}px, ${trailHistory[i].y}px, 0) translate(-5.5px, 0px)`;
             }
           }
         }
@@ -179,27 +188,27 @@ export default function CustomCursor() {
   return (
     <>
       {/* -------------------------------------------------------------
-       * Trailing Digital Plasma Energy Particles
+       * Micro Tactile Trail (1-2 tiny dots, instant fade)
        * ------------------------------------------------------------- */}
       <div
         ref={trailContainerRef}
         className="pointer-events-none fixed inset-0 z-[9998] overflow-hidden select-none"
         aria-hidden="true"
       >
-        {[0.75, 0.55, 0.38, 0.22, 0.1].map((opacity, idx) => {
-          const size = Math.max(1.5, 4 - idx * 0.65);
+        {[0.25, 0.1].map((opacity, idx) => {
+          const size = Math.max(1, 2 - idx * 0.8);
           return (
             <div
               key={idx}
               ref={(el) => {
                 trailDotsRef.current[idx] = el;
               }}
-              className="absolute top-0 left-0 rounded-full transition-opacity duration-150"
+              className="absolute top-0 left-0 rounded-full transition-opacity duration-100 pointer-events-none"
               style={{
                 width: `${size}px`,
                 height: `${size}px`,
                 backgroundColor: "var(--accent)",
-                boxShadow: "0 0 6px var(--accent-glow)",
+                boxShadow: "0 0 2px var(--accent-glow)",
                 opacity: opacity,
                 willChange: "transform",
               }}
@@ -209,68 +218,51 @@ export default function CustomCursor() {
       </div>
 
       {/* -------------------------------------------------------------
-       * Main Futuristic Geometric Diamond HUD Cursor
+       * Premium White Hand / Index Finger Pointer (Active Everywhere)
        * ------------------------------------------------------------- */}
       <div
         ref={cursorRef}
         className="pointer-events-none fixed top-0 left-0 z-[9999] opacity-0 select-none will-change-transform"
         aria-hidden="true"
       >
+        {/* Subtle Fingertip Click Ripple */}
         <div
-          ref={coreDiamondRef}
-          className="relative flex items-center justify-center transition-transform duration-150 ease-out"
-          style={{ width: "22px", height: "22px" }}
-        >
-          {/* Ambient Outer Halo Glow */}
-          <div
-            className="absolute w-5 h-5 rounded-full blur-[3px] pointer-events-none"
-            style={{
-              background: "radial-gradient(circle, var(--accent) 0%, transparent 70%)",
-              opacity: 0.45,
-            }}
-          />
+          ref={clickRippleRef}
+          className="absolute top-0 left-0 w-3.5 h-3.5 rounded-full border border-[var(--accent)] pointer-events-none opacity-0"
+          style={{
+            transform: "translate(-5.5px, 0px) scale(0.6)",
+          }}
+        />
 
-          {/* Precision Geometric Diamond SVG with Corner HUD Ticks */}
+        {/* Hand Pointer Graphic with Index Fingertip Aligned to (0,0) */}
+        <div
+          ref={handPointerRef}
+          className="relative transition-transform duration-120 ease-out will-change-transform"
+          style={{
+            transform: "translate(-5.5px, 0px)",
+          }}
+        >
           <svg
-            className="w-4 h-4 overflow-visible filter drop-shadow-[0_0_3px_var(--accent)]"
-            viewBox="0 0 24 24"
+            width="24"
+            height="26"
+            viewBox="0 0 24 26"
             fill="none"
+            className="filter drop-shadow-[0_1.5px_3px_rgba(0,0,0,0.55)] select-none pointer-events-none"
           >
-            {/* Outer Diamond Silhouette */}
-            <polygon
-              points="12,2 22,12 12,22 2,12"
-              stroke="var(--accent)"
-              strokeWidth="1.6"
-              fill="var(--accent)"
-              fillOpacity="0.18"
+            {/* Crisp White Hand / Finger Pointer Silhouette */}
+            <path
+              d="M7 1.5C7 0.671573 6.32843 0 5.5 0C4.67157 0 4 0.671573 4 1.5V11.5L2.6 10.1C2.01421 9.51421 1.06447 9.51421 0.47868 10.1C-0.107107 10.6858 -0.107107 11.6355 0.47868 12.2213L5.68579 17.4284C6.73289 18.4755 8.15264 19.0625 9.63301 19.0625H13.25C15.7353 19.0625 17.75 17.0478 17.75 14.5625V10C17.75 9.17157 17.0784 8.5 16.25 8.5C15.4216 8.5 14.75 9.17157 14.75 10V9C14.75 8.17157 14.0784 7.5 13.25 7.5C12.4216 7.5 11.75 8.17157 11.75 9V8C11.75 7.17157 11.0784 6.5 10.25 6.5C9.42157 6.5 8.75 7.17157 8.75 8V1.5C8.75 0.671573 8.07843 0 7.25 0C6.42157 0 5.75 0.671573 5.75 1.5Z"
+              fill="#FFFFFF"
+              stroke="#18181B"
+              strokeWidth="1.3"
               strokeLinejoin="round"
             />
-
-            {/* Inner Precision Diamond Reticle */}
-            <polygon
-              points="12,6 18,12 12,18 6,12"
-              stroke="var(--accent)"
-              strokeWidth="1"
-              strokeDasharray="2,2"
-              fill="none"
-              opacity="0.65"
-            />
-
-            {/* Micro HUD Precision Corner Ticks */}
-            <line x1="12" y1="0" x2="12" y2="3" stroke="var(--accent-glow)" strokeWidth="1.5" />
-            <line x1="21" y1="12" x2="24" y2="12" stroke="var(--accent-glow)" strokeWidth="1.5" />
-            <line x1="12" y1="21" x2="12" y2="24" stroke="var(--accent-glow)" strokeWidth="1.5" />
-            <line x1="0" y1="12" x2="3" y2="12" stroke="var(--accent-glow)" strokeWidth="1.5" />
+            {/* Subtle Finger Contour Line Accents */}
+            <path d="M5.5 2.2V5" stroke="#E4E4E7" strokeWidth="0.75" strokeLinecap="round" />
+            <path d="M8.75 9.5H10.25" stroke="#D4D4D8" strokeWidth="0.75" strokeLinecap="round" />
+            <path d="M11.75 10.5H13.25" stroke="#D4D4D8" strokeWidth="0.75" strokeLinecap="round" />
+            <path d="M14.75 11.5H16.25" stroke="#D4D4D8" strokeWidth="0.75" strokeLinecap="round" />
           </svg>
-
-          {/* Luminous Center Core Spark / Pin Dot */}
-          <div
-            className="absolute w-1.5 h-1.5 rounded-full"
-            style={{
-              backgroundColor: "var(--foreground)",
-              boxShadow: "0 0 5px var(--accent-glow), 0 0 10px var(--accent)",
-            }}
-          />
         </div>
       </div>
     </>
