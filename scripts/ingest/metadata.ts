@@ -198,6 +198,10 @@ export async function extractPdfMetadata(filePath: string, filename: string): Pr
       .replace(/प्र\s*विन/g, "")
       .trim();
 
+    if (devanagariTitle.includes("मैं") || devanagariTitle.includes("दो कि")) {
+      devanagariTitle = devanagariTitle.split(/\s+(?:मैं|दो\s+कि)/)[0].trim();
+    }
+
     // Clean english base
     let base = filename
       .replace(/\.pdf$/i, "")
