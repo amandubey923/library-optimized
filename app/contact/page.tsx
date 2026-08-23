@@ -182,14 +182,14 @@ export default function ContactPage() {
                 <span>Personal Showcase</span>
               </div>
               <h3 className="font-serif font-bold text-lg text-[var(--foreground)] group-hover:text-[var(--accent)] transition-colors">
-                Interactive 3D Portfolio
+                Interactive Portfolio
               </h3>
               <p className="text-xs text-[var(--text-secondary)] leading-relaxed font-normal">
                 Explore more of my full-stack projects, real-time architectures, and interactive 3D web experiences.
               </p>
 
               <a
-                href="https://aman3dportfolio.vercel.app/"
+                href="https://aman-portfolio-next.netlify.app"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center justify-between w-full p-3 rounded-2xl bg-gradient-to-r from-[var(--primary)] to-[var(--accent-secondary)] hover:opacity-95 text-[var(--primary-foreground)] font-bold text-xs shadow-lg hover:shadow-[0_0_18px_var(--theme-glow)] transition-all hover:scale-[1.02] cursor-pointer"
