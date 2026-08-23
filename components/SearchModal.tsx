@@ -107,7 +107,8 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
     const words = q.split(/\s+/).filter(Boolean);
 
     return BOOKS.filter((book) => {
-      const target = `${book.title} ${book.author} ${book.category} ${book.description} ${book.tags.join(" ")}`.toLowerCase();
+      const isTech = book.category.includes("SQL") || book.category.includes("DSA") || book.category.includes("System") || book.category.includes("OOP") || book.category.includes("Web") || book.category.includes("Computer") || book.category.includes("Programming") || (book.resourceType && book.resourceType !== "Book");
+      const target = `${book.title} ${book.author} ${book.category} ${isTech ? "Technical Knowledge" : ""} ${book.resourceType || ""} ${book.description} ${book.tags.join(" ")}`.toLowerCase();
       return words.every((w) => target.includes(w));
     }).slice(0, 8);
   }, [query]);

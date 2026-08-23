@@ -2,7 +2,14 @@
 
 import React, { useState, useMemo, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { BOOKS, CATEGORIES, Category } from "@/data/books";
+import {
+  BOOKS,
+  CATEGORIES,
+  Category,
+  isTechnicalBook,
+  TECHNICAL_SUBCATEGORIES,
+  ResourceType,
+} from "@/data/books";
 import BookCard from "@/components/BookCard";
 
 function LibraryContent() {
@@ -15,6 +22,8 @@ function LibraryContent() {
       ? (initialCategoryParam as Category)
       : "All"
   );
+  const [selectedSubcategory, setSelectedSubcategory] = useState<string>("All Technical");
+  const [selectedResourceType, setSelectedResourceType] = useState<string>("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedLanguage, setSelectedLanguage] = useState<string>("All");
   const [sortBy, setSortBy] = useState<"popular" | "newest" | "title" | "rating" | "pages">(
@@ -23,12 +32,32 @@ function LibraryContent() {
   const [displayLimit, setDisplayLimit] = useState(25);
 
   const languages = ["All", "English", "Hindi", "Russian (Eng Trans)", "Spanish (Eng Trans)"];
+  const resourceTypes: { label: string; value: string }[] = [
+    { label: "All Types", value: "All" },
+    { label: "Books", value: "Book" },
+    { label: "Notes", value: "Notes" },
+    { label: "Handwritten", value: "HandwrittenNotes" },
+    { label: "Cheat Sheets", value: "CheatSheet" },
+    { label: "Interview Prep", value: "InterviewPrep" },
+  ];
 
   const filteredBooks = useMemo(() => {
     let result = [...BOOKS];
 
     // Filter by Category
-    if (selectedCategory !== "All") {
+    if (selectedCategory === "Technical Knowledge") {
+      result = result.filter((b) => isTechnicalBook(b));
+
+      if (selectedSubcategory !== "All Technical") {
+        result = result.filter(
+          (b) => b.category === selectedSubcategory || (b.resourceType as string) === selectedSubcategory
+        );
+      }
+
+      if (selectedResourceType !== "All") {
+        result = result.filter((b) => b.resourceType === selectedResourceType);
+      }
+    } else if (selectedCategory !== "All") {
       result = result.filter((b) => b.category === selectedCategory);
     }
 
@@ -44,6 +73,9 @@ function LibraryContent() {
         (b) =>
           b.title.toLowerCase().includes(q) ||
           b.author.toLowerCase().includes(q) ||
+          b.category.toLowerCase().includes(q) ||
+          (isTechnicalBook(b) && "technical knowledge".includes(q)) ||
+          (b.resourceType && b.resourceType.toLowerCase().includes(q)) ||
           b.tags.some((t) => t.toLowerCase().includes(q))
       );
     }
@@ -63,7 +95,7 @@ function LibraryContent() {
     });
 
     return result;
-  }, [selectedCategory, selectedLanguage, searchQuery, sortBy]);
+  }, [selectedCategory, selectedSubcategory, selectedResourceType, selectedLanguage, searchQuery, sortBy]);
 
   const visibleBooks = useMemo(() => {
     return filteredBooks.slice(0, displayLimit);
@@ -71,6 +103,8 @@ function LibraryContent() {
 
   const resetFilters = () => {
     setSelectedCategory("All");
+    setSelectedSubcategory("All Technical");
+    setSelectedResourceType("All");
     setSelectedLanguage("All");
     setSearchQuery("");
     setSortBy("popular");
@@ -148,12 +182,19 @@ function LibraryContent() {
           <div className="flex flex-wrap gap-2">
             {CATEGORIES.map((cat) => {
               const isActive = selectedCategory === cat;
-              const catCount = cat === "All" ? BOOKS.length : BOOKS.filter((b) => b.category === cat).length;
+              const catCount =
+                cat === "All"
+                  ? BOOKS.length
+                  : cat === "Technical Knowledge"
+                  ? BOOKS.filter((b) => isTechnicalBook(b)).length
+                  : BOOKS.filter((b) => b.category === cat).length;
               return (
                 <button
                   key={cat}
                   onClick={() => {
                     setSelectedCategory(cat);
+                    setSelectedSubcategory("All Technical");
+                    setSelectedResourceType("All");
                     setDisplayLimit(25);
                   }}
                   className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
@@ -169,6 +210,75 @@ function LibraryContent() {
             })}
           </div>
         </div>
+
+        {/* Row 2b: Technical Knowledge Subcategories & Resource Types (Only when Technical Knowledge is selected) */}
+        {selectedCategory === "Technical Knowledge" && (
+          <div className="space-y-3 pt-3 border-t border-[var(--border)]/70 animate-fade-in">
+            <div>
+              <div className="text-xs text-[var(--accent)] font-semibold mb-2 flex items-center gap-1.5">
+                <span>⚡</span>
+                <span>Filter Technical Topic:</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {TECHNICAL_SUBCATEGORIES.map((subcat) => {
+                  const isSubActive = selectedSubcategory === subcat;
+                  const subCount =
+                    subcat === "All Technical"
+                      ? BOOKS.filter((b) => isTechnicalBook(b)).length
+                      : BOOKS.filter((b) => isTechnicalBook(b) && (b.category === subcat || (b.resourceType as string) === subcat)).length;
+                  return (
+                    <button
+                      key={subcat}
+                      onClick={() => {
+                        setSelectedSubcategory(subcat);
+                        setDisplayLimit(25);
+                      }}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1 ${
+                        isSubActive
+                          ? "bg-[var(--accent)] text-[var(--background)] font-bold shadow-xs scale-105"
+                          : "bg-[var(--background)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)]"
+                      }`}
+                    >
+                      <span>{subcat}</span>
+                      <span className={`text-[10px] ${isSubActive ? "opacity-90 font-bold" : "opacity-60"}`}>
+                        ({subCount})
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div>
+              <div className="text-xs text-[var(--text-secondary)] font-medium mb-1.5">Resource Format:</div>
+              <div className="flex flex-wrap gap-1.5">
+                {resourceTypes.map((rt) => {
+                  const isRtActive = selectedResourceType === rt.value;
+                  const rtCount =
+                    rt.value === "All"
+                      ? BOOKS.filter((b) => isTechnicalBook(b)).length
+                      : BOOKS.filter((b) => isTechnicalBook(b) && b.resourceType === rt.value).length;
+                  return (
+                    <button
+                      key={rt.value}
+                      onClick={() => {
+                        setSelectedResourceType(rt.value);
+                        setDisplayLimit(25);
+                      }}
+                      className={`px-2 py-0.5 rounded-md text-[11px] font-medium transition-all cursor-pointer ${
+                        isRtActive
+                          ? "bg-[var(--primary)] text-[var(--primary-foreground)] font-bold shadow-xs"
+                          : "bg-[var(--secondary)]/70 text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)]/60"
+                      }`}
+                    >
+                      {rt.label} ({rtCount})
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Row 3: Language Badges */}
         <div className="flex flex-wrap items-center justify-between gap-4 pt-3 border-t border-[var(--border)]">

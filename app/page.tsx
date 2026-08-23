@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useRef } from "react";
 import Link from "next/link";
-import { BOOKS, Category, getBooksByCategory, searchBooks } from "@/data/books";
+import { BOOKS, Category, getBooksByCategory, searchBooks, isTechnicalBook } from "@/data/books";
 import HeroVideo from "@/components/HeroVideo";
 import ContinueReading from "@/components/ContinueReading";
 import FeaturedCarousel from "@/components/FeaturedCarousel";
@@ -12,22 +12,34 @@ import BookCard from "@/components/BookCard";
 
 export default function HomePage() {
   const [selectedCategory, setSelectedCategory] = useState<Category>("All");
+  const [selectedSubcategory, setSelectedSubcategory] = useState<string>("All Technical");
   const [searchQuery, setSearchQuery] = useState("");
   const [displayLimit, setDisplayLimit] = useState(20);
   const librarySectionRef = useRef<HTMLDivElement>(null);
 
   const filteredBooks = useMemo(() => {
-    let result = getBooksByCategory(selectedCategory);
+    let result = getBooksByCategory(
+      selectedCategory,
+      selectedCategory === "Technical Knowledge" ? selectedSubcategory : undefined
+    );
     if (searchQuery.trim()) {
-      result = searchBooks(searchQuery).filter((b) =>
-        selectedCategory === "All" ? true : b.category === selectedCategory
-      );
+      result = searchBooks(searchQuery).filter((b) => {
+        if (selectedCategory === "All") return true;
+        if (selectedCategory === "Technical Knowledge") {
+          if (selectedSubcategory !== "All Technical") {
+            return b.category === selectedSubcategory || (b.resourceType as string) === selectedSubcategory;
+          }
+          return isTechnicalBook(b);
+        }
+        return b.category === selectedCategory;
+      });
     }
     return result;
-  }, [selectedCategory, searchQuery]);
+  }, [selectedCategory, selectedSubcategory, searchQuery]);
 
   const handleCategoryChange = (cat: Category) => {
     setSelectedCategory(cat);
+    setSelectedSubcategory("All Technical");
     setDisplayLimit(20);
   };
 
@@ -105,6 +117,8 @@ export default function HomePage() {
             <CategoryPills
               activeCategory={selectedCategory}
               onSelectCategory={handleCategoryChange}
+              activeSubcategory={selectedSubcategory}
+              onSelectSubcategory={setSelectedSubcategory}
             />
           </div>
 

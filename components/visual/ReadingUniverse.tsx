@@ -2,20 +2,29 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { BOOKS, CATEGORIES } from "@/data/books";
+import { BOOKS, CATEGORIES, isTechnicalBook, Book } from "@/data/books";
 
 export default function ReadingUniverse() {
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
 
-  // Group books by category
+  // Group books by top-level category
   const validCategories = CATEGORIES.filter((c) => c !== "All");
 
   const categoryStats = validCategories.map((cat, idx) => {
-    const booksInCat = BOOKS.filter((b) => b.category === cat);
+    const booksInCat: Book[] =
+      cat === "Technical Knowledge"
+        ? BOOKS.filter((b) => isTechnicalBook(b))
+        : BOOKS.filter((b) => b.category === cat);
+
+    const isTech = cat === "Technical Knowledge";
     return {
       name: cat,
       count: booksInCat.length,
       sampleBooks: booksInCat.slice(0, 3).map((b) => b.title),
+      description: isTech
+        ? "DSA • CS Fundamentals • Web & Backend • SQL • System Design • Interview Prep"
+        : null,
+      unit: isTech ? "Resources" : "Books",
       index: idx,
     };
   });
@@ -72,7 +81,7 @@ export default function ReadingUniverse() {
                       0{item.index + 1}
                     </span>
                     <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/20">
-                      {item.count} Books
+                      {item.count} {item.unit}
                     </span>
                   </div>
 

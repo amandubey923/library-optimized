@@ -27,9 +27,22 @@ function BookCardComponent({ book, compact = false }: BookCardProps) {
 
         {/* Category Pill & Favorite Button Bar */}
         <div className="flex items-center justify-between gap-2 mb-3 relative z-10">
-          <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/20 truncate">
-            {book.category}
-          </span>
+          <div className="flex items-center gap-1.5 min-w-0 flex-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/20 truncate">
+              {book.category}
+            </span>
+            {book.resourceType && book.resourceType !== "Book" && (
+              <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[var(--primary)]/15 text-[var(--primary)] border border-[var(--primary)]/30 shrink-0">
+                {book.resourceType === "HandwrittenNotes"
+                  ? "Handwritten"
+                  : book.resourceType === "InterviewPrep"
+                  ? "Interview"
+                  : book.resourceType === "CheatSheet"
+                  ? "Cheat Sheet"
+                  : book.resourceType}
+              </span>
+            )}
+          </div>
           <button
             onClick={(e) => {
               e.preventDefault();
