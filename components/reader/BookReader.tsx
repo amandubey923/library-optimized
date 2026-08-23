@@ -9,6 +9,7 @@ import DrawingCanvas from "@/components/reader/DrawingCanvas";
 import AnnotationDrawer from "@/components/reader/AnnotationDrawer";
 import BookReadingMemory from "@/components/memory/BookReadingMemory";
 import { TranslationDrawer, TranslationPosition } from "@/components/reader/TranslationDrawer";
+import { pageSound } from "@/lib/pageSound";
 import {
   TranslationTarget,
   TranslationResult,
@@ -683,13 +684,14 @@ export default function BookReader({ book }: BookReaderProps) {
     const step = isDouble ? (currentPage === 1 ? 1 : 2) : 1;
 
     if (currentPage + step <= numPages + 1) {
+      pageSound.playPageTurnSound();
       setSelectionPopover(null);
       setFlipDirection("next");
       setIsFlipping(true);
       setTimeout(() => {
         setCurrentPage((prev) => Math.min(numPages, prev + step));
         setIsFlipping(false);
-      }, 280);
+      }, 360);
     }
   };
 
@@ -700,13 +702,14 @@ export default function BookReader({ book }: BookReaderProps) {
     const step = isDouble ? (currentPage <= 2 ? 1 : 2) : 1;
 
     if (currentPage - step >= 1) {
+      pageSound.playPageTurnSound();
       setSelectionPopover(null);
       setFlipDirection("prev");
       setIsFlipping(true);
       setTimeout(() => {
         setCurrentPage((prev) => Math.max(1, prev - step));
         setIsFlipping(false);
-      }, 280);
+      }, 360);
     }
   };
 
@@ -1419,6 +1422,7 @@ export default function BookReader({ book }: BookReaderProps) {
   return (
     <div
       ref={containerRef}
+      data-study-active={isStudyMode ? "true" : "false"}
       onMouseMove={handlePointerMove}
       onMouseEnter={handlePointerMove}
       onMouseLeave={handlePointerLeave}
@@ -1437,16 +1441,16 @@ export default function BookReader({ book }: BookReaderProps) {
       }}
     >
       {/* -------------------------------------------------------------
-       * Integrated Custom Cursor HUD
+       * Study Mode Tool Reticle (Pen / Highlighter / Eraser preview)
        * ------------------------------------------------------------- */}
-      <div
-        ref={cursorDotRef}
-        className={`pointer-events-none absolute top-0 left-0 z-[9999] transition-opacity duration-150 ${
-          cursorPos.visible ? "opacity-100" : "opacity-0"
-        }`}
-        aria-hidden="true"
-      >
-        {isStudyMode ? (
+      {isStudyMode && (
+        <div
+          ref={cursorDotRef}
+          className={`pointer-events-none absolute top-0 left-0 z-[9999] transition-opacity duration-150 ${
+            cursorPos.visible ? "opacity-100" : "opacity-0"
+          }`}
+          aria-hidden="true"
+        >
           <div className="relative flex items-center justify-center -translate-x-1/2 -translate-y-1/2">
             <div
               className="rounded-full border border-white shadow-md transition-all"
@@ -1458,32 +1462,8 @@ export default function BookReader({ book }: BookReaderProps) {
               }}
             />
           </div>
-        ) : (
-          <div
-            className="relative will-change-transform filter drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] select-none pointer-events-none"
-            style={{ transform: "translate(-5.5px, 0px)" }}
-          >
-            <svg
-              width="25"
-              height="27"
-              viewBox="0 0 24 26"
-              fill="none"
-            >
-              <path
-                d="M7 1.5C7 0.671573 6.32843 0 5.5 0C4.67157 0 4 0.671573 4 1.5V11.5L2.6 10.1C2.01421 9.51421 1.06447 9.51421 0.47868 10.1C-0.107107 10.6858 -0.107107 11.6355 0.47868 12.2213L5.68579 17.4284C6.73289 18.4755 8.15264 19.0625 9.63301 19.0625H13.25C15.7353 19.0625 17.75 17.0478 17.75 14.5625V10C17.75 9.17157 17.0784 8.5 16.25 8.5C15.4216 8.5 14.75 9.17157 14.75 10V9C14.75 8.17157 14.0784 7.5 13.25 7.5C12.4216 7.5 11.75 8.17157 11.75 9V8C11.75 7.17157 11.0784 6.5 10.25 6.5C9.42157 6.5 8.75 7.17157 8.75 8V1.5C8.75 0.671573 8.07843 0 7.25 0C6.42157 0 5.75 0.671573 5.75 1.5Z"
-                fill="#FFFFFF"
-                stroke="#18181B"
-                strokeWidth="1.35"
-                strokeLinejoin="round"
-              />
-              <path d="M5.5 2.2V5" stroke="#E4E4E7" strokeWidth="0.8" strokeLinecap="round" />
-              <path d="M8.75 9.5H10.25" stroke="#D4D4D8" strokeWidth="0.8" strokeLinecap="round" />
-              <path d="M11.75 10.5H13.25" stroke="#D4D4D8" strokeWidth="0.8" strokeLinecap="round" />
-              <path d="M14.75 11.5H16.25" stroke="#D4D4D8" strokeWidth="0.8" strokeLinecap="round" />
-            </svg>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* -------------------------------------------------------------
        * Focus Mode Floating Banner / Controls
@@ -2578,15 +2558,15 @@ export default function BookReader({ book }: BookReaderProps) {
           >
             {isDouble ? (
               <div
-                className={`relative flex items-center rounded-2xl shadow-[0_25px_70px_rgba(0,0,0,0.75)] border border-[#2b221a]/40 transition-transform duration-300 ${
-                  isFlipping ? (flipDirection === "next" ? "animate-page-flip-next" : "animate-page-flip-prev") : ""
-                }`}
-                style={{ backgroundColor: getPageBgColor() }}
+                className="relative flex items-center rounded-2xl shadow-[0_25px_70px_rgba(0,0,0,0.75)] border border-[#2b221a]/40 transition-transform duration-300"
+                style={{ backgroundColor: getPageBgColor(), transformStyle: "preserve-3d" }}
               >
                 {/* Left Page */}
                 <div
                   onMouseUp={(e) => handlePageMouseUp(e, activeLeftPage)}
-                  className="relative flex items-center justify-center p-2 sm:p-4 border-r border-[#cfc4b4]/50 overflow-hidden min-h-[380px] sm:min-h-[500px]"
+                  className={`relative flex items-center justify-center p-2 sm:p-4 border-r border-[#cfc4b4]/50 overflow-hidden min-h-[380px] sm:min-h-[500px] transition-all duration-300 ${
+                    isFlipping && flipDirection === "prev" ? "animate-page-flip-prev z-20" : "z-10"
+                  }`}
                 >
                   {currentPage === 1 ? (
                     <div className="w-[300px] sm:w-[360px] h-[460px] sm:h-[540px] flex flex-col items-center justify-center text-center p-6 border border-dashed border-[#cfc4b4]/40 rounded-xl bg-black/[0.02] relative overflow-hidden">
@@ -2642,7 +2622,9 @@ export default function BookReader({ book }: BookReaderProps) {
                 {/* Right Page */}
                 <div
                   onMouseUp={(e) => handlePageMouseUp(e, activeRightPage)}
-                  className="relative flex items-center justify-center p-2 sm:p-4 overflow-hidden min-h-[380px] sm:min-h-[500px]"
+                  className={`relative flex items-center justify-center p-2 sm:p-4 overflow-hidden min-h-[380px] sm:min-h-[500px] transition-all duration-300 ${
+                    isFlipping && flipDirection === "next" ? "animate-page-flip-next z-20" : "z-10"
+                  }`}
                 >
                   <div className="relative">
                     <canvas ref={canvasRightRef} className="block max-w-full h-auto object-contain rounded-sm" />

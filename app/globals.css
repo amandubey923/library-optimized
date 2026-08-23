@@ -282,43 +282,69 @@
   animation: scaleUp 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-/* 3D Realistic Book Page-Turn Animations */
-@keyframes pageFlipNext {
+/* -------------------------------------------------------------
+ * 3D Realistic Physical Book Page-Turn Animations & Lighting
+ * ------------------------------------------------------------- */
+@keyframes pageTurnRightNext {
   0% {
-    transform: perspective(2000px) rotateY(0deg) scale(1);
-    box-shadow: 0 15px 45px rgba(0, 0, 0, 0.6);
+    transform: perspective(2000px) rotateY(0deg);
+    transform-origin: left center;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.25);
+    filter: brightness(1);
   }
-  50% {
-    transform: perspective(2000px) rotateY(-9deg) scale(0.982);
-    box-shadow: -15px 25px 60px rgba(0, 0, 0, 0.75);
+  40% {
+    transform: perspective(2000px) rotateY(-50deg) skewY(-0.8deg);
+    transform-origin: left center;
+    box-shadow: -15px 15px 35px rgba(0, 0, 0, 0.45);
+    filter: brightness(0.93);
+  }
+  75% {
+    transform: perspective(2000px) rotateY(-115deg) skewY(-0.4deg);
+    transform-origin: left center;
+    box-shadow: -25px 25px 50px rgba(0, 0, 0, 0.55);
+    filter: brightness(0.86);
   }
   100% {
-    transform: perspective(2000px) rotateY(0deg) scale(1);
-    box-shadow: 0 15px 45px rgba(0, 0, 0, 0.6);
+    transform: perspective(2000px) rotateY(-180deg);
+    transform-origin: left center;
+    box-shadow: 0 0 0 transparent;
+    opacity: 0;
   }
 }
 
-@keyframes pageFlipPrev {
+@keyframes pageTurnLeftPrev {
   0% {
-    transform: perspective(2000px) rotateY(0deg) scale(1);
-    box-shadow: 0 15px 45px rgba(0, 0, 0, 0.6);
+    transform: perspective(2000px) rotateY(0deg);
+    transform-origin: right center;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.25);
+    filter: brightness(1);
   }
-  50% {
-    transform: perspective(2000px) rotateY(9deg) scale(0.982);
-    box-shadow: 15px 25px 60px rgba(0, 0, 0, 0.75);
+  40% {
+    transform: perspective(2000px) rotateY(50deg) skewY(0.8deg);
+    transform-origin: right center;
+    box-shadow: 15px 15px 35px rgba(0, 0, 0, 0.45);
+    filter: brightness(0.93);
+  }
+  75% {
+    transform: perspective(2000px) rotateY(115deg) skewY(0.4deg);
+    transform-origin: right center;
+    box-shadow: 25px 25px 50px rgba(0, 0, 0, 0.55);
+    filter: brightness(0.86);
   }
   100% {
-    transform: perspective(2000px) rotateY(0deg) scale(1);
-    box-shadow: 0 15px 45px rgba(0, 0, 0, 0.6);
+    transform: perspective(2000px) rotateY(180deg);
+    transform-origin: right center;
+    box-shadow: 0 0 0 transparent;
+    opacity: 0;
   }
 }
 
 .animate-page-flip-next {
-  animation: pageFlipNext 0.32s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+  animation: pageTurnRightNext 0.38s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
 .animate-page-flip-prev {
-  animation: pageFlipPrev 0.32s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+  animation: pageTurnLeftPrev 0.38s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
 @media (prefers-reduced-motion: reduce) {
