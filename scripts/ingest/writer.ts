@@ -65,8 +65,13 @@ export function safeWriteCatalog(
       throw new Error("Integrity check failed on temporary catalog file");
     }
 
-    // Atomic rename
-    fs.renameSync(tmpPath, booksJsonPath);
+    // Atomic rename (with Windows EPERM fallback)
+    try {
+      fs.renameSync(tmpPath, booksJsonPath);
+    } catch {
+      fs.copyFileSync(tmpPath, booksJsonPath);
+      fs.unlinkSync(tmpPath);
+    }
 
     return {
       success: true,

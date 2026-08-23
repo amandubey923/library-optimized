@@ -211,8 +211,13 @@ export async function extractPdfMetadata(filePath: string, filename: string): Pr
       .replace(/200Translated\s*Letters\s*Source\s*Info/gi, "Letters Collection")
       .replace(/Source\s*Info/gi, "")
       .replace(/Only\s*Chapter\s*\d+/gi, "")
+      .replace(/And\s*Question\s*\d+\s*Chapter\s*\d+/gi, "")
+      .replace(/Translation\s*s\s*Misc/gi, "Translated Discourses Miscellaneous")
       .replace(/Translation/gi, "");
     base = base.replace(/([a-z])([A-Z])/g, "$1 $2").trim();
+    if (base === "s Misc" || base === "Misc") {
+      base = "Translated Discourses & Miscellaneous";
+    }
 
     if (devanagariTitle && devanagariTitle.length >= 3) {
       title = `${base} (${devanagariTitle})`;
