@@ -12,6 +12,8 @@ interface SearchModalProps {
   onClose: () => void;
 }
 
+const ALL_AUTHORS = Array.from(new Set(BOOKS.map((b) => b.author)));
+
 export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
   const [query, setQuery] = useState("");
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -81,8 +83,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
     const suggestions: string[] = [];
 
     // Match authors
-    const authors = Array.from(new Set(BOOKS.map((b) => b.author)));
-    for (const a of authors) {
+    for (const a of ALL_AUTHORS) {
       if (a.toLowerCase().includes(q) && !suggestions.includes(a)) {
         suggestions.push(a);
       }

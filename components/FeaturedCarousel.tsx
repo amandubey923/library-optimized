@@ -1,13 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { getFeaturedBooks } from "@/data/books";
 import { useLibrary } from "@/context/LibraryContext";
 
 export default function FeaturedCarousel() {
-  const featured = getFeaturedBooks();
+  const featured = useMemo(() => getFeaturedBooks(), []);
   const [currentIndex, setCurrentIndex] = useState(0);
   const { isFavorite, toggleFavorite, recordReading } = useLibrary();
 

@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useMemo } from "react";
 import {
   CATEGORIES,
   Category,
@@ -22,16 +22,50 @@ export default function CategoryPills({
   activeSubcategory = "All Technical",
   onSelectSubcategory,
 }: CategoryPillsProps) {
-  const getCount = (cat: Category) => {
-    if (cat === "All") return BOOKS.length;
-    if (cat === "Technical Knowledge") return BOOKS.filter((b) => isTechnicalBook(b)).length;
-    return BOOKS.filter((b) => b.category === cat).length;
-  };
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = {
+      All: BOOKS.length,
+      "Technical Knowledge": 0,
+    };
+    for (const cat of CATEGORIES) {
+      if (cat !== "All" && cat !== "Technical Knowledge") {
+        counts[cat] = 0;
+      }
+    }
+    for (const b of BOOKS) {
+      if (isTechnicalBook(b)) {
+        counts["Technical Knowledge"] = (counts["Technical Knowledge"] || 0) + 1;
+      }
+      if (counts[b.category] !== undefined) {
+        counts[b.category]++;
+      }
+    }
+    return counts;
+  }, []);
 
-  const getSubcategoryCount = (subcat: string) => {
-    if (subcat === "All Technical") return BOOKS.filter((b) => isTechnicalBook(b)).length;
-    return BOOKS.filter((b) => isTechnicalBook(b) && (b.category === subcat || (b.resourceType as string) === subcat)).length;
-  };
+  const subcategoryCounts = useMemo(() => {
+    const counts: Record<string, number> = {
+      "All Technical": 0,
+    };
+    for (const sub of TECHNICAL_SUBCATEGORIES) {
+      counts[sub] = 0;
+    }
+    for (const b of BOOKS) {
+      if (isTechnicalBook(b)) {
+        counts["All Technical"]++;
+        if (counts[b.category] !== undefined) {
+          counts[b.category]++;
+        }
+        if (b.resourceType && counts[b.resourceType] !== undefined) {
+          counts[b.resourceType]++;
+        }
+      }
+    }
+    return counts;
+  }, []);
+
+  const getCount = (cat: Category) => categoryCounts[cat] || 0;
+  const getSubcategoryCount = (subcat: string) => subcategoryCounts[subcat] || 0;
 
   return (
     <div className="space-y-3">

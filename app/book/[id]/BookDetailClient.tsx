@@ -86,7 +86,10 @@ export default function BookDetailClient({
   };
 
   // Find other books by the same author if present
-  const authorBooks = BOOKS.filter((b) => b.author === book.author && b.id !== book.id).slice(0, 4);
+  const authorBooks = useMemo(
+    () => BOOKS.filter((b) => b.author === book.author && b.id !== book.id).slice(0, 4),
+    [book.author, book.id]
+  );
 
   const highlightsCount = annotations.highlights?.length || 0;
   const notesCount = annotations.notes?.length || 0;
