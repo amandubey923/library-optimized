@@ -846,7 +846,7 @@ export function exportAllUserData(): string {
   return JSON.stringify(exportData, null, 2);
 }
 
-export function importUserData(jsonString: string): { success: boolean; message: string } {
+export function importUserData(jsonString: string): { success: boolean; message: string; importedCount?: number; skippedCount?: number } {
   if (typeof window === "undefined" || !jsonString) {
     return { success: false, message: "No data provided to import." };
   }
@@ -855,44 +855,174 @@ export function importUserData(jsonString: string): { success: boolean; message:
     const data = JSON.parse(jsonString);
 
     if (!data || typeof data !== "object") {
-      return { success: false, message: "Invalid JSON format." };
+      return { success: false, message: "Invalid backup format. Must be a valid JSON object." };
     }
 
+    let importedFavs = 0;
+    let importedHistory = 0;
+    let importedAnnotations = 0;
+    let importedBookmarks = 0;
+    let skipped = 0;
+
+    // 1. Favorites
     if (Array.isArray(data.favorites)) {
-      localStorage.setItem(FAVORITES_KEY, JSON.stringify(data.favorites));
+      const validFavs = data.favorites.filter((f: any) => typeof f === "string");
+      localStorage.setItem(FAVORITES_KEY, JSON.stringify(validFavs));
+      importedFavs = validFavs.length;
     }
 
+    // 2. Reading History
     if (Array.isArray(data.readingHistory)) {
-      localStorage.setItem(HISTORY_KEY, JSON.stringify(data.readingHistory));
+      const validHistory: ReadingProgressItem[] = [];
+      for (const item of data.readingHistory) {
+        if (item && typeof item === "object" && typeof item.bookId === "string" && typeof item.page === "number") {
+          validHistory.push({
+            bookId: item.bookId,
+            page: item.page,
+            totalPages: Number(item.totalPages) || 100,
+            progress: Number(item.progress) || 0,
+            lastReadAt: Number(item.lastReadAt) || Date.now(),
+          });
+        } else {
+          skipped++;
+        }
+      }
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(validHistory));
+      importedHistory = validHistory.length;
     }
 
+    // 3. Annotations
     if (data.annotations && typeof data.annotations === "object") {
       for (const [bookId, ann] of Object.entries(data.annotations)) {
-        annotationsCache.set(bookId, ann as BookAnnotations);
-        localStorage.setItem(`${ANNOTATIONS_KEY_PREFIX}:${bookId}`, JSON.stringify(ann));
+        if (typeof bookId === "string" && ann && typeof ann === "object") {
+          annotationsCache.set(bookId, ann as BookAnnotations);
+          localStorage.setItem(`${ANNOTATIONS_KEY_PREFIX}:${bookId}`, JSON.stringify(ann));
+          importedAnnotations++;
+        } else {
+          skipped++;
+        }
       }
     }
 
+    // 4. Bookmarks
     if (data.bookmarks && typeof data.bookmarks === "object") {
       for (const [bookId, bms] of Object.entries(data.bookmarks)) {
-        bookmarksCache.set(bookId, bms as BookmarkItem[]);
-        localStorage.setItem(`${BOOKMARKS_KEY_PREFIX}:${bookId}`, JSON.stringify(bms));
+        if (typeof bookId === "string" && Array.isArray(bms)) {
+          bookmarksCache.set(bookId, bms as BookmarkItem[]);
+          localStorage.setItem(`${BOOKMARKS_KEY_PREFIX}:${bookId}`, JSON.stringify(bms));
+          importedBookmarks++;
+        } else {
+          skipped++;
+        }
       }
     }
 
-    if (data.readingActivity && typeof data.readingActivity === "object") {
+    // 5. Streak & Reading Activity
+    if (data.readingActivity && typeof data.readingActivity === "object" && data.readingActivity.daily) {
       localStorage.setItem(ACTIVITY_KEY, JSON.stringify(data.readingActivity));
     }
 
+    // 6. Reading Memories
     if (data.readingMemories && typeof data.readingMemories === "object") {
       for (const [bookId, mem] of Object.entries(data.readingMemories)) {
-        memoryCache.set(bookId, mem as BookReadingMemory);
-        localStorage.setItem(`${MEMORY_KEY_PREFIX}:${bookId}`, JSON.stringify(mem));
+        if (typeof bookId === "string" && mem && typeof mem === "object") {
+          memoryCache.set(bookId, mem as BookReadingMemory);
+          localStorage.setItem(`${MEMORY_KEY_PREFIX}:${bookId}`, JSON.stringify(mem));
+        }
       }
     }
 
-    return { success: true, message: "Reading data, streak, memory, and annotations restored successfully!" };
+    const totalImported = importedFavs + importedHistory + importedAnnotations + importedBookmarks;
+    const msg = skipped > 0
+      ? `Restored ${totalImported} items successfully (${skipped} invalid records skipped).`
+      : `Restored ${totalImported} items, reading streak, and annotations with zero errors!`;
+
+    return {
+      success: true,
+      message: msg,
+      importedCount: totalImported,
+      skippedCount: skipped,
+    };
   } catch (e: any) {
     return { success: false, message: `Failed to restore data: ${e?.message || "Corrupted file"}` };
+  }
+}
+
+// -------------------------------------------------------------
+// Granular Local Data Reset & Recovery Utilities
+// -------------------------------------------------------------
+
+export function clearReadingHistory(): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(HISTORY_KEY);
+    progressCache.clear();
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith(PROGRESS_KEY_PREFIX)) {
+        localStorage.removeItem(key);
+      }
+    }
+  } catch (e) {
+    console.warn("[ReaderStorage] Failed to clear reading history:", e);
+  }
+}
+
+export function clearAllAnnotations(): void {
+  if (typeof window === "undefined") return;
+  try {
+    annotationsCache.clear();
+    bookmarksCache.clear();
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const key = localStorage.key(i);
+      if (key && (key.startsWith(ANNOTATIONS_KEY_PREFIX) || key.startsWith(BOOKMARKS_KEY_PREFIX))) {
+        localStorage.removeItem(key);
+      }
+    }
+  } catch (e) {
+    console.warn("[ReaderStorage] Failed to clear annotations:", e);
+  }
+}
+
+export function clearStreakData(): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.removeItem(ACTIVITY_KEY);
+  } catch (e) {
+    console.warn("[ReaderStorage] Failed to clear streak:", e);
+  }
+}
+
+export async function clearAllOfflineBooks(): Promise<void> {
+  if (typeof window === "undefined" || !("caches" in window)) return;
+  try {
+    await caches.delete("readershub-offline-books-v1");
+  } catch (e) {
+    console.warn("[ReaderStorage] Failed to delete offline cache:", e);
+  }
+}
+
+export async function factoryResetAllData(): Promise<void> {
+  if (typeof window === "undefined") return;
+  try {
+    progressCache.clear();
+    annotationsCache.clear();
+    bookmarksCache.clear();
+    memoryCache.clear();
+
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && (key.startsWith("readershub:") || key.startsWith("readers_hub_"))) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach((k) => localStorage.removeItem(k));
+
+    if ("caches" in window) {
+      await caches.delete("readershub-offline-books-v1");
+    }
+  } catch (e) {
+    console.warn("[ReaderStorage] Factory reset failed:", e);
   }
 }

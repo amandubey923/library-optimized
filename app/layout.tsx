@@ -69,6 +69,12 @@ export const metadata: Metadata = {
     icon: "/images/logo.svg",
     apple: "/images/logo.svg",
   },
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Reader's HUB",
+  },
 };
 
 export default function RootLayout({

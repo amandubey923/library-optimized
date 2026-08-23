@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Book, BOOKS, CATEGORIES } from "@/data/books";
+import { useLibrary } from "@/context/LibraryContext";
 
 interface SearchModalProps {
   isOpen: boolean;
@@ -16,6 +17,61 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
+  const { readingHistory, favorites } = useLibrary();
+
+  // Find most recently read book
+  const lastReadBook = useMemo(() => {
+    if (!readingHistory || readingHistory.length === 0) return null;
+    const sorted = [...readingHistory].sort((a, b) => (b.lastReadAt || 0) - (a.lastReadAt || 0));
+    const last = sorted[0];
+    return BOOKS.find((b) => b.id === last.bookId) || null;
+  }, [readingHistory]);
+
+  // Quick Command Palette actions
+  const quickActions = useMemo(() => {
+    const actions = [
+      ...(lastReadBook
+        ? [
+            {
+              id: "action-continue",
+              title: `Continue Reading: ${lastReadBook.title}`,
+              subtitle: `Resume from Page ${readingHistory[0]?.page || 1}`,
+              icon: "📖",
+              href: `/book/${lastReadBook.id}`,
+            },
+          ]
+        : []),
+      {
+        id: "action-library",
+        title: "Browse Complete Library",
+        subtitle: `Explore all ${BOOKS.length} masterworks`,
+        icon: "📚",
+        href: "/library",
+      },
+      {
+        id: "action-shelf",
+        title: "My Shelf & Favorites",
+        subtitle: `${favorites.length} saved volumes`,
+        icon: "🔖",
+        href: "/favorites",
+      },
+      {
+        id: "action-offline",
+        title: "Offline Books Manager",
+        subtitle: "View cached reading material",
+        icon: "📦",
+        href: "/favorites?tab=offline",
+      },
+      {
+        id: "action-stats",
+        title: "Reading Habits & Diwali Diya",
+        subtitle: "Track daily streak & stats",
+        icon: "🪔",
+        href: "/favorites?tab=stats",
+      },
+    ];
+    return actions;
+  }, [lastReadBook, readingHistory, favorites]);
 
   // Instant keyword suggestions based on actual authors and categories
   const suggestedKeywords = useMemo(() => {
@@ -69,6 +125,9 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
     setSelectedIndex(0);
   }, [query]);
 
+  // Combined navigable items
+  const totalNavigableCount = query.trim() === "" ? quickActions.length + results.length : results.length;
+
   // Handle keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -78,20 +137,33 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
         onClose();
       } else if (e.key === "ArrowDown") {
         e.preventDefault();
-        setSelectedIndex((prev) => (prev < results.length - 1 ? prev + 1 : 0));
+        setSelectedIndex((prev) => (prev < totalNavigableCount - 1 ? prev + 1 : 0));
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
-        setSelectedIndex((prev) => (prev > 0 ? prev - 1 : results.length - 1));
-      } else if (e.key === "Enter" && results[selectedIndex]) {
+        setSelectedIndex((prev) => (prev > 0 ? prev - 1 : totalNavigableCount - 1));
+      } else if (e.key === "Enter") {
         e.preventDefault();
-        router.push(`/book/${results[selectedIndex].id}`);
-        onClose();
+        if (query.trim() === "") {
+          if (selectedIndex < quickActions.length) {
+            router.push(quickActions[selectedIndex].href);
+            onClose();
+          } else {
+            const bookIdx = selectedIndex - quickActions.length;
+            if (results[bookIdx]) {
+              router.push(`/book/${results[bookIdx].id}`);
+              onClose();
+            }
+          }
+        } else if (results[selectedIndex]) {
+          router.push(`/book/${results[selectedIndex].id}`);
+          onClose();
+        }
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isOpen, results, selectedIndex, router, onClose]);
+  }, [isOpen, results, selectedIndex, router, onClose, query, quickActions, totalNavigableCount]);
 
   // Helper to highlight matching query text
   const highlightMatch = (text: string, targetQuery: string) => {
@@ -145,7 +217,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search titles, authors, philosophy, Hindi classics..."
+            placeholder="Search books, authors, philosophy, Hindi classics or commands..."
             className="w-full bg-transparent text-[var(--foreground)] placeholder-[var(--text-secondary)] text-sm sm:text-base focus:outline-none"
             aria-label="Search books"
           />
@@ -183,8 +255,44 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
 
         {/* Results List */}
         <div className="max-h-[60vh] overflow-y-auto p-3 divide-y divide-[var(--border)]/40">
-          <div className="px-3 py-1.5 text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider">
-            {query.trim() === "" ? "✨ Recommended Literary Masterworks" : `Found ${results.length} Matching Books`}
+          {/* Quick Actions (when query is empty) */}
+          {query.trim() === "" && (
+            <div className="pb-3 space-y-1">
+              <div className="px-3 py-1 text-[10px] font-bold text-[var(--accent)] uppercase tracking-wider">
+                ⚡ Quick Command Navigation
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                {quickActions.map((action, actIdx) => {
+                  const isSelected = selectedIndex === actIdx;
+                  return (
+                    <Link
+                      key={action.id}
+                      href={action.href}
+                      onClick={onClose}
+                      className={`flex items-center gap-3 p-2.5 rounded-xl border transition-all ${
+                        isSelected
+                          ? "bg-[var(--accent)]/15 border-[var(--accent)] text-[var(--foreground)] shadow-xs"
+                          : "bg-[var(--background)]/70 border-[var(--border)] hover:bg-[var(--secondary)] text-[var(--text-secondary)]"
+                      }`}
+                    >
+                      <span className="text-xl flex-shrink-0">{action.icon}</span>
+                      <div className="min-w-0 flex-1">
+                        <h5 className="font-semibold text-xs text-[var(--foreground)] truncate">
+                          {action.title}
+                        </h5>
+                        <p className="text-[10px] text-[var(--text-secondary)] truncate">
+                          {action.subtitle}
+                        </p>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          <div className="px-3 py-1.5 text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider pt-2">
+            {query.trim() === "" ? "✨ Featured Masterworks" : `Found ${results.length} Matching Books`}
           </div>
 
           {results.length === 0 ? (
@@ -205,7 +313,8 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
             </div>
           ) : (
             results.map((book, index) => {
-              const isSelected = index === selectedIndex;
+              const itemIdx = query.trim() === "" ? quickActions.length + index : index;
+              const isSelected = itemIdx === selectedIndex;
               return (
                 <Link
                   key={book.id}
@@ -270,7 +379,7 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
               open
             </span>
           </div>
-          <span>Reader&apos;s HUB Intelligent Search</span>
+          <span>Reader&apos;s HUB Command Palette 2.0</span>
         </div>
       </div>
     </div>

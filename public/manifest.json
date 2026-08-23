@@ -1,0 +1,24 @@
+{
+  "name": "Reader's HUB — Digital Reading Environment",
+  "short_name": "Reader's HUB",
+  "description": "A private, distraction-free digital reading platform and study workspace with offline book access.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0e1017",
+  "theme_color": "#0e1017",
+  "orientation": "any",
+  "categories": ["books", "education", "productivity", "lifestyle"],
+  "icons": [
+    {
+      "src": "/images/logo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/images/logo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
+

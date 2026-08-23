@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { Book } from "@/data/books";
 import { useLibrary } from "@/context/LibraryContext";
 import DrawingCanvas from "@/components/reader/DrawingCanvas";
@@ -130,7 +131,13 @@ export default function BookReader({ book }: BookReaderProps) {
 
   // Table of Contents State
   const [isTocOpen, setIsTocOpen] = useState<boolean>(false);
+  const [tocActiveTab, setTocActiveTab] = useState<"toc" | "annotated">("toc");
   const [tableOfContents, setTableOfContents] = useState<TocItem[]>([]);
+
+  // Page Thumbnail Navigator State
+  const [isThumbnailDrawerOpen, setIsThumbnailDrawerOpen] = useState<boolean>(false);
+  const [thumbnailFilter, setThumbnailFilter] = useState<"all" | "annotated" | "bookmarked">("all");
+  const [pdfLoadError, setPdfLoadError] = useState<string | null>(null);
 
   // -------------------------------------------------------------
   // Advanced Study, Annotations & Bookmarks State
@@ -297,6 +304,35 @@ export default function BookReader({ book }: BookReaderProps) {
   const zoomIn = () => updatePref("zoom", Math.min(150, prefs.zoom + 10));
   const zoomOut = () => updatePref("zoom", Math.max(70, prefs.zoom - 10));
   const resetZoom = () => updatePref("zoom", 100);
+
+  // Derived Annotated Pages Index
+  const annotatedPagesList = useMemo(() => {
+    const pageMap: Record<number, { highlights: number; notes: number; drawings: number; bookmark: boolean; noteSnippets: string[] }> = {};
+    (annotations.highlights || []).forEach((h) => {
+      if (!pageMap[h.page]) pageMap[h.page] = { highlights: 0, notes: 0, drawings: 0, bookmark: false, noteSnippets: [] };
+      pageMap[h.page].highlights++;
+    });
+    (annotations.notes || []).forEach((n) => {
+      if (!pageMap[n.page]) pageMap[n.page] = { highlights: 0, notes: 0, drawings: 0, bookmark: false, noteSnippets: [] };
+      pageMap[n.page].notes++;
+      if (n.note) pageMap[n.page].noteSnippets.push(n.note);
+    });
+    Object.keys(annotations.drawings || {}).forEach((pStr) => {
+      const p = Number(pStr);
+      if ((annotations.drawings[p] || []).length > 0) {
+        if (!pageMap[p]) pageMap[p] = { highlights: 0, notes: 0, drawings: 0, bookmark: false, noteSnippets: [] };
+        pageMap[p].drawings += annotations.drawings[p].length;
+      }
+    });
+    (bookmarks || []).forEach((b) => {
+      if (!pageMap[b.page]) pageMap[b.page] = { highlights: 0, notes: 0, drawings: 0, bookmark: false, noteSnippets: [] };
+      pageMap[b.page].bookmark = true;
+    });
+
+    return Object.entries(pageMap)
+      .map(([pageStr, data]) => ({ page: Number(pageStr), ...data }))
+      .sort((a, b) => a.page - b.page);
+  }, [annotations, bookmarks]);
 
   // 1.5. Intelligent Active Reading Timer (Diwali Diya Tracker)
   useEffect(() => {
@@ -478,7 +514,7 @@ export default function BookReader({ book }: BookReaderProps) {
       .catch((err: any) => {
         console.error("Error loading PDF document:", err);
         if (!isCancelled) {
-          setLoadingText("Opening book...");
+          setPdfLoadError(err?.message || "Unable to fetch or parse document.");
           setLoading(false);
         }
       });
@@ -524,7 +560,7 @@ export default function BookReader({ book }: BookReaderProps) {
         const containerWidth = container ? container.clientWidth : 1000;
         const containerHeight = container ? container.clientHeight : 700;
 
-        const isDouble = prefs.layoutMode === "double" && !isMobile && !isFocusMode;
+        const isDouble = prefs.layoutMode === "double" && !isMobile;
         const availableWidth = isDouble ? (containerWidth - 90) / 2 : containerWidth - 40;
         const availableHeight = containerHeight - 120;
 
@@ -583,7 +619,7 @@ export default function BookReader({ book }: BookReaderProps) {
   useEffect(() => {
     if (loading || !pdfDocRef.current || numPages === 0) return;
 
-    const isDouble = prefs.layoutMode === "double" && !isMobile && !isFocusMode;
+    const isDouble = prefs.layoutMode === "double" && !isMobile;
 
     if (isDouble) {
       let leftPage: number;
@@ -622,7 +658,7 @@ export default function BookReader({ book }: BookReaderProps) {
   const handleNext = () => {
     if (isFlipping) return;
     registerActivity();
-    const isDouble = prefs.layoutMode === "double" && !isMobile && !isFocusMode;
+    const isDouble = prefs.layoutMode === "double" && !isMobile;
     const step = isDouble ? (currentPage === 1 ? 1 : 2) : 1;
 
     if (currentPage + step <= numPages + 1) {
@@ -639,7 +675,7 @@ export default function BookReader({ book }: BookReaderProps) {
   const handlePrev = () => {
     if (isFlipping) return;
     registerActivity();
-    const isDouble = prefs.layoutMode === "double" && !isMobile && !isFocusMode;
+    const isDouble = prefs.layoutMode === "double" && !isMobile;
     const step = isDouble ? (currentPage <= 2 ? 1 : 2) : 1;
 
     if (currentPage - step >= 1) {
@@ -675,6 +711,29 @@ export default function BookReader({ book }: BookReaderProps) {
       setIsFullscreen(false);
     }
   };
+
+  // 7b. Focus Mode Toggle with Automatic Native Fullscreen
+  const toggleFocusMode = useCallback(
+    (enable?: boolean) => {
+      const nextState = typeof enable === "boolean" ? enable : !isFocusMode;
+      setIsFocusMode(nextState);
+
+      if (nextState) {
+        if (!document.fullscreenElement && containerRef.current) {
+          containerRef.current.requestFullscreen().catch(() => {});
+          setIsFullscreen(true);
+        }
+        showToast("Focus Mode On ✨");
+      } else {
+        if (document.fullscreenElement) {
+          document.exitFullscreen().catch(() => {});
+          setIsFullscreen(false);
+        }
+        showToast("Focus Mode Off");
+      }
+    },
+    [isFocusMode, showToast]
+  );
 
   // 8. Bookmarks Toggle
   const handleToggleBookmark = () => {
@@ -883,8 +942,29 @@ export default function BookReader({ book }: BookReaderProps) {
       // Focus Mode Shortcut (Z)
       if (e.key.toLowerCase() === "z" && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
-        setIsFocusMode((prev) => !prev);
-        showToast(isFocusMode ? "Focus Mode Off" : "Focus Mode On ✨");
+        toggleFocusMode();
+        return;
+      }
+
+      // Zoom Shortcuts (Ctrl/Cmd +, Ctrl/Cmd -, Ctrl/Cmd 0)
+      if ((e.ctrlKey || e.metaKey) && (e.key === "+" || e.key === "=")) {
+        e.preventDefault();
+        const nextZoom = Math.min(150, prefs.zoom + 10);
+        updatePref("zoom", nextZoom);
+        showToast(`Zoom: ${nextZoom}% 🔍`);
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === "-" || e.key === "_")) {
+        e.preventDefault();
+        const nextZoom = Math.max(70, prefs.zoom - 10);
+        updatePref("zoom", nextZoom);
+        showToast(`Zoom: ${nextZoom}% 🔍`);
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && (e.key === "0")) {
+        e.preventDefault();
+        updatePref("zoom", 100);
+        showToast("Zoom: 100% (Reset) 🔍");
         return;
       }
 
@@ -974,7 +1054,7 @@ export default function BookReader({ book }: BookReaderProps) {
           if (noteModal.isOpen) setNoteModal((prev) => ({ ...prev, isOpen: false }));
           if (textBoxDialog.isOpen) setTextBoxDialog((prev) => ({ ...prev, isOpen: false }));
           if (isStudyMode) setIsStudyMode(false);
-          if (isFocusMode) setIsFocusMode(false);
+          if (isFocusMode) toggleFocusMode(false);
           break;
       }
     };
@@ -1002,6 +1082,7 @@ export default function BookReader({ book }: BookReaderProps) {
     isSessionCompleteOpen,
     isSearchInBookOpen,
     isFocusMode,
+    toggleFocusMode,
     selectionPopover,
     noteModal.isOpen,
     textBoxDialog.isOpen,
@@ -1171,7 +1252,7 @@ export default function BookReader({ book }: BookReaderProps) {
     }
   };
 
-  const isDouble = prefs.layoutMode === "double" && !isMobile && !isFocusMode;
+  const isDouble = prefs.layoutMode === "double" && !isMobile;
   const progressPercent = numPages > 0 ? Math.round((currentPage / numPages) * 100) : 0;
   const isBookComplete = numPages > 0 && currentPage >= numPages;
 
@@ -1254,7 +1335,7 @@ export default function BookReader({ book }: BookReaderProps) {
       {isFocusMode && (
         <div className="absolute top-4 right-4 z-40 flex items-center gap-2 animate-fade-in">
           <button
-            onClick={() => setIsFocusMode(false)}
+            onClick={() => toggleFocusMode(false)}
             className="px-3.5 py-1.5 rounded-2xl bg-[var(--card)]/90 backdrop-blur-xl border border-[var(--border)] text-xs font-bold text-[var(--foreground)] hover:border-[var(--accent)] shadow-xl flex items-center gap-1.5 cursor-pointer"
             title="Exit Focus Mode (Z)"
           >
@@ -1296,6 +1377,20 @@ export default function BookReader({ book }: BookReaderProps) {
               <span className="hidden sm:inline font-semibold">Find</span>
             </button>
 
+            {/* Page Thumbnail Navigator */}
+            <button
+              onClick={() => setIsThumbnailDrawerOpen(true)}
+              className={`p-1.5 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1 cursor-pointer ${
+                isThumbnailDrawerOpen
+                  ? "bg-[var(--accent)] text-[var(--primary-foreground)] border-[var(--accent)]"
+                  : "bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] border-[var(--border)]"
+              }`}
+              title="Page Thumbnail Navigator (▦)"
+            >
+              <span>▦</span>
+              <span className="hidden sm:inline font-semibold">Pages</span>
+            </button>
+
             <div className="flex flex-col text-left truncate ml-1">
               <h3 className="text-xs sm:text-sm font-bold font-serif text-[var(--foreground)] truncate max-w-[110px] sm:max-w-xs">
                 {book.title}
@@ -1311,6 +1406,7 @@ export default function BookReader({ book }: BookReaderProps) {
             {/* Structured Reading Session */}
             <button
               onClick={() => setIsSessionModalOpen(true)}
+              aria-label="Start Structured Reading Session"
               className={`p-2 sm:px-3 sm:py-1.5 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1.5 cursor-pointer ${
                 activeSession && activeSession.isActive
                   ? "bg-[var(--accent)] text-[var(--primary-foreground)] border-[var(--accent)] shadow-md animate-pulse"
@@ -1328,7 +1424,8 @@ export default function BookReader({ book }: BookReaderProps) {
 
             {/* Focus Mode Button */}
             <button
-              onClick={() => setIsFocusMode(true)}
+              onClick={() => toggleFocusMode(true)}
+              aria-label="Enter Distraction-Free Focus Mode"
               className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] text-xs font-semibold border border-[var(--border)] transition-all flex items-center gap-1 cursor-pointer"
               title="Enter Distraction-Free Focus Mode (Z)"
             >
@@ -1339,6 +1436,7 @@ export default function BookReader({ book }: BookReaderProps) {
             {/* Offline Save */}
             <button
               onClick={handleToggleOffline}
+              aria-label={isOfflineSaved ? "Remove Offline Copy" : "Save Book for Offline Reading"}
               className={`p-2 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1 cursor-pointer ${
                 isOfflineSaved
                   ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
@@ -1353,6 +1451,7 @@ export default function BookReader({ book }: BookReaderProps) {
             {/* Reading Memory */}
             <button
               onClick={() => setIsMemoryOpen(true)}
+              aria-label="Open My Reading Memory"
               className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] text-xs font-semibold border border-[var(--border)] transition-all flex items-center gap-1 cursor-pointer"
               title="Open My Reading Memory"
             >
@@ -1363,6 +1462,7 @@ export default function BookReader({ book }: BookReaderProps) {
             {/* Bookmark Button */}
             <button
               onClick={handleToggleBookmark}
+              aria-label={isCurrentPageBookmarked ? "Remove Bookmark" : "Bookmark this Page"}
               className={`p-2 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1 cursor-pointer ${
                 isCurrentPageBookmarked
                   ? "bg-amber-500/20 text-amber-400 border-amber-500/40 shadow-xs"
@@ -1377,6 +1477,7 @@ export default function BookReader({ book }: BookReaderProps) {
             {!isMobile && (
               <button
                 onClick={() => updatePref("layoutMode", isDouble ? "single" : "double")}
+                aria-label={isDouble ? "Switch to Single Page" : "Switch to Open Book 2-Page"}
                 className="px-2 py-1.5 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] text-xs font-semibold border border-[var(--border)] transition-all cursor-pointer hidden md:flex items-center gap-1"
                 title={isDouble ? "Switch to Single Page" : "Switch to Open Book (2-Page)"}
               >
@@ -1387,6 +1488,7 @@ export default function BookReader({ book }: BookReaderProps) {
             {/* Study Mode Toggle */}
             <button
               onClick={() => setIsStudyMode(!isStudyMode)}
+              aria-label="Toggle Study and Annotation Suite"
               className={`p-2 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1 cursor-pointer ${
                 isStudyMode
                   ? "bg-[var(--accent)] text-[var(--primary-foreground)] border-[var(--accent)] shadow-md"
@@ -1400,6 +1502,7 @@ export default function BookReader({ book }: BookReaderProps) {
             {/* Notes Drawer */}
             <button
               onClick={() => setIsAnnotationDrawerOpen(true)}
+              aria-label="View Highlights, Notes and Bookmarks"
               className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] text-xs font-semibold border border-[var(--border)] transition-all flex items-center gap-1 cursor-pointer"
               title="View Highlights, Notes & Bookmarks"
             >
@@ -1414,6 +1517,7 @@ export default function BookReader({ book }: BookReaderProps) {
             {/* Lighting Controls */}
             <button
               onClick={() => setShowSettings(!showSettings)}
+              aria-label="Eye Comfort and Lighting Controls"
               className="p-2 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] text-xs border border-[var(--border)] transition-all cursor-pointer"
               title="Eye Comfort & Lighting Controls"
             >
@@ -1423,6 +1527,7 @@ export default function BookReader({ book }: BookReaderProps) {
             {/* Fullscreen Button */}
             <button
               onClick={toggleFullscreen}
+              aria-label="Toggle Fullscreen"
               className="p-2 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] text-xs border border-[var(--border)] transition-all cursor-pointer"
               title="Toggle Fullscreen (F)"
             >
@@ -1598,44 +1703,226 @@ export default function BookReader({ book }: BookReaderProps) {
       />
 
       {/* -------------------------------------------------------------
-       * Table of Contents Drawer
+       * Table of Contents & Annotated Page Index Drawer
        * ------------------------------------------------------------- */}
       {isTocOpen && (
         <div className="fixed inset-0 z-50 flex justify-start bg-black/60 backdrop-blur-sm animate-fade-in text-left">
           <div className="w-full max-w-sm h-full bg-[var(--card)] border-r border-[var(--border)] shadow-2xl flex flex-col justify-between overflow-hidden animate-slide-left z-50">
-            <div className="p-5 border-b border-[var(--border)] flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-base">📑</span>
-                <h4 className="font-serif font-bold text-sm text-[var(--foreground)]">
-                  Table of Contents
-                </h4>
+            <div className="p-4 border-b border-[var(--border)] space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">📑</span>
+                  <h4 className="font-serif font-bold text-sm text-[var(--foreground)]">
+                    Navigation &amp; Index
+                  </h4>
+                </div>
+                <button
+                  onClick={() => setIsTocOpen(false)}
+                  className="w-7 h-7 rounded-xl bg-[var(--secondary)] text-xs hover:text-[var(--foreground)] flex items-center justify-center cursor-pointer"
+                >
+                  ✕
+                </button>
               </div>
-              <button
-                onClick={() => setIsTocOpen(false)}
-                className="w-7 h-7 rounded-xl bg-[var(--secondary)] text-xs hover:text-[var(--foreground)] flex items-center justify-center cursor-pointer"
-              >
-                ✕
-              </button>
+
+              {/* Tabs: Chapters vs Annotated Pages */}
+              <div className="flex items-center gap-1 p-1 rounded-xl bg-[var(--secondary)]/60 border border-[var(--border)] text-xs font-semibold">
+                <button
+                  onClick={() => setTocActiveTab("toc")}
+                  className={`flex-1 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                    tocActiveTab === "toc"
+                      ? "bg-[var(--primary)] text-[var(--primary-foreground)] shadow-xs"
+                      : "text-[var(--text-secondary)] hover:text-[var(--foreground)]"
+                  }`}
+                >
+                  Chapters ({tableOfContents.length})
+                </button>
+                <button
+                  onClick={() => setTocActiveTab("annotated")}
+                  className={`flex-1 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                    tocActiveTab === "annotated"
+                      ? "bg-[var(--primary)] text-[var(--primary-foreground)] shadow-xs"
+                      : "text-[var(--text-secondary)] hover:text-[var(--foreground)]"
+                  }`}
+                >
+                  <span>Annotated</span>
+                  <span className="px-1.5 py-0.2 rounded-full bg-[var(--accent)] text-[var(--primary-foreground)] text-[9px] font-bold">
+                    {annotatedPagesList.length}
+                  </span>
+                </button>
+              </div>
             </div>
 
             <div className="flex-1 overflow-y-auto p-4 space-y-2">
-              {tableOfContents.map((item, idx) => (
-                <button
-                  key={`${item.page}_${idx}`}
-                  onClick={() => handleJumpToPage(item.page)}
-                  className={`w-full p-3 rounded-2xl text-left text-xs transition-all flex items-center justify-between border cursor-pointer ${
-                    currentPage >= item.page && (idx === tableOfContents.length - 1 || currentPage < tableOfContents[idx + 1].page)
-                      ? "bg-[var(--accent)]/15 border-[var(--accent)] text-[var(--accent)] font-bold shadow-xs"
-                      : "bg-[var(--secondary)]/40 hover:bg-[var(--secondary)] border-[var(--border)] text-[var(--foreground)] font-medium"
-                  }`}
-                >
-                  <span className="truncate mr-3">{item.title}</span>
-                  <span className="text-[10px] font-mono opacity-80 whitespace-nowrap">Page {item.page}</span>
-                </button>
-              ))}
+              {tocActiveTab === "toc" ? (
+                tableOfContents.map((item, idx) => (
+                  <button
+                    key={`${item.page}_${idx}`}
+                    onClick={() => {
+                      handleJumpToPage(item.page);
+                      setIsTocOpen(false);
+                    }}
+                    className={`w-full p-3 rounded-2xl text-left text-xs transition-all flex items-center justify-between border cursor-pointer ${
+                      currentPage >= item.page && (idx === tableOfContents.length - 1 || currentPage < tableOfContents[idx + 1].page)
+                        ? "bg-[var(--accent)]/15 border-[var(--accent)] text-[var(--accent)] font-bold shadow-xs"
+                        : "bg-[var(--secondary)]/40 hover:bg-[var(--secondary)] border-[var(--border)] text-[var(--foreground)] font-medium"
+                    }`}
+                  >
+                    <span className="truncate mr-3">{item.title}</span>
+                    <span className="text-[10px] font-mono opacity-80 whitespace-nowrap">Page {item.page}</span>
+                  </button>
+                ))
+              ) : (
+                annotatedPagesList.length === 0 ? (
+                  <div className="text-center py-10 text-xs text-[var(--text-secondary)]">
+                    No annotated pages yet. Highlight, add notes, or draw on pages to index them here.
+                  </div>
+                ) : (
+                  annotatedPagesList.map((item) => (
+                    <button
+                      key={item.page}
+                      onClick={() => {
+                        handleJumpToPage(item.page);
+                        setIsTocOpen(false);
+                      }}
+                      className={`w-full p-3 rounded-2xl text-left text-xs transition-all border space-y-1.5 cursor-pointer ${
+                        currentPage === item.page
+                          ? "bg-[var(--accent)]/15 border-[var(--accent)] text-[var(--accent)] font-bold shadow-xs"
+                          : "bg-[var(--secondary)]/40 hover:bg-[var(--secondary)] border-[var(--border)] text-[var(--foreground)]"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold font-serif">Page {item.page}</span>
+                        <div className="flex items-center gap-1.5 text-[10px]">
+                          {item.bookmark && <span>🔖</span>}
+                          {item.highlights > 0 && <span className="text-amber-400">🖍️ {item.highlights}</span>}
+                          {item.notes > 0 && <span className="text-sky-400">📝 {item.notes}</span>}
+                          {item.drawings > 0 && <span className="text-purple-400">🎨 {item.drawings}</span>}
+                        </div>
+                      </div>
+                      {item.noteSnippets.length > 0 && (
+                        <p className="text-[10px] text-[var(--text-secondary)] italic line-clamp-1 border-l border-[var(--border)] pl-1.5">
+                          &ldquo;{item.noteSnippets[0]}&rdquo;
+                        </p>
+                      )}
+                    </button>
+                  ))
+                )
+              )}
             </div>
           </div>
           <div className="flex-1" onClick={() => setIsTocOpen(false)} />
+        </div>
+      )}
+
+      {/* -------------------------------------------------------------
+       * Page Thumbnail Navigator Drawer (▦)
+       * ------------------------------------------------------------- */}
+      {isThumbnailDrawerOpen && (
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/70 backdrop-blur-sm animate-fade-in text-left">
+          <div className="flex-1" onClick={() => setIsThumbnailDrawerOpen(false)} />
+          <div className="w-full max-w-md h-full bg-[var(--card)] border-l border-[var(--border)] shadow-2xl flex flex-col justify-between overflow-hidden animate-slide-right z-50">
+            {/* Header */}
+            <div className="p-4 border-b border-[var(--border)] space-y-3 bg-[var(--card)]/95 backdrop-blur-xl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-base">▦</span>
+                  <div>
+                    <h4 className="font-serif font-bold text-sm text-[var(--foreground)]">
+                      Page Thumbnail Navigator
+                    </h4>
+                    <p className="text-[10px] text-[var(--text-secondary)]">
+                      Jump across {numPages || "all"} pages with study markers
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsThumbnailDrawerOpen(false)}
+                  className="w-7 h-7 rounded-xl bg-[var(--secondary)] text-xs hover:text-[var(--foreground)] flex items-center justify-center cursor-pointer"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Filter Pills */}
+              <div className="flex items-center gap-1.5 text-xs">
+                {[
+                  { id: "all", label: `All (${numPages})` },
+                  { id: "annotated", label: `Marked (${annotatedPagesList.length})` },
+                  { id: "bookmarked", label: `Bookmarked (${bookmarks.length})` },
+                ].map((f) => (
+                  <button
+                    key={f.id}
+                    onClick={() => setThumbnailFilter(f.id as any)}
+                    className={`px-3 py-1 rounded-xl text-[11px] font-bold transition-all cursor-pointer ${
+                      thumbnailFilter === f.id
+                        ? "bg-[var(--primary)] text-[var(--primary-foreground)] shadow-xs"
+                        : "bg-[var(--secondary)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)]"
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Thumbnail Grid */}
+            <div className="flex-1 overflow-y-auto p-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {Array.from({ length: numPages || 1 }).map((_, idx) => {
+                const pageNum = idx + 1;
+                const isCurrent = pageNum === currentPage;
+                const isBookmarked = (bookmarks || []).some((b) => b.page === pageNum);
+                const annCount = pageAnnotationCount(pageNum);
+                const isAnnotated = annCount > 0 || isBookmarked;
+
+                if (thumbnailFilter === "annotated" && !isAnnotated) return null;
+                if (thumbnailFilter === "bookmarked" && !isBookmarked) return null;
+
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => {
+                      handleJumpToPage(pageNum);
+                      setIsThumbnailDrawerOpen(false);
+                    }}
+                    className={`group relative flex flex-col items-center p-3 rounded-2xl border transition-all text-center cursor-pointer ${
+                      isCurrent
+                        ? "bg-[var(--accent)]/15 border-[var(--accent)] ring-2 ring-[var(--accent)] text-[var(--foreground)] shadow-md"
+                        : "bg-[var(--secondary)]/30 hover:bg-[var(--secondary)] border-[var(--border)] text-[var(--text-secondary)]"
+                    }`}
+                  >
+                    {/* Simulated page preview container */}
+                    <div className="w-full aspect-[3/4] rounded-lg bg-[var(--background)] border border-[var(--border)]/80 flex flex-col items-center justify-between p-2 mb-2 relative overflow-hidden group-hover:scale-102 transition-transform shadow-inner">
+                      <span className="text-[10px] font-mono font-bold text-[var(--text-secondary)]">
+                        P. {pageNum}
+                      </span>
+
+                      {/* Mini skeleton lines */}
+                      <div className="w-full space-y-1 my-auto opacity-40">
+                        <div className="h-1 bg-[var(--foreground)] rounded w-full" />
+                        <div className="h-1 bg-[var(--foreground)] rounded w-4/5" />
+                        <div className="h-1 bg-[var(--foreground)] rounded w-3/4" />
+                      </div>
+
+                      {/* Study Indicator Badges on Thumbnail */}
+                      <div className="flex items-center gap-1 text-[10px] z-10">
+                        {isBookmarked && <span title="Bookmarked">🔖</span>}
+                        {annCount > 0 && (
+                          <span
+                            className="w-2 h-2 rounded-full bg-[var(--accent)] shadow-xs animate-pulse"
+                            title={`${annCount} study markings`}
+                          />
+                        )}
+                      </div>
+                    </div>
+
+                    <span className="text-xs font-serif font-bold text-[var(--foreground)]">
+                      Page {pageNum}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
         </div>
       )}
 
@@ -2020,7 +2307,38 @@ export default function BookReader({ book }: BookReaderProps) {
        * Main Book Viewport Canvas
        * ------------------------------------------------------------- */}
       <div className="flex-1 flex items-center justify-center relative p-2 sm:p-6 w-full h-full overflow-hidden">
-        {loading ? (
+        {pdfLoadError ? (
+          <div className="flex flex-col items-center justify-center p-8 text-center max-w-md mx-auto glass-card rounded-3xl border border-rose-500/30 bg-[var(--card)] space-y-4 shadow-2xl animate-fade-in">
+            <div className="w-14 h-14 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-3xl flex items-center justify-center text-rose-400">
+              ⚠️
+            </div>
+            <h4 className="font-serif font-bold text-base text-[var(--foreground)]">
+              Unable to Open Book
+            </h4>
+            <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+              We encountered a network or loading interruption while reading &ldquo;{book.title}&rdquo;.
+            </p>
+            <div className="flex flex-wrap gap-2 justify-center pt-2">
+              <button
+                onClick={() => {
+                  setPdfLoadError(null);
+                  setLoading(true);
+                  setLoadingText("Retrying connection...");
+                  window.location.reload();
+                }}
+                className="px-4 py-2 rounded-xl bg-[var(--primary)] text-[var(--primary-foreground)] text-xs font-bold shadow-md hover:scale-105 transition-transform cursor-pointer"
+              >
+                Retry Loading ↻
+              </button>
+              <Link
+                href={`/book/${book.id}`}
+                className="px-4 py-2 rounded-xl bg-[var(--secondary)] text-[var(--text-secondary)] hover:text-[var(--foreground)] text-xs font-semibold border border-[var(--border)]"
+              >
+                Book Overview →
+              </Link>
+            </div>
+          </div>
+        ) : loading ? (
           <div className="flex flex-col items-center gap-3 text-center animate-pulse">
             <div className="w-12 h-12 rounded-2xl bg-[var(--accent)]/15 border border-[var(--accent)]/30 text-2xl flex items-center justify-center text-[var(--accent)]">
               📖

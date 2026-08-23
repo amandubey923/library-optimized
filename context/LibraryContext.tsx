@@ -24,6 +24,11 @@ import {
   isBookOffline as checkIsBookOffline,
   cacheBookOffline as storeBookOffline,
   removeBookOffline as deleteBookOffline,
+  clearReadingHistory as purgeReadingHistory,
+  clearAllAnnotations as purgeAllAnnotations,
+  clearStreakData as purgeStreakData,
+  clearAllOfflineBooks as purgeAllOfflineBooks,
+  factoryResetAllData as purgeFactoryResetAll,
 } from "@/lib/reader-storage";
 
 export interface ReadingProgressItem {
@@ -92,6 +97,12 @@ interface LibraryContextType {
   checkOfflineStatus: (bookId: string, pdfUrl: string) => Promise<boolean>;
   saveBookOffline: (bookId: string, pdfUrl: string) => Promise<boolean>;
   removeBookOffline: (bookId: string, pdfUrl: string) => Promise<boolean>;
+  // Granular Reset & Recovery
+  clearAllProgress: () => void;
+  clearAnnotations: () => void;
+  clearStreak: () => void;
+  clearOfflineStorage: () => Promise<void>;
+  factoryReset: () => Promise<void>;
 }
 
 const LibraryContext = createContext<LibraryContextType | undefined>(undefined);
@@ -374,6 +385,51 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     return res;
   }, [refreshStats, showToast]);
 
+  // Granular Reset Actions
+  const clearAllProgress = useCallback(() => {
+    purgeReadingHistory();
+    setReadingHistory([]);
+    refreshStats();
+    showToast("Reading history and progress cleared 🧹");
+  }, [refreshStats, showToast]);
+
+  const clearAnnotations = useCallback(() => {
+    purgeAllAnnotations();
+    refreshStats();
+    showToast("All annotations and bookmarks cleared 🧹");
+  }, [refreshStats, showToast]);
+
+  const clearStreak = useCallback(() => {
+    purgeStreakData();
+    setStreakData({
+      daily: {},
+      currentStreak: 0,
+      longestStreak: 0,
+      lastQualifiedDate: null,
+    });
+    refreshStats();
+    showToast("Daily reading streak reset 🪔");
+  }, [refreshStats, showToast]);
+
+  const clearOfflineStorage = useCallback(async () => {
+    await purgeAllOfflineBooks();
+    showToast("Offline book cache cleared 📦");
+  }, [showToast]);
+
+  const factoryReset = useCallback(async () => {
+    await purgeFactoryResetAll();
+    setFavorites([]);
+    setReadingHistory([]);
+    setStreakData({
+      daily: {},
+      currentStreak: 0,
+      longestStreak: 0,
+      lastQualifiedDate: null,
+    });
+    refreshStats();
+    showToast("All local data reset to defaults ✨");
+  }, [refreshStats, showToast]);
+
   // Derive actual book objects
   const favoriteBooks = mounted
     ? favorites
@@ -436,6 +492,11 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
         checkOfflineStatus,
         saveBookOffline,
         removeBookOffline,
+        clearAllProgress,
+        clearAnnotations,
+        clearStreak,
+        clearOfflineStorage,
+        factoryReset,
       }}
     >
       {children}
