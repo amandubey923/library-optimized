@@ -1,6 +1,6 @@
 /**
- * Reader's HUB — Centralized Reader Storage Utility
- * Namespaced browser-local persistence for Reading Progress, Bookmarks, Highlights, Notes, Study Annotations, Daily Reading Streak (Diwali Diya), and Backup/Export.
+ * Reader's HUB — Centralized Reader Storage Utility (Optimized & In-Memory Cached)
+ * Namespaced browser-local persistence for Reading Progress, Bookmarks, Highlights, Notes, Study Annotations, Daily Reading Streak (Diwali Diya), Reading Memory, and Offline Cache.
  */
 
 export interface BookmarkItem {
@@ -88,6 +88,27 @@ export interface ReadingStreakData {
   lastQualifiedDate: string | null;
 }
 
+export interface ReadingTimelineEvent {
+  id: string;
+  bookId: string;
+  timestamp: number;
+  startPage: number;
+  endPage: number;
+  durationSeconds: number;
+  highlightsAdded: number;
+  notesAdded: number;
+  bookmarksAdded: number;
+}
+
+export interface BookReadingMemory {
+  bookId: string;
+  totalSeconds: number;
+  sessionsCount: number;
+  firstReadAt: number;
+  lastReadAt: number;
+  timeline: ReadingTimelineEvent[];
+}
+
 export interface ReadingStats {
   booksStarted: number;
   booksCompleted: number;
@@ -110,6 +131,7 @@ export interface ReaderHubExportData {
   annotations: Record<string, BookAnnotations>;
   bookmarks: Record<string, BookmarkItem[]>;
   readingActivity?: ReadingStreakData;
+  readingMemories?: Record<string, BookReadingMemory>;
   preferences?: any;
 }
 
@@ -124,9 +146,17 @@ export interface ReadingProgressItem {
 const PROGRESS_KEY_PREFIX = "readershub:progress:v1";
 const ANNOTATIONS_KEY_PREFIX = "readershub:annotations:v1";
 const BOOKMARKS_KEY_PREFIX = "readershub:bookmarks:v1";
+const MEMORY_KEY_PREFIX = "readershub:memory:v1";
 const ACTIVITY_KEY = "readershub:reading-activity:v1";
 const FAVORITES_KEY = "readers_hub_favorites_v2";
 const HISTORY_KEY = "readers_hub_reading_progress_v2";
+const OFFLINE_CACHE_NAME = "readershub-offline-books-v1";
+
+// High-speed in-memory caches to reduce redundant JSON parsing & LocalStorage overhead
+const progressCache = new Map<string, ReadingProgressData>();
+const annotationsCache = new Map<string, BookAnnotations>();
+const bookmarksCache = new Map<string, BookmarkItem[]>();
+const memoryCache = new Map<string, BookReadingMemory>();
 
 export const DAILY_READING_GOAL_SECONDS = 15 * 60; // 15 minutes = 900 seconds
 
@@ -294,15 +324,161 @@ export function addActiveReadingTime(secondsToAdd: number): {
 }
 
 // -------------------------------------------------------------
+// My Reading Memory Storage & Timeline
+// -------------------------------------------------------------
+
+export function getBookReadingMemory(bookId: string): BookReadingMemory {
+  if (memoryCache.has(bookId)) {
+    return memoryCache.get(bookId)!;
+  }
+
+  const defaultMemory: BookReadingMemory = {
+    bookId,
+    totalSeconds: 0,
+    sessionsCount: 0,
+    firstReadAt: Date.now(),
+    lastReadAt: Date.now(),
+    timeline: [],
+  };
+
+  if (typeof window === "undefined" || !bookId) return defaultMemory;
+
+  try {
+    const raw = localStorage.getItem(`${MEMORY_KEY_PREFIX}:${bookId}`);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      const mem = {
+        bookId,
+        totalSeconds: parsed.totalSeconds || 0,
+        sessionsCount: parsed.sessionsCount || (parsed.timeline ? parsed.timeline.length : 0),
+        firstReadAt: parsed.firstReadAt || Date.now(),
+        lastReadAt: parsed.lastReadAt || Date.now(),
+        timeline: Array.isArray(parsed.timeline) ? parsed.timeline : [],
+      };
+      memoryCache.set(bookId, mem);
+      return mem;
+    }
+  } catch (e) {
+    console.warn(`[ReaderStorage] Failed to read memory for ${bookId}:`, e);
+  }
+
+  memoryCache.set(bookId, defaultMemory);
+  return defaultMemory;
+}
+
+export function recordReadingMemorySession(event: Omit<ReadingTimelineEvent, "id">): void {
+  if (typeof window === "undefined" || !event.bookId) return;
+
+  try {
+    const mem = getBookReadingMemory(event.bookId);
+    const newEvent: ReadingTimelineEvent = {
+      ...event,
+      id: `mem_ev_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+    };
+
+    mem.totalSeconds += event.durationSeconds;
+    mem.sessionsCount += 1;
+    mem.lastReadAt = event.timestamp;
+    if (!mem.firstReadAt || mem.firstReadAt > event.timestamp) {
+      mem.firstReadAt = event.timestamp;
+    }
+
+    // Keep up to 50 recent session events per book
+    mem.timeline = [newEvent, ...mem.timeline].slice(0, 50);
+
+    memoryCache.set(event.bookId, mem);
+    localStorage.setItem(`${MEMORY_KEY_PREFIX}:${event.bookId}`, JSON.stringify(mem));
+  } catch (e) {
+    console.warn(`[ReaderStorage] Failed to record memory session:`, e);
+  }
+}
+
+export function getAllReadingMemories(): Record<string, BookReadingMemory> {
+  const result: Record<string, BookReadingMemory> = {};
+  if (typeof window === "undefined") return result;
+
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith(MEMORY_KEY_PREFIX)) {
+        const bookId = key.replace(`${MEMORY_KEY_PREFIX}:`, "");
+        result[bookId] = getBookReadingMemory(bookId);
+      }
+    }
+  } catch (e) {
+    console.warn("[ReaderStorage] Error retrieving all reading memories:", e);
+  }
+
+  return result;
+}
+
+// -------------------------------------------------------------
+// Offline Book Caching (Cache API)
+// -------------------------------------------------------------
+
+export async function isBookOffline(bookId: string, pdfUrl: string): Promise<boolean> {
+  if (typeof window === "undefined" || !("caches" in window) || !pdfUrl) return false;
+  try {
+    const cache = await caches.open(OFFLINE_CACHE_NAME);
+    const match = await cache.match(pdfUrl);
+    return Boolean(match);
+  } catch {
+    return false;
+  }
+}
+
+export async function cacheBookOffline(bookId: string, pdfUrl: string): Promise<boolean> {
+  if (typeof window === "undefined" || !("caches" in window) || !pdfUrl) return false;
+  try {
+    const cache = await caches.open(OFFLINE_CACHE_NAME);
+    const response = await fetch(pdfUrl, { mode: "cors" });
+    if (response.ok) {
+      await cache.put(pdfUrl, response);
+      return true;
+    }
+  } catch (e) {
+    console.warn(`[ReaderStorage] Failed to cache book offline:`, e);
+  }
+  return false;
+}
+
+export async function removeBookOffline(bookId: string, pdfUrl: string): Promise<boolean> {
+  if (typeof window === "undefined" || !("caches" in window) || !pdfUrl) return false;
+  try {
+    const cache = await caches.open(OFFLINE_CACHE_NAME);
+    return await cache.delete(pdfUrl);
+  } catch {
+    return false;
+  }
+}
+
+export async function getOfflineBooksList(): Promise<string[]> {
+  if (typeof window === "undefined" || !("caches" in window)) return [];
+  try {
+    const cache = await caches.open(OFFLINE_CACHE_NAME);
+    const requests = await cache.keys();
+    return requests.map((req) => req.url);
+  } catch {
+    return [];
+  }
+}
+
+// -------------------------------------------------------------
 // Reading Progress Storage
 // -------------------------------------------------------------
 
 export function getSavedProgress(bookId: string): ReadingProgressData | null {
+  if (progressCache.has(bookId)) {
+    return progressCache.get(bookId)!;
+  }
+
   if (typeof window === "undefined") return null;
   try {
     const raw = localStorage.getItem(`${PROGRESS_KEY_PREFIX}:${bookId}`);
     if (raw) {
-      return JSON.parse(raw);
+      const parsed = JSON.parse(raw);
+      progressCache.set(bookId, parsed);
+      return parsed;
     }
   } catch (e) {
     console.warn(`[ReaderStorage] Failed to read progress for ${bookId}:`, e);
@@ -321,6 +497,7 @@ export function saveProgress(bookId: string, page: number, totalPages: number): 
       progress,
       lastReadAt: Date.now(),
     };
+    progressCache.set(bookId, data);
     localStorage.setItem(`${PROGRESS_KEY_PREFIX}:${bookId}`, JSON.stringify(data));
   } catch (e) {
     console.warn(`[ReaderStorage] Failed to save progress for ${bookId}:`, e);
@@ -332,15 +509,22 @@ export function saveProgress(bookId: string, page: number, totalPages: number): 
 // -------------------------------------------------------------
 
 export function getBookmarks(bookId: string): BookmarkItem[] {
+  if (bookmarksCache.has(bookId)) {
+    return bookmarksCache.get(bookId)!;
+  }
+
   if (typeof window === "undefined" || !bookId) return [];
   try {
     const raw = localStorage.getItem(`${BOOKMARKS_KEY_PREFIX}:${bookId}`);
     if (raw) {
-      return JSON.parse(raw);
+      const parsed = JSON.parse(raw);
+      bookmarksCache.set(bookId, parsed);
+      return parsed;
     }
   } catch (e) {
     console.warn(`[ReaderStorage] Failed to read bookmarks for ${bookId}:`, e);
   }
+  bookmarksCache.set(bookId, []);
   return [];
 }
 
@@ -350,6 +534,7 @@ export function saveBookmark(bookId: string, page: number, label?: string): Book
   if (existing) {
     if (label !== undefined) {
       existing.label = label;
+      bookmarksCache.set(bookId, current);
       localStorage.setItem(`${BOOKMARKS_KEY_PREFIX}:${bookId}`, JSON.stringify(current));
     }
     return existing;
@@ -364,6 +549,7 @@ export function saveBookmark(bookId: string, page: number, label?: string): Book
   };
 
   const updated = [...current, newItem].sort((a, b) => a.page - b.page);
+  bookmarksCache.set(bookId, updated);
   try {
     localStorage.setItem(`${BOOKMARKS_KEY_PREFIX}:${bookId}`, JSON.stringify(updated));
   } catch (e) {
@@ -375,6 +561,7 @@ export function saveBookmark(bookId: string, page: number, label?: string): Book
 export function deleteBookmark(bookId: string, bookmarkId: string): void {
   const current = getBookmarks(bookId);
   const updated = current.filter((b) => b.id !== bookmarkId && String(b.page) !== bookmarkId);
+  bookmarksCache.set(bookId, updated);
   try {
     localStorage.setItem(`${BOOKMARKS_KEY_PREFIX}:${bookId}`, JSON.stringify(updated));
   } catch (e) {
@@ -392,6 +579,10 @@ export function isPageBookmarked(bookId: string, page: number): boolean {
 // -------------------------------------------------------------
 
 export function getBookAnnotations(bookId: string): BookAnnotations {
+  if (annotationsCache.has(bookId)) {
+    return annotationsCache.get(bookId)!;
+  }
+
   const defaultVal: BookAnnotations = {
     highlights: [],
     notes: [],
@@ -407,14 +598,18 @@ export function getBookAnnotations(bookId: string): BookAnnotations {
 
     if (raw) {
       const parsed = JSON.parse(raw);
-      return {
+      const res: BookAnnotations = {
         highlights: Array.isArray(parsed.highlights) ? parsed.highlights : [],
         notes: Array.isArray(parsed.notes) ? parsed.notes : [],
         drawings: parsed.drawings && typeof parsed.drawings === "object" ? parsed.drawings : {},
         bookmarks: bms,
       };
+      annotationsCache.set(bookId, res);
+      return res;
     }
-    return { ...defaultVal, bookmarks: bms };
+    const res = { ...defaultVal, bookmarks: bms };
+    annotationsCache.set(bookId, res);
+    return res;
   } catch (e) {
     console.warn(`[ReaderStorage] Failed to read annotations for ${bookId}:`, e);
   }
@@ -424,6 +619,7 @@ export function getBookAnnotations(bookId: string): BookAnnotations {
 
 export function saveBookAnnotations(bookId: string, annotations: BookAnnotations): void {
   if (typeof window === "undefined" || !bookId) return;
+  annotationsCache.set(bookId, annotations);
   try {
     localStorage.setItem(`${ANNOTATIONS_KEY_PREFIX}:${bookId}`, JSON.stringify(annotations));
   } catch (e) {
@@ -612,13 +808,14 @@ export function exportAllUserData(): string {
   if (typeof window === "undefined") return "{}";
 
   const exportData: ReaderHubExportData = {
-    version: "1.1.0",
+    version: "1.2.0",
     exportedAt: Date.now(),
     favorites: [],
     readingHistory: [],
     annotations: {},
     bookmarks: {},
     readingActivity: getReadingActivityData(),
+    readingMemories: getAllReadingMemories(),
   };
 
   try {
@@ -671,12 +868,14 @@ export function importUserData(jsonString: string): { success: boolean; message:
 
     if (data.annotations && typeof data.annotations === "object") {
       for (const [bookId, ann] of Object.entries(data.annotations)) {
+        annotationsCache.set(bookId, ann as BookAnnotations);
         localStorage.setItem(`${ANNOTATIONS_KEY_PREFIX}:${bookId}`, JSON.stringify(ann));
       }
     }
 
     if (data.bookmarks && typeof data.bookmarks === "object") {
       for (const [bookId, bms] of Object.entries(data.bookmarks)) {
+        bookmarksCache.set(bookId, bms as BookmarkItem[]);
         localStorage.setItem(`${BOOKMARKS_KEY_PREFIX}:${bookId}`, JSON.stringify(bms));
       }
     }
@@ -685,7 +884,14 @@ export function importUserData(jsonString: string): { success: boolean; message:
       localStorage.setItem(ACTIVITY_KEY, JSON.stringify(data.readingActivity));
     }
 
-    return { success: true, message: "Reading data, streak, and annotations restored successfully!" };
+    if (data.readingMemories && typeof data.readingMemories === "object") {
+      for (const [bookId, mem] of Object.entries(data.readingMemories)) {
+        memoryCache.set(bookId, mem as BookReadingMemory);
+        localStorage.setItem(`${MEMORY_KEY_PREFIX}:${bookId}`, JSON.stringify(mem));
+      }
+    }
+
+    return { success: true, message: "Reading data, streak, memory, and annotations restored successfully!" };
   } catch (e: any) {
     return { success: false, message: `Failed to restore data: ${e?.message || "Corrupted file"}` };
   }

@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { memo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Book } from "@/data/books";
@@ -12,7 +12,7 @@ interface BookCardProps {
   compact?: boolean;
 }
 
-export default function BookCard({ book, compact = false }: BookCardProps) {
+function BookCardComponent({ book, compact = false }: BookCardProps) {
   const { isFavorite, toggleFavorite, recordReading } = useLibrary();
   const favorited = isFavorite(book.id);
 
@@ -71,6 +71,7 @@ export default function BookCard({ book, compact = false }: BookCardProps) {
             src={book.cover}
             alt={`Cover of ${book.title}`}
             fill
+            loading="lazy"
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
             className="object-cover group-hover/cover:scale-105 transition-transform duration-500 ease-out"
           />
@@ -128,3 +129,6 @@ export default function BookCard({ book, compact = false }: BookCardProps) {
     </CardTilt>
   );
 }
+
+const BookCard = memo(BookCardComponent);
+export default BookCard;

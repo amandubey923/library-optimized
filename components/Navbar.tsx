@@ -4,10 +4,12 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useLibrary } from "@/context/LibraryContext";
+import dynamic from "next/dynamic";
 import Logo from "./Logo";
-import SearchModal from "./SearchModal";
 import NavbarThemeControl from "./visual/NavbarThemeControl";
 import DiwaliDiya from "./visual/DiwaliDiya";
+
+const SearchModal = dynamic(() => import("./SearchModal"), { ssr: false });
 
 export default function Navbar() {
   const [isSearchOpen, setIsSearchOpen] = useState(false);

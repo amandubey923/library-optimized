@@ -20,6 +20,7 @@ function LibraryContent() {
   const [sortBy, setSortBy] = useState<"popular" | "newest" | "title" | "rating" | "pages">(
     (initialSortParam as any) || "popular"
   );
+  const [displayLimit, setDisplayLimit] = useState(25);
 
   const languages = ["All", "English", "Hindi", "Russian (Eng Trans)", "Spanish (Eng Trans)"];
 
@@ -64,11 +65,16 @@ function LibraryContent() {
     return result;
   }, [selectedCategory, selectedLanguage, searchQuery, sortBy]);
 
+  const visibleBooks = useMemo(() => {
+    return filteredBooks.slice(0, displayLimit);
+  }, [filteredBooks, displayLimit]);
+
   const resetFilters = () => {
     setSelectedCategory("All");
     setSelectedLanguage("All");
     setSearchQuery("");
     setSortBy("popular");
+    setDisplayLimit(25);
   };
 
   return (
@@ -95,13 +101,19 @@ function LibraryContent() {
             <input
               type="text"
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setDisplayLimit(25);
+              }}
               placeholder="Search by title, author, themes, or keywords..."
               className="w-full bg-[var(--background)] border border-[var(--border)] rounded-2xl px-4 py-2.5 text-xs text-[var(--foreground)] placeholder-[var(--text-secondary)] focus:outline-none focus:border-[var(--accent)] transition-colors shadow-inner"
             />
             {searchQuery && (
               <button
-                onClick={() => setSearchQuery("")}
+                onClick={() => {
+                  setSearchQuery("");
+                  setDisplayLimit(25);
+                }}
                 className="absolute right-3 top-2.5 text-[var(--text-secondary)] hover:text-[var(--foreground)] text-xs cursor-pointer"
               >
                 ✕
@@ -115,7 +127,10 @@ function LibraryContent() {
             </label>
             <select
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+              onChange={(e) => {
+                setSortBy(e.target.value as typeof sortBy);
+                setDisplayLimit(25);
+              }}
               className="bg-[var(--background)] border border-[var(--border)] rounded-xl px-3 py-2 text-xs text-[var(--foreground)] focus:outline-none focus:border-[var(--accent)] cursor-pointer shadow-inner"
             >
               <option value="popular">Popular ★</option>
@@ -137,7 +152,10 @@ function LibraryContent() {
               return (
                 <button
                   key={cat}
-                  onClick={() => setSelectedCategory(cat)}
+                  onClick={() => {
+                    setSelectedCategory(cat);
+                    setDisplayLimit(25);
+                  }}
                   className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
                     isActive
                       ? "bg-[var(--primary)] text-[var(--primary-foreground)] font-bold shadow-md scale-105"
@@ -161,7 +179,10 @@ function LibraryContent() {
               return (
                 <button
                   key={lang}
-                  onClick={() => setSelectedLanguage(lang)}
+                  onClick={() => {
+                    setSelectedLanguage(lang);
+                    setDisplayLimit(25);
+                  }}
                   className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer ${
                     isActive
                       ? "bg-[var(--accent)]/20 text-[var(--accent)] border border-[var(--accent)]/40 font-bold"
@@ -188,8 +209,8 @@ function LibraryContent() {
       {/* Results Header */}
       <div className="flex items-center justify-between mb-6 text-xs text-[var(--text-secondary)] px-1">
         <span>
-          Showing <strong className="text-[var(--foreground)]">{filteredBooks.length}</strong> of{" "}
-          <strong className="text-[var(--foreground)]">{BOOKS.length}</strong> books
+          Showing <strong className="text-[var(--foreground)]">{visibleBooks.length}</strong> of{" "}
+          <strong className="text-[var(--foreground)]">{filteredBooks.length}</strong> books
         </span>
       </div>
 
@@ -210,6 +231,7 @@ function LibraryContent() {
                 onClick={() => {
                   setSelectedCategory(c as Category);
                   setSearchQuery("");
+                  setDisplayLimit(25);
                 }}
                 className="px-3 py-1.5 rounded-xl bg-[var(--secondary)] border border-[var(--border)] text-xs text-[var(--foreground)] hover:border-[var(--accent)] transition-all cursor-pointer"
               >
@@ -225,11 +247,31 @@ function LibraryContent() {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-          {filteredBooks.map((book) => (
-            <BookCard key={book.id} book={book} />
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+            {visibleBooks.map((book) => (
+              <BookCard key={book.id} book={book} />
+            ))}
+          </div>
+
+          {displayLimit < filteredBooks.length && (
+            <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-3">
+              <button
+                onClick={() => setDisplayLimit((prev) => prev + 25)}
+                className="px-6 py-3 rounded-xl bg-[var(--primary)] text-[var(--primary-foreground)] font-bold text-xs shadow-md hover:opacity-90 transition-all cursor-pointer flex items-center gap-2"
+              >
+                <span>Load More Books ({filteredBooks.length - displayLimit} remaining)</span>
+                <span>↓</span>
+              </button>
+              <button
+                onClick={() => setDisplayLimit(filteredBooks.length)}
+                className="px-5 py-3 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--foreground)] font-semibold text-xs border border-[var(--border)] transition-all cursor-pointer"
+              >
+                Show All ({filteredBooks.length})
+              </button>
+            </div>
+          )}
+        </>
       )}
     </main>
   );

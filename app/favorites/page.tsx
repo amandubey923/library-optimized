@@ -4,16 +4,24 @@ import React, { useState, useMemo, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useLibrary } from "@/context/LibraryContext";
-import { BOOKS } from "@/data/books";
+import dynamic from "next/dynamic";
+import { Book, BOOKS } from "@/data/books";
 import BookCard from "@/components/BookCard";
+import { getLocalDateKey, getPreviousDateKey, DAILY_READING_GOAL_SECONDS } from "@/lib/reader-storage";
 
-type ShelfTab = "favorites" | "reading" | "completed" | "bookmarks" | "stats";
+const BookReadingMemory = dynamic(() => import("@/components/memory/BookReadingMemory"), {
+  ssr: false,
+});
+
+type ShelfTab = "favorites" | "reading" | "completed" | "memory" | "stats";
 
 export default function FavoritesPage() {
   const {
     favoriteBooks,
     readingHistory,
     stats,
+    streakData,
+    getReadingMemory,
     exportData,
     importData,
     showToast,
@@ -22,6 +30,7 @@ export default function FavoritesPage() {
   const [activeTab, setActiveTab] = useState<ShelfTab>("favorites");
   const [selectedCategory, setSelectedCategory] = useState<string>("All");
   const [importStatus, setImportStatus] = useState<string | null>(null);
+  const [selectedMemoryBook, setSelectedMemoryBook] = useState<Book | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 1. Derive In-Progress vs Completed Books from Reading History
@@ -59,7 +68,25 @@ export default function FavoritesPage() {
       .filter(Boolean);
   }, [readingHistory]);
 
-  // 2. Derive Categories from saved favorites
+  // 2. Derive Books with Reading Memory
+  const memoryBooks = useMemo(() => {
+    return readingHistory
+      .map((item) => {
+        const book = BOOKS.find((b) => b.id === item.bookId);
+        if (!book) return null;
+        const memory = getReadingMemory(book.id);
+        return {
+          ...book,
+          memory,
+          currentPage: item.page,
+          totalPages: item.totalPages || book.pages,
+          progress: item.progress,
+        };
+      })
+      .filter(Boolean);
+  }, [readingHistory, getReadingMemory]);
+
+  // 3. Derive Categories from saved favorites
   const savedCategories = useMemo(() => {
     const cats = Array.from(new Set(favoriteBooks.map((b) => b.category)));
     return ["All", ...cats];
@@ -70,7 +97,34 @@ export default function FavoritesPage() {
     return favoriteBooks.filter((b) => b.category === selectedCategory);
   }, [favoriteBooks, selectedCategory]);
 
-  // 3. Export Data Handler
+  // 4. Generate 12-Week Reading Activity Heatmap Grid
+  const heatmapWeeks = useMemo(() => {
+    const totalDays = 84; // 12 weeks * 7 days
+    const todayKey = getLocalDateKey();
+    const days: { dateKey: string; seconds: number; minutes: number; qualified: boolean }[] = [];
+
+    let curKey = todayKey;
+    for (let i = 0; i < totalDays; i++) {
+      const act = streakData.daily[curKey];
+      const secs = act?.seconds || 0;
+      days.unshift({
+        dateKey: curKey,
+        seconds: secs,
+        minutes: Math.floor(secs / 60),
+        qualified: Boolean(act?.qualified || secs >= DAILY_READING_GOAL_SECONDS),
+      });
+      curKey = getPreviousDateKey(curKey);
+    }
+
+    // Chunk into 12 columns of 7 days
+    const weeks: (typeof days)[] = [];
+    for (let w = 0; w < 12; w++) {
+      weeks.push(days.slice(w * 7, (w + 1) * 7));
+    }
+    return weeks;
+  }, [streakData]);
+
+  // 5. Export Data Handler
   const handleExport = () => {
     try {
       const jsonString = exportData();
@@ -89,7 +143,7 @@ export default function FavoritesPage() {
     }
   };
 
-  // 4. Import Data Handler
+  // 6. Import Data Handler
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -118,7 +172,7 @@ export default function FavoritesPage() {
           My Library
         </h1>
         <p className="text-sm text-[var(--text-secondary)] mt-1 font-normal">
-          Your private reading workspace, saved locally with zero logins or server tracking.
+          Your private reading workspace, saved 100% locally with zero logins or server tracking.
         </p>
       </div>
 
@@ -167,6 +221,20 @@ export default function FavoritesPage() {
         </button>
 
         <button
+          onClick={() => setActiveTab("memory")}
+          className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
+            activeTab === "memory"
+              ? "bg-[var(--primary)] text-[var(--primary-foreground)] shadow-md"
+              : "bg-[var(--card)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)]"
+          }`}
+        >
+          <span>🧠 Reading Memory</span>
+          <span className="px-1.5 py-0.2 rounded-full bg-black/20 text-[10px]">
+            {memoryBooks.length}
+          </span>
+        </button>
+
+        <button
           onClick={() => setActiveTab("stats")}
           className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
             activeTab === "stats"
@@ -196,7 +264,7 @@ export default function FavoritesPage() {
               </p>
               <Link
                 href="/library"
-                className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-gradient-to-r from-[var(--primary)] to-[var(--accent-secondary)] hover:opacity-95 text-[var(--primary-foreground)] font-bold text-xs shadow-xl hover:scale-105 transition-all"
+                className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-gradient-to-r from-[var(--primary)] to-[var(--accent-secondary)] text-[var(--primary-foreground)] font-bold text-xs shadow-xl hover:scale-105 transition-all"
               >
                 <span>Explore Library</span>
                 <span>→</span>
@@ -385,7 +453,78 @@ export default function FavoritesPage() {
       )}
 
       {/* -------------------------------------------------------------
-       * Tab 4: Reading Stats & Local Data Backup
+       * Tab 4: My Reading Memory
+       * ------------------------------------------------------------- */}
+      {activeTab === "memory" && (
+        <div className="space-y-6">
+          {memoryBooks.length === 0 ? (
+            <div className="text-center py-20 px-6 glass-card rounded-3xl border border-[var(--border)] max-w-2xl mx-auto bg-[var(--card)] shadow-2xl">
+              <div className="w-16 h-16 rounded-2xl bg-[var(--accent)]/10 border border-[var(--accent)]/25 text-3xl flex items-center justify-center mx-auto mb-4 text-[var(--accent)] shadow-inner">
+                🧠
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-bold font-serif text-[var(--foreground)] mb-2">
+                Your Reading Memory
+              </h2>
+              <p className="text-sm text-[var(--text-secondary)] max-w-md mx-auto mb-8 leading-relaxed font-normal">
+                As you highlight passages, sketch notes, and read across books, your personal study memory compiles
+                automatically right here.
+              </p>
+              <Link
+                href="/library"
+                className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-gradient-to-r from-[var(--primary)] to-[var(--accent-secondary)] text-[var(--primary-foreground)] font-bold text-xs shadow-xl hover:scale-105 transition-all"
+              >
+                <span>Explore Books to Study</span>
+                <span>→</span>
+              </Link>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {memoryBooks.map((book: any) => (
+                <div
+                  key={book.id}
+                  className="glass-card rounded-3xl p-5 border border-[var(--border)] bg-[var(--card)] shadow-xl flex flex-col justify-between hover:border-[var(--accent)]/40 transition-all space-y-4"
+                >
+                  <div className="flex gap-4">
+                    <div className="relative w-20 h-28 rounded-xl overflow-hidden book-shadow flex-shrink-0 border border-[var(--border)]">
+                      <Image src={book.cover} alt={book.title} fill className="object-cover" />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="text-[10px] uppercase font-bold text-[var(--accent)]">
+                        {book.category}
+                      </span>
+                      <h4 className="font-serif font-bold text-sm text-[var(--foreground)] truncate mt-0.5">
+                        {book.title}
+                      </h4>
+                      <p className="text-xs text-[var(--text-secondary)] truncate">
+                        {book.author}
+                      </p>
+                      <div className="mt-2 text-[11px] text-[var(--text-secondary)] space-y-0.5">
+                        <span className="block font-medium">
+                          Page {book.currentPage} / {book.totalPages} ({book.progress}%)
+                        </span>
+                        <span className="block text-[10px] opacity-80">
+                          {Math.floor(book.memory.totalSeconds / 60)} min read • {book.memory.timeline.length} sessions
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    onClick={() => setSelectedMemoryBook(book)}
+                    className="w-full py-2.5 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                  >
+                    <span>🧠</span>
+                    <span>View Reading Memory →</span>
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* -------------------------------------------------------------
+       * Tab 5: Reading Stats & Local Data Backup
        * ------------------------------------------------------------- */}
       {activeTab === "stats" && (
         <div className="space-y-8">
@@ -395,8 +534,6 @@ export default function FavoritesPage() {
               <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-3xl border flex-shrink-0 ${
                 stats.isTodayQualified
                   ? "bg-amber-500/20 border-amber-500/40 text-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.3)]"
-                  : stats.todayReadingSeconds > 0
-                  ? "bg-amber-500/10 border-amber-500/20 text-amber-300"
                   : "bg-[var(--secondary)] border-[var(--border)] text-[var(--text-secondary)]"
               }`}>
                 🪔
@@ -467,19 +604,64 @@ export default function FavoritesPage() {
             </div>
           </div>
 
+          {/* Annual 12-Week Reading Activity Contribution Heatmap */}
+          <div className="glass-card rounded-3xl p-6 sm:p-7 border border-[var(--border)] bg-[var(--card)] shadow-xl space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h4 className="font-serif font-bold text-sm text-[var(--foreground)] flex items-center gap-1.5">
+                  <span>📅</span>
+                  <span>12-Week Active Reading Activity Heatmap</span>
+                </h4>
+                <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+                  Derived from your genuine browser-local reading sessions.
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5 text-[10px] text-[var(--text-secondary)] font-medium">
+                <span>Less</span>
+                <span className="w-2.5 h-2.5 rounded-xs bg-[var(--secondary)] border border-[var(--border)] inline-block" />
+                <span className="w-2.5 h-2.5 rounded-xs bg-[var(--accent)]/40 inline-block" />
+                <span className="w-2.5 h-2.5 rounded-xs bg-[var(--accent)] inline-block" />
+                <span>More</span>
+              </div>
+            </div>
+
+            {/* Heatmap Grid */}
+            <div className="overflow-x-auto pb-1">
+              <div className="inline-flex gap-1.5">
+                {heatmapWeeks.map((week, wIdx) => (
+                  <div key={wIdx} className="flex flex-col gap-1.5">
+                    {week.map((d) => (
+                      <div
+                        key={d.dateKey}
+                        className={`w-3.5 h-3.5 rounded-xs transition-transform hover:scale-125 cursor-pointer ${
+                          d.qualified
+                            ? "bg-[var(--accent)] shadow-[0_0_4px_var(--accent)]"
+                            : d.minutes > 0
+                            ? "bg-[var(--accent)]/40"
+                            : "bg-[var(--secondary)] border border-[var(--border)]/60 opacity-60"
+                        }`}
+                        title={`${d.dateKey}: ${d.minutes} min active reading ${d.qualified ? " (15m+ Qualified 🪔)" : ""}`}
+                      />
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
           {/* Backup & Data Sovereignty Center */}
           <div className="glass-card rounded-3xl p-6 sm:p-8 border border-[var(--border)] bg-[var(--card)] shadow-2xl space-y-6">
             <div className="border-b border-[var(--border)] pb-4">
               <div className="flex items-center gap-2">
                 <span className="text-xl">🔒</span>
                 <h3 className="font-serif font-bold text-base text-[var(--foreground)]">
-                  Data Sovereignty &amp; Local Backup
+                  Data Sovereignty &amp; Local Backup (v1.2.0)
                 </h3>
               </div>
               <p className="text-xs text-[var(--text-secondary)] mt-1 max-w-2xl leading-relaxed">
                 Reader&apos;s HUB is intentionally 100% offline-capable and client-side. Your reading progress,
-                favorites, bookmarks, and study drawings belong entirely to you. Export a backup anytime as a portable
-                JSON file or restore on any other browser.
+                favorites, bookmarks, study drawings, reading memories, and streak history belong entirely to you.
+                Export a backup anytime as a portable JSON file or restore on any other browser.
               </p>
             </div>
 
@@ -516,6 +698,15 @@ export default function FavoritesPage() {
             )}
           </div>
         </div>
+      )}
+
+      {/* Selected Book Reading Memory Modal */}
+      {selectedMemoryBook && (
+        <BookReadingMemory
+          book={selectedMemoryBook}
+          isOpen={!!selectedMemoryBook}
+          onClose={() => setSelectedMemoryBook(null)}
+        />
       )}
     </main>
   );

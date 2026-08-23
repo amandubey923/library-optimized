@@ -17,6 +17,13 @@ import {
   DAILY_READING_GOAL_SECONDS,
   ReadingStats,
   ReadingStreakData,
+  BookReadingMemory,
+  ReadingTimelineEvent,
+  getBookReadingMemory,
+  recordReadingMemorySession,
+  isBookOffline as checkIsBookOffline,
+  cacheBookOffline as storeBookOffline,
+  removeBookOffline as deleteBookOffline,
 } from "@/lib/reader-storage";
 
 export interface ReadingProgressItem {
@@ -30,6 +37,15 @@ export interface ReadingProgressItem {
 export interface RecentBook extends Book {
   progress: number;
   lastPage: number;
+}
+
+export interface ActiveReadingSession {
+  isActive: boolean;
+  bookId: string;
+  startPage: number;
+  targetMinutes: number;
+  elapsedSeconds: number;
+  startedAt: number;
 }
 
 interface LibraryContextType {
@@ -66,6 +82,16 @@ interface LibraryContextType {
     justQualified: boolean;
     currentStreak: number;
   };
+  // Reading Memory & Structured Sessions
+  getReadingMemory: (bookId: string) => BookReadingMemory;
+  recordSessionEvent: (event: Omit<ReadingTimelineEvent, "id">) => void;
+  activeSession: ActiveReadingSession | null;
+  startReadingSession: (bookId: string, startPage: number, targetMinutes: number) => void;
+  endReadingSession: () => void;
+  // Offline Caching
+  checkOfflineStatus: (bookId: string, pdfUrl: string) => Promise<boolean>;
+  saveBookOffline: (bookId: string, pdfUrl: string) => Promise<boolean>;
+  removeBookOffline: (bookId: string, pdfUrl: string) => Promise<boolean>;
 }
 
 const LibraryContext = createContext<LibraryContextType | undefined>(undefined);
@@ -77,6 +103,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   const [favorites, setFavorites] = useState<string[]>([]);
   const [readingHistory, setReadingHistory] = useState<ReadingProgressItem[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [activeSession, setActiveSession] = useState<ActiveReadingSession | null>(null);
   const [streakData, setStreakData] = useState<ReadingStreakData>({
     daily: {},
     currentStreak: 0,
@@ -130,14 +157,14 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     setMounted(true);
   }, [refreshStats]);
 
-  const showToast = (msg: string) => {
+  const showToast = useCallback((msg: string) => {
     setToastMessage(msg);
     setTimeout(() => {
       setToastMessage((prev) => (prev === msg ? null : prev));
     }, 3200);
-  };
+  }, []);
 
-  const toggleFavorite = (bookId: string) => {
+  const toggleFavorite = useCallback((bookId: string) => {
     setFavorites((prev) => {
       let updated: string[];
       const book = BOOKS.find((b) => b.id === bookId);
@@ -159,9 +186,9 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       refreshStats();
       return updated;
     });
-  };
+  }, [refreshStats, showToast]);
 
-  const removeFavorite = (bookId: string) => {
+  const removeFavorite = useCallback((bookId: string) => {
     setFavorites((prev) => {
       const updated = prev.filter((id) => id !== bookId);
       try {
@@ -172,16 +199,27 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       refreshStats();
       return updated;
     });
-  };
+  }, [refreshStats]);
 
-  const isFavorite = (bookId: string) => favorites.includes(bookId);
+  const isFavorite = useCallback((bookId: string) => favorites.includes(bookId), [favorites]);
 
-  const recordReading = (bookId: string, page = 1, totalPages = 100) => {
+  const recordReading = useCallback((bookId: string, page = 1, totalPages = 100) => {
     setReadingHistory((prev) => {
       const existing = prev.find((item) => item.bookId === bookId);
       const curPage = page > 1 ? page : (existing ? existing.page : 1);
       const curTotal = totalPages || (existing ? existing.totalPages : 100);
       const progress = Math.min(100, Math.max(5, Math.round((curPage / curTotal) * 100)));
+
+      // Avoid unnecessary state update if progress, page, and totalPages are identical
+      if (
+        existing &&
+        existing.page === curPage &&
+        existing.totalPages === curTotal &&
+        existing.progress === progress &&
+        Date.now() - existing.lastReadAt < 3000
+      ) {
+        return prev;
+      }
 
       const filtered = prev.filter((item) => item.bookId !== bookId);
       const newItem: ReadingProgressItem = {
@@ -201,17 +239,17 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       refreshStats();
       return updated;
     });
-  };
+  }, [refreshStats]);
 
-  const updateReadingProgress = (bookId: string, page: number, totalPages?: number) => {
+  const updateReadingProgress = useCallback((bookId: string, page: number, totalPages?: number) => {
     recordReading(bookId, page, totalPages);
-  };
+  }, [recordReading]);
 
-  const getReadingProgress = (bookId: string) => {
+  const getReadingProgress = useCallback((bookId: string) => {
     return readingHistory.find((item) => item.bookId === bookId);
-  };
+  }, [readingHistory]);
 
-  const removeHistoryItem = (bookId: string) => {
+  const removeHistoryItem = useCallback((bookId: string) => {
     setReadingHistory((prev) => {
       const updated = prev.filter((item) => item.bookId !== bookId);
       try {
@@ -222,9 +260,9 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       refreshStats();
       return updated;
     });
-  };
+  }, [refreshStats]);
 
-  const clearHistory = () => {
+  const clearHistory = useCallback(() => {
     setReadingHistory([]);
     try {
       localStorage.removeItem(HISTORY_KEY);
@@ -233,25 +271,25 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     }
     refreshStats();
     showToast("Reading history cleared");
-  };
+  }, [refreshStats, showToast]);
 
   // Bookmarks Wrapper
-  const getBookmarks = (bookId: string) => getStoredBookmarks(bookId);
+  const getBookmarks = useCallback((bookId: string) => getStoredBookmarks(bookId), []);
 
-  const addBookmark = (bookId: string, page: number, label?: string) => {
+  const addBookmark = useCallback((bookId: string, page: number, label?: string) => {
     const item = storeBookmark(bookId, page, label);
     showToast(`Bookmarked Page ${page} 🔖`);
     refreshStats();
     return item;
-  };
+  }, [refreshStats, showToast]);
 
-  const removeBookmark = (bookId: string, bookmarkId: string) => {
+  const removeBookmark = useCallback((bookId: string, bookmarkId: string) => {
     deleteStoredBookmark(bookId, bookmarkId);
     showToast(`Bookmark removed 🔖`);
     refreshStats();
-  };
+  }, [refreshStats, showToast]);
 
-  const isBookmarked = (bookId: string, page: number) => checkIsBookmarked(bookId, page);
+  const isBookmarked = useCallback((bookId: string, page: number) => checkIsBookmarked(bookId, page), []);
 
   // Active Reading Time Tracker (Diwali Diya)
   const recordActiveReading = useCallback((seconds: number) => {
@@ -263,13 +301,67 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       isTodayQualified: res.qualified,
       readingStreakDays: res.currentStreak,
     }));
+
+    // Update active session if running
+    setActiveSession((prev) => {
+      if (!prev || !prev.isActive) return prev;
+      return {
+        ...prev,
+        elapsedSeconds: prev.elapsedSeconds + seconds,
+      };
+    });
+
     return res;
   }, []);
 
-  // Backup & Export Helpers
-  const exportData = () => exportAllUserData();
+  // Reading Memory & Sessions
+  const getReadingMemory = useCallback((bookId: string) => getBookReadingMemory(bookId), []);
 
-  const handleImportData = (jsonStr: string) => {
+  const recordSessionEvent = useCallback((event: Omit<ReadingTimelineEvent, "id">) => {
+    recordReadingMemorySession(event);
+  }, []);
+
+  const startReadingSession = useCallback((bookId: string, startPage: number, targetMinutes: number) => {
+    setActiveSession({
+      isActive: true,
+      bookId,
+      startPage,
+      targetMinutes,
+      elapsedSeconds: 0,
+      startedAt: Date.now(),
+    });
+    showToast(`Started ${targetMinutes}-min Reading Session ⏱️`);
+  }, [showToast]);
+
+  const endReadingSession = useCallback(() => {
+    setActiveSession(null);
+  }, []);
+
+  // Offline Caching
+  const checkOfflineStatus = useCallback((bookId: string, pdfUrl: string) => checkIsBookOffline(bookId, pdfUrl), []);
+
+  const saveBookOffline = useCallback(async (bookId: string, pdfUrl: string) => {
+    const success = await storeBookOffline(bookId, pdfUrl);
+    if (success) {
+      showToast("Book saved for offline reading! 📦");
+    } else {
+      showToast("Could not cache book offline");
+    }
+    return success;
+  }, [showToast]);
+
+  const removeBookOffline = useCallback(async (bookId: string, pdfUrl: string) => {
+    const success = await deleteBookOffline(bookId, pdfUrl);
+    if (success) {
+      showToast("Offline copy removed");
+    }
+    return success;
+  }, [showToast]);
+
+  // Backup & Export Helpers
+  const exportData = useCallback(() => exportAllUserData(), []);
+
+  const handleImportData = useCallback((jsonStr: string) => {
     const res = importUserData(jsonStr);
     if (res.success) {
       const favs = localStorage.getItem(FAVORITES_KEY);
@@ -280,7 +372,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     }
     showToast(res.message);
     return res;
-  };
+  }, [refreshStats, showToast]);
 
   // Derive actual book objects
   const favoriteBooks = mounted
@@ -336,6 +428,14 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
         todayReadingSeconds: todaySeconds,
         isTodayQualified,
         recordActiveReading,
+        getReadingMemory,
+        recordSessionEvent,
+        activeSession,
+        startReadingSession,
+        endReadingSession,
+        checkOfflineStatus,
+        saveBookOffline,
+        removeBookOffline,
       }}
     >
       {children}

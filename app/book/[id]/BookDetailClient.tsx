@@ -1,12 +1,18 @@
 "use client";
 
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Book, BOOKS } from "@/data/books";
 import { useLibrary } from "@/context/LibraryContext";
+import dynamic from "next/dynamic";
 import PdfReader from "@/components/PdfReader";
 import BookCard from "@/components/BookCard";
+import { getBookAnnotations } from "@/lib/reader-storage";
+
+const BookReadingMemory = dynamic(() => import("@/components/memory/BookReadingMemory"), {
+  ssr: false,
+});
 
 interface BookDetailClientProps {
   book: Book;
@@ -17,16 +23,45 @@ export default function BookDetailClient({
   book,
   relatedBooks,
 }: BookDetailClientProps) {
-  const { isFavorite, toggleFavorite, recordReading, showToast } = useLibrary();
+  const {
+    isFavorite,
+    toggleFavorite,
+    recordReading,
+    getReadingProgress,
+    checkOfflineStatus,
+    saveBookOffline,
+    removeBookOffline,
+    showToast,
+  } = useLibrary();
+
   const favorited = isFavorite(book.id);
   const readerRef = useRef<HTMLDivElement>(null);
+  const [isMemoryOpen, setIsMemoryOpen] = useState(false);
+  const [isOfflineSaved, setIsOfflineSaved] = useState(false);
+
+  const progress = getReadingProgress(book.id);
+  const annotations = useMemo(() => getBookAnnotations(book.id), [book.id]);
 
   useEffect(() => {
     recordReading(book.id);
-  }, [book.id]);
+    if (book.pdf) {
+      checkOfflineStatus(book.id, book.pdf).then(setIsOfflineSaved);
+    }
+  }, [book.id, book.pdf, recordReading, checkOfflineStatus]);
 
   const handleScrollToReader = () => {
     readerRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
+  const handleToggleOffline = async () => {
+    if (!book.pdf) return;
+    if (isOfflineSaved) {
+      await removeBookOffline(book.id, book.pdf);
+      setIsOfflineSaved(false);
+    } else {
+      const ok = await saveBookOffline(book.id, book.pdf);
+      if (ok) setIsOfflineSaved(true);
+    }
   };
 
   const handleShare = async () => {
@@ -52,6 +87,11 @@ export default function BookDetailClient({
 
   // Find other books by the same author if present
   const authorBooks = BOOKS.filter((b) => b.author === book.author && b.id !== book.id).slice(0, 4);
+
+  const highlightsCount = annotations.highlights?.length || 0;
+  const notesCount = annotations.notes?.length || 0;
+  const bookmarksCount = annotations.bookmarks?.length || 0;
+  const hasPriorInteractions = Boolean((progress && progress.page > 1) || highlightsCount > 0 || notesCount > 0 || bookmarksCount > 0);
 
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 text-left">
@@ -108,27 +148,45 @@ export default function BookDetailClient({
               </button>
 
               <div className="flex gap-2">
+                <button
+                  onClick={handleToggleOffline}
+                  className={`flex-1 py-2.5 px-3 rounded-xl border text-xs font-semibold text-center transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer ${
+                    isOfflineSaved
+                      ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                      : "bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] border-[var(--border)]"
+                  }`}
+                >
+                  <span>{isOfflineSaved ? "✓" : "📦"}</span>
+                  <span>{isOfflineSaved ? "Offline Ready" : "Save Offline"}</span>
+                </button>
+
+                <button
+                  onClick={() => setIsMemoryOpen(true)}
+                  className="flex-1 py-2.5 px-3 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] border border-[var(--border)] text-xs font-semibold text-center transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+                >
+                  <span>🧠</span>
+                  <span>Memory</span>
+                </button>
+              </div>
+
+              <div className="flex gap-2">
                 <a
                   href={book.pdf}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex-1 py-2.5 px-3 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] border border-[var(--border)] text-xs font-semibold text-center transition-all flex items-center justify-center gap-1.5 shadow-xs"
+                  className="flex-1 py-2 px-3 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)] text-xs font-medium text-center transition-all flex items-center justify-center gap-1"
                 >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
                   <span>Open PDF</span>
+                  <span>↗</span>
                 </a>
 
                 <a
                   href={book.pdf}
                   download={`${book.title.replace(/\s+/g, "_")}.pdf`}
-                  className="flex-1 py-2.5 px-3 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] border border-[var(--border)] text-xs font-semibold text-center transition-all flex items-center justify-center gap-1.5 shadow-xs"
+                  className="flex-1 py-2 px-3 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)] text-xs font-medium text-center transition-all flex items-center justify-center gap-1"
                 >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                  </svg>
                   <span>Download</span>
+                  <span>↓</span>
                 </a>
               </div>
             </div>
@@ -193,6 +251,32 @@ export default function BookDetailClient({
                 by <span className="text-[var(--foreground)]">{book.author}</span>
               </p>
 
+              {/* Smart Continue Reading Banner (when user has prior interactions) */}
+              {hasPriorInteractions && (
+                <div className="my-5 p-4 rounded-2xl bg-gradient-to-r from-[var(--secondary)] to-[var(--accent)]/10 border border-[var(--accent)]/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in">
+                  <div className="flex items-center gap-3">
+                    <span className="text-2xl">🔖</span>
+                    <div>
+                      <h4 className="text-xs font-bold text-[var(--foreground)]">
+                        Continue from Page {progress?.page || 1}
+                      </h4>
+                      <p className="text-[11px] text-[var(--text-secondary)]">
+                        {progress?.progress || 0}% completed
+                        {highlightsCount > 0 && ` • ${highlightsCount} highlights`}
+                        {notesCount > 0 && ` • ${notesCount} notes`}
+                        {bookmarksCount > 0 && ` • ${bookmarksCount} bookmarks`}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleScrollToReader}
+                    className="px-4 py-1.5 rounded-xl bg-[var(--primary)] text-[var(--primary-foreground)] text-xs font-bold hover:scale-105 transition-transform cursor-pointer whitespace-nowrap self-start sm:self-auto"
+                  >
+                    Resume Reading →
+                  </button>
+                </div>
+              )}
+
               {/* Quick Specs Grid */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 my-6 p-4 rounded-2xl bg-[var(--secondary)] border border-[var(--border)] text-xs">
                 <div>
@@ -223,96 +307,82 @@ export default function BookDetailClient({
                 </p>
               </div>
 
-              {/* Memorable Quote / Excerpt */}
+              {/* Excerpt Section */}
               {book.excerpt && (
-                <div className="mt-6 p-4 rounded-2xl bg-[var(--accent)]/10 border-l-4 border-[var(--accent)] text-sm text-[var(--foreground)] italic leading-relaxed">
+                <div className="mt-6 p-4 sm:p-5 rounded-2xl bg-[var(--secondary)]/60 border-l-4 border-[var(--accent)] text-xs sm:text-sm text-[var(--foreground)] italic font-serif leading-relaxed">
                   &ldquo;{book.excerpt}&rdquo;
                 </div>
               )}
-
-              {/* Tags */}
-              <div className="mt-6">
-                <span className="text-xs text-[var(--text-secondary)] font-medium block mb-2">
-                  Themes &amp; Topics:
-                </span>
-                <div className="flex flex-wrap gap-2">
-                  {book.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="text-xs px-3 py-1 rounded-lg bg-[var(--secondary)] text-[var(--text-secondary)] border border-[var(--border)]"
-                    >
-                      #{tag}
-                    </span>
-                  ))}
-                </div>
-              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Embedded PDF Reader Anchor */}
-      <section ref={readerRef} id="reader" className="mb-16 scroll-mt-24">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <span className="text-[var(--accent)] text-lg">📖</span>
-            <h2 className="text-xl sm:text-2xl font-bold font-serif text-[var(--foreground)]">
-              Interactive Digital Reader
+      {/* Embedded 3D PDF Book Reader Section */}
+      <section ref={readerRef} className="mb-16 scroll-mt-20">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+          <div>
+            <div className="flex items-center gap-2 text-xs font-bold text-[var(--accent)] uppercase tracking-wider mb-1">
+              <span>📖</span>
+              <span>Interactive Reading View</span>
+            </div>
+            <h2 className="text-2xl sm:text-3xl font-bold font-serif text-[var(--foreground)]">
+              Read &ldquo;{book.title}&rdquo;
             </h2>
+            <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+              Featuring Focus Mode (Z), Search in Book (Ctrl+F), vector diagrams, notes, and offline availability.
+            </p>
           </div>
-          <span className="text-xs text-[var(--text-secondary)]">
-            Press <kbd className="font-mono px-1.5 py-0.5 rounded bg-[var(--card)] border border-[var(--border)]">F</kbd> for fullscreen
-          </span>
         </div>
 
         <PdfReader book={book} />
       </section>
 
-      {/* Author Specific Recommendations */}
+      {/* Author More Works Section */}
       {authorBooks.length > 0 && (
-        <section className="pt-8 mb-12 border-t border-[var(--border)]">
+        <section className="mb-16">
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold font-serif text-[var(--foreground)]">
+            <h3 className="text-xl sm:text-2xl font-bold font-serif text-[var(--foreground)]">
               More by {book.author}
-            </h2>
-            <Link
-              href={`/library?search=${encodeURIComponent(book.author)}`}
-              className="text-xs text-[var(--accent)] hover:underline font-semibold"
-            >
-              Search author →
-            </Link>
+            </h3>
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-            {authorBooks.map((aBook) => (
-              <BookCard key={aBook.id} book={aBook} compact />
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {authorBooks.map((b) => (
+              <BookCard key={b.id} book={b} />
             ))}
           </div>
         </section>
       )}
 
-      {/* Category Specific Recommendations */}
+      {/* Related Books Section */}
       {relatedBooks.length > 0 && (
-        <section className="pt-8 border-t border-[var(--border)]">
+        <section>
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold font-serif text-[var(--foreground)]">
-              More in {book.category}
-            </h2>
+            <h3 className="text-xl sm:text-2xl font-bold font-serif text-[var(--foreground)]">
+              Readers Also Explored
+            </h3>
             <Link
               href={`/library?category=${encodeURIComponent(book.category)}`}
-              className="text-xs text-[var(--accent)] hover:underline font-semibold"
+              className="text-xs font-semibold text-[var(--accent)] hover:underline"
             >
-              View all in category →
+              View all {book.category} →
             </Link>
           </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-            {relatedBooks.map((relBook) => (
-              <BookCard key={relBook.id} book={relBook} compact />
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            {relatedBooks.map((b) => (
+              <BookCard key={b.id} book={b} />
             ))}
           </div>
         </section>
       )}
+
+      {/* Book Reading Memory Modal */}
+      <BookReadingMemory
+        book={book}
+        isOpen={isMemoryOpen}
+        onClose={() => setIsMemoryOpen(false)}
+        onJumpToPage={handleScrollToReader}
+      />
     </main>
   );
 }
