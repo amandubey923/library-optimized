@@ -1,0 +1,749 @@
+# Reader's HUB — Reusable PDF Ingestion & Catalog Integration
+
+New PDF files have been added to the project's PDF asset folder.
+
+Treat these files as a **new batch of resources to be safely integrated into the existing Reader's HUB catalog**.
+
+This prompt may be reused repeatedly in the future whenever new PDFs are added.
+
+---
+
+# ABSOLUTE RULE
+
+## EXTEND — DO NOT BREAK EXISTING PROJECT
+
+The existing Reader's HUB is stable and production-quality.
+
+DO NOT:
+
+* rewrite the project
+* redesign the UI
+* replace the reader
+* change PDF.js
+* change existing reader behavior
+* change existing book IDs
+* change existing localStorage identities
+* change existing progress data
+* change annotations
+* change bookmarks
+* change streak/Diya
+* change Translation
+* change Focus Mode
+* change PWA/offline architecture
+* change existing categories unnecessarily
+* modify existing PDFs unless explicitly required
+* delete existing books
+* delete existing catalog entries
+* blindly refactor unrelated code
+
+This is an **additive catalog ingestion task**.
+
+The existing catalog must remain intact.
+
+---
+
+# PHASE 1 — DISCOVER NEW FILES
+
+First inspect the actual filesystem.
+
+Find all newly added PDF files.
+
+Do NOT assume the filenames listed in this prompt are the complete inventory.
+
+Build an inventory from the project filesystem.
+
+For every new PDF identify:
+
+* current filename
+* file size
+* page count
+* title
+* author/source
+* subject
+* likely category
+* resource type
+* whether handwritten
+* whether a book
+* whether notes
+* whether cheat sheet
+* whether interview preparation
+* whether technical or literary
+* whether duplicate/similar to an existing resource
+
+DO NOT modify anything during this phase.
+
+---
+
+# PHASE 2 — DO NOT TRUST FILENAMES
+
+Many files may have poor filenames.
+
+Examples:
+
+* abbreviations
+* random numbers
+* personal download names
+* `(1)`
+* `(2)`
+* `final`
+* `new`
+* `notes`
+* `download`
+* `scan`
+* emoji
+* brackets
+* inconsistent casing
+
+Do NOT infer the actual title only from filename.
+
+Use the PDF itself when necessary:
+
+* title page
+* first page
+* headings
+* author/source
+* metadata
+* document content
+* visible subject
+
+Correct identification matters more than naming.
+
+If the identity is ambiguous:
+
+DO NOT guess.
+
+Mark:
+
+`UNKNOWN / NEEDS REVIEW`
+
+---
+
+# PHASE 3 — DETECT WHETHER RESOURCE ALREADY EXISTS
+
+Before adding a new resource, compare against the existing catalog.
+
+Check for:
+
+* exact duplicate
+* same title
+* same book with different edition
+* same notes with slightly different filename
+* same content under another filename
+
+Use multiple signals:
+
+* filename
+* title
+* author/source
+* page count
+* content similarity where practical
+
+### If exact duplicate:
+
+Do NOT add a duplicate catalog entry.
+
+Report it.
+
+### If same subject but meaningfully different resource:
+
+Keep both.
+
+Example:
+
+`SQLInterviewQuestions.pdf`
+
+and
+
+`SQLAdvancedInterviewQuestions.pdf`
+
+can both be valid.
+
+---
+
+# PHASE 4 — CHOOSE A MEANINGFUL TITLE
+
+Create a clean human-readable title.
+
+Priority:
+
+1. Actual title from PDF
+2. Verified title from document content
+3. Verified author/source if available
+4. Only then use filename as supporting evidence
+
+Do not invent titles.
+
+---
+
+# PHASE 5 — CANONICAL PDF FILENAME
+
+Rename new PDF files using the project's established naming convention.
+
+## Rules
+
+Use:
+
+**CamelCase / PascalCase**
+
+No unnecessary spaces.
+
+No emojis.
+
+No brackets.
+
+No random download suffixes.
+
+No invalid Windows characters.
+
+No personal abbreviations.
+
+Examples:
+
+`computer networks final v2.pdf`
+
+→
+
+`ComputerNetworksCompleteNotes.pdf`
+
+`sql 100 imp interview qs.pdf`
+
+→
+
+`SQL100InterviewQuestions.pdf`
+
+`python handwritten.pdf`
+
+→
+
+`PythonCompleteHandwrittenNotes.pdf`
+
+`system design notes (1).pdf`
+
+→
+
+`SystemDesignCompleteArchitectureNotes.pdf`
+
+---
+
+# PHASE 6 — FULL TITLE WHEN PRACTICAL
+
+Prefer the full meaningful title.
+
+But if it becomes excessively long:
+
+* shorten intelligently
+* preserve recognition
+* preserve important author/source information only when needed
+
+Do NOT create unreadably long filenames.
+
+---
+
+# PHASE 7 — DETERMINE RESOURCE TYPE
+
+Classify each new PDF.
+
+Possible values:
+
+* `Book`
+* `Notes`
+* `HandwrittenNotes`
+* `CheatSheet`
+* `InterviewPrep`
+* `Reference`
+
+Use the existing project's data model if it already supports these.
+
+Do not create duplicate type systems.
+
+---
+
+# PHASE 8 — DETERMINE CATEGORY
+
+Place each resource into the most appropriate existing category.
+
+For technical resources, prefer the existing:
+
+### Technical Knowledge
+
+with relevant internal subcategory such as:
+
+* DSA & Problem Solving
+* Computer Science & Systems
+* Web & Backend Development
+* DBMS & SQL
+* OOP & Software Design
+* System Design & DevOps
+* Programming Languages
+
+For non-technical resources use the existing top-level taxonomy.
+
+Examples:
+
+* Classics
+* Hindi Literature
+* Philosophy & Spirituality
+* Self-Development & Psychology
+* Fiction & Dystopian
+* Romance
+* Business, Finance & Economics
+* Fantasy & Adventure
+
+Do NOT create a new top-level category unless the current taxonomy genuinely cannot represent the resource.
+
+---
+
+# PHASE 9 — IMPORTANT TECHNICAL KNOWLEDGE RULE
+
+All technical PDFs should appear under:
+
+# Technical Knowledge
+
+Do NOT create new top-level cards such as:
+
+`JavaScript`
+
+`SQL`
+
+`DSA`
+
+`System Design`
+
+`Operating Systems`
+
+Those should remain **subcategories/filters inside Technical Knowledge**.
+
+This keeps the homepage clean.
+
+---
+
+# PHASE 10 — METADATA CREATION
+
+For every new resource create/update metadata consistently.
+
+Where supported:
+
+* unique stable ID
+* title
+* author/source
+* category
+* subcategory
+* resource type
+* PDF path
+* description
+* cover reference
+* page count if stored
+
+Do NOT invent author names.
+
+If author/source is unknown:
+
+leave it unknown rather than fabricate it.
+
+---
+
+# PHASE 11 — UNIQUE STABLE ID
+
+Generate a unique stable slug-like ID.
+
+Example:
+
+`system-design-complete-architecture-notes`
+
+Do NOT use:
+
+* random runtime IDs
+* filename hashes
+* temporary timestamps
+
+Once created, this ID must remain stable even if the PDF filename is later changed.
+
+---
+
+# PHASE 12 — COVER HANDLING
+
+Follow the existing Reader's HUB cover strategy.
+
+For technical resources:
+
+* use existing generated/fallback style
+* maintain visual consistency
+* add high-resolution cover only if required by the current system
+
+Do NOT redesign the entire card or cover system.
+
+---
+
+# PHASE 13 — TECHNICAL RESOURCE BADGE
+
+Preserve the existing resource format system.
+
+Where appropriate, show:
+
+* Notes
+* Handwritten
+* Cheat Sheet
+* Interview Prep
+* Book
+
+Do not create duplicate badge systems.
+
+---
+
+# PHASE 14 — HANDLE SAME SUBJECT MULTIPLE PDFs
+
+Do NOT merge different resources merely because they cover the same subject.
+
+Example:
+
+Technical Knowledge
+→ SQL
+
+* Most Useful SQL Notes
+* SQL Top 100 Interview Questions
+* SQL Interview Quick Cheatsheet
+
+All can remain separate resources.
+
+The user should be able to choose the appropriate format.
+
+---
+
+# PHASE 15 — HANDWRITTEN / SCANNED PDF HANDLING
+
+If the PDF is:
+
+* handwritten
+* image-only
+* scanned
+
+mark its resource type appropriately.
+
+Do not pretend it has selectable text if it does not.
+
+Reader should still work.
+
+Search/translation should gracefully handle missing text layers.
+
+Do NOT automatically run OCR across the entire library.
+
+---
+
+# PHASE 16 — UPDATE THE CATALOG
+
+Add ONLY the verified new resources.
+
+Update the existing catalog using the current architecture.
+
+Do not create a parallel catalog system.
+
+Do not duplicate `books.json` and `books.ts` logic unless the project already intentionally maintains both.
+
+If both exist, preserve their existing synchronization strategy and update them consistently.
+
+---
+
+# PHASE 17 — UPDATE SEARCH / FILTER COMPATIBILITY
+
+New resources must automatically work with:
+
+* global search
+* category filters
+* Technical Knowledge subfilters
+* resource type filters
+* favorites
+* reading progress
+* bookmarks
+* annotations
+* Reading Memory
+* offline caching
+* translation
+* Focus Mode
+* reader navigation
+
+Do not write special-case logic for each new PDF.
+
+The existing generic architecture must handle them.
+
+---
+
+# PHASE 18 — GLOBAL REFERENCE CHECK
+
+Search the entire repository for the old filenames.
+
+Every renamed PDF reference must point to the new canonical filename.
+
+Check:
+
+* data files
+* app routes
+* components
+* utilities
+* tests
+* offline cache references
+* manifests if applicable
+
+There must be zero stale references.
+
+---
+
+# PHASE 19 — DUPLICATE / COLLISION CHECK
+
+Before finalizing:
+
+Check:
+
+* filename collisions
+* duplicate IDs
+* duplicate slugs
+* duplicate PDF mappings
+* same PDF referenced by multiple unrelated books
+
+Do not overwrite any existing file.
+
+If a filename collision occurs:
+
+add a meaningful differentiator, such as author/source.
+
+---
+
+# PHASE 20 — DO NOT TOUCH EXISTING STABLE CATALOG
+
+Existing resources are protected.
+
+Do NOT:
+
+* rename old files
+* change old IDs
+* change old PDF paths
+* change old metadata
+* migrate existing progress
+* modify old covers
+
+unless a direct dependency makes it absolutely necessary.
+
+If such a dependency exists:
+
+STOP and report it before changing it.
+
+---
+
+# PHASE 21 — VALIDATE EVERY NEW RESOURCE
+
+For every new PDF verify:
+
+* file exists
+* file is not empty
+* PDF opens
+* page count is readable
+* metadata is internally consistent
+* catalog entry exists
+* ID is unique
+* PDF path resolves
+* cover works if applicable
+* category is correct
+* resource type is correct
+
+---
+
+# PHASE 22 — TEST REPRESENTATIVE NEW RESOURCES
+
+Do not open every PDF manually if there are dozens.
+
+Test representative samples:
+
+* one normal book
+* one handwritten notes PDF
+* one cheat sheet
+* one interview-prep PDF
+* one scanned PDF
+* one technical book
+* one long PDF
+
+Verify:
+
+* reader opens
+* page rendering works
+* progress works
+* annotations work
+* bookmark works
+* translation behavior is graceful
+* Focus Mode works
+* fullscreen works
+* offline caching works
+
+---
+
+# PHASE 23 — BUILD VALIDATION
+
+Run:
+
+`npm run build`
+
+Check:
+
+* zero TypeScript errors
+* zero route errors
+* zero missing PDF references
+* zero broken imports
+* zero duplicate IDs
+
+Do not repeatedly run build if there is an unresolved environment/process problem.
+
+---
+
+# PHASE 24 — PERFORMANCE CHECK
+
+Do not allow a large batch of new PDFs to degrade the homepage.
+
+The library should remain:
+
+* fast
+* lazy-loaded
+* responsive
+
+Do not eagerly render unnecessary PDF content.
+
+Do not load PDF contents on homepage.
+
+Use metadata only for discovery.
+
+---
+
+# PHASE 25 — REPORT UNKNOWN / AMBIGUOUS FILES
+
+Do not silently skip problematic files.
+
+Report:
+
+### Unknown / Needs Review
+
+```text
+filename.pdf
+Reason: Could not confidently identify title/category
+```
+
+### Duplicate
+
+```text
+filename.pdf
+Reason: Exact duplicate of existing resource
+```
+
+### Invalid
+
+```text
+filename.pdf
+Reason: Corrupted/empty PDF
+```
+
+---
+
+# PHASE 26 — FINAL REPORT
+
+At the end provide:
+
+## New PDFs Detected
+
+Count.
+
+## Added
+
+For each:
+
+* title
+* type
+* category
+* subcategory
+* ID
+* canonical filename
+* page count
+
+## Renamed
+
+`Old → New`
+
+## Duplicates
+
+List.
+
+## Unknown / Needs Review
+
+List.
+
+## Existing Catalog Safety
+
+Explicitly confirm:
+
+* existing IDs unchanged
+* existing PDF mappings unchanged
+* existing reading progress unaffected
+* existing annotations unaffected
+* existing bookmarks unaffected
+
+## Build
+
+Actual `npm run build` result.
+
+## Final Catalog Count
+
+Before → After.
+
+---
+
+# REPEATABILITY REQUIREMENT
+
+This prompt will be reused multiple times.
+
+Therefore the implementation must be **idempotent**.
+
+If I run the same prompt again after adding another batch:
+
+* already integrated PDFs should NOT be duplicated
+* already clean filenames should NOT be renamed unnecessarily
+* existing IDs must remain stable
+* only genuinely new PDFs should be processed
+
+---
+
+# FINAL PRINCIPLE
+
+Every future batch should follow:
+
+```text
+NEW PDF FOLDER
+      ↓
+AUDIT
+      ↓
+IDENTIFY
+      ↓
+DUPLICATE CHECK
+      ↓
+MEANINGFUL TITLE
+      ↓
+CAMELCASE FILENAME
+      ↓
+RESOURCE TYPE
+      ↓
+CATEGORY / SUBCATEGORY
+      ↓
+CATALOG INTEGRATION
+      ↓
+GLOBAL REFERENCE VALIDATION
+      ↓
+BUILD / TEST
+      ↓
+REPORT
+```
+
+## The rule:
+
+### New content gets added.
+
+### Existing content stays protected.
+
+### Wrong content is never guessed.
+
+### Existing architecture is reused.
+
+### No unrelated refactoring.
