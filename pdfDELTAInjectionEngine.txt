@@ -1,0 +1,490 @@
+# Reader's HUB — MASTER REUSABLE PDF INGESTION PROMPT
+
+I have added a NEW batch of PDF files to:
+
+`public/pdfs/`
+
+Process ONLY the newly added / unindexed PDFs from this batch using the existing **Delta PDF Ingestion Engine**.
+
+The Reader's HUB project is already stable and production-ready.
+
+---
+
+# ABSOLUTE RULE — EXTEND, NEVER BREAK
+
+Do NOT:
+
+- rewrite the project
+- redesign UI
+- modify PDF.js
+- modify reader behavior
+- modify Open Book / Single Page
+- modify Focus Mode
+- modify fullscreen
+- modify zoom
+- modify cursor
+- modify translation
+- modify annotations
+- modify bookmarks
+- modify Reading Memory
+- modify Reading Replay
+- modify Diya / Streak
+- modify offline architecture
+- modify existing localStorage keys
+- modify existing book IDs
+- delete existing books
+- reprocess the whole catalog
+- refactor unrelated code
+
+Only process genuinely NEW PDFs.
+
+---
+
+# 1. USE THE DELTA INGESTION ENGINE
+
+Use the existing:
+
+`npm run ingest-batch`
+
+workflow.
+
+The system must process ONLY the delta.
+
+Do not manually recreate the old ingestion workflow.
+
+---
+
+# 2. FIRST RUN DRY-RUN
+
+Run:
+
+`npm run ingest-batch -- --dry-run`
+
+The dry-run must show:
+
+- newly detected PDFs
+- duplicates
+- invalid/placeholder files
+- proposed names
+- proposed IDs
+- proposed categories
+- resource types
+- covers
+- final additions
+
+Do NOT modify the catalog during dry-run.
+
+---
+
+# 3. PROCESS ONLY NEW FILES
+
+Already-indexed PDFs must be skipped.
+
+Use the existing delta detection and hash/index logic.
+
+Do NOT:
+
+- re-read the full existing catalog unnecessarily
+- regenerate old covers
+- recreate old IDs
+- rename already-canonical files
+- duplicate existing resources
+
+---
+
+# 4. DUPLICATE HANDLING
+
+Check:
+
+- exact SHA-256 duplicate
+- already indexed filename/path
+- duplicate title/author where applicable
+- known placeholder/dummy PDFs
+
+If duplicate:
+
+SKIP it.
+
+Do NOT delete the file automatically.
+
+Report it.
+
+---
+
+# 5. INVALID / PLACEHOLDER PDFs
+
+Skip:
+
+- corrupt PDFs
+- empty PDFs
+- obvious 1-page placeholder files
+- unusable files
+
+Do NOT delete them.
+
+Report them as:
+
+`INVALID / PLACEHOLDER`
+
+---
+
+# 6. NAMING
+
+Use the existing canonical naming system.
+
+### For confirmed Osho/Rajneesh works:
+
+Use:
+
+`<MeaningfulTitle>ByOsho.pdf`
+
+Example:
+
+`AnandKiKhojByOsho.pdf`
+
+If the filename is already clean/canonical:
+
+DO NOT rename it unnecessarily.
+
+### For non-Osho resources:
+
+Use the existing generic CamelCase/PascalCase naming convention.
+
+Do not invent titles.
+
+If the title is ambiguous:
+
+mark:
+
+`NEEDS_REVIEW`
+
+---
+
+# 7. TITLE IDENTIFICATION
+
+Use actual PDF evidence when necessary:
+
+- title page
+- first page
+- author/source
+- headings
+- metadata
+- visible title
+
+Do NOT blindly trust filenames.
+
+Do NOT invent titles.
+
+---
+
+# 8. CATEGORIES
+
+Reuse the existing Reader's HUB taxonomy.
+
+### Osho / spiritual works:
+Prefer:
+
+`Philosophy & Spirituality`
+
+### Technical:
+Use:
+
+`Technical Knowledge`
+
+with existing subcategories such as:
+
+- DSA & Problem Solving
+- Computer Science & Systems
+- Web & Backend Development
+- DBMS & SQL
+- OOP & Software Design
+- System Design & DevOps
+- Programming Languages
+
+Do NOT create new top-level technical categories.
+
+---
+
+# 9. RESOURCE TYPES
+
+Use existing types:
+
+- Book
+- Notes
+- HandwrittenNotes
+- CheatSheet
+- InterviewPrep
+- Reference
+
+Determine type from actual content where needed.
+
+---
+
+# 10. METADATA
+
+For every genuinely new resource create:
+
+- stable ID
+- title
+- author/source
+- category
+- subcategory
+- resource type
+- PDF path
+- page count
+- description if needed
+- cover path
+- hash where supported
+
+Do NOT alter metadata of existing books.
+
+---
+
+# 11. STABLE IDs
+
+Generate deterministic slug IDs.
+
+Example:
+
+`anand-ki-khoj`
+
+Before adding:
+
+- verify the ID does not already exist
+- never overwrite an existing ID
+
+Once created, keep it stable.
+
+---
+
+# 12. COVERS
+
+Use the existing cover-generation engine.
+
+Generate the standard:
+
+`600 × 900 WebP`
+
+cover.
+
+Preserve the current Reader's HUB visual style.
+
+Do NOT redesign the card or cover system.
+
+If cover generation fails:
+
+report the item and continue with the rest of the batch where safe.
+
+---
+
+# 13. CATALOG UPDATE
+
+Add only the validated new resources to:
+
+`data/books.json`
+
+Preserve the current synchronization strategy with:
+
+`data/books.ts`
+
+Do NOT create a second catalog system.
+
+Write the catalog safely/atomically.
+
+Existing entries must remain unchanged.
+
+---
+
+# 14. SEARCH / FILTER / READER COMPATIBILITY
+
+Each new resource must work automatically with:
+
+- global search
+- category filters
+- Technical Knowledge subfilters
+- resource-type filters
+- favorites
+- reading progress
+- bookmarks
+- annotations
+- Reading Memory
+- offline caching
+- translation
+- Focus Mode
+- fullscreen
+- reader navigation
+
+Do not add special-case logic for individual PDFs.
+
+---
+
+# 15. REFERENCE VALIDATION
+
+For renamed/new PDFs verify:
+
+- physical file exists
+- catalog path is correct
+- no stale references remain
+- cover exists
+- ID is unique
+- metadata is valid
+
+---
+
+# 16. IDEMPOTENCY
+
+If this prompt is run again on the same files:
+
+- do not create duplicates
+- do not recreate IDs
+- do not regenerate old covers unnecessarily
+- do not rename already-clean files
+- do not alter existing catalog entries
+
+Only genuinely new PDFs should be processed.
+
+---
+
+# 17. BATCH FAILURE ISOLATION
+
+If one PDF fails:
+
+DO NOT abort the entire batch.
+
+Example:
+
+```text
+24 detected
+20 added
+2 duplicates
+1 invalid
+1 needs review
+
+Valid PDFs should still be processed safely.
+
+18. EXISTING CATALOG PROTECTION
+
+Before writing:
+
+verify existing entries remain intact.
+
+Existing books must keep:
+
+same ID
+same title
+same author
+same PDF path
+same cover
+same metadata
+same reading data
+
+Do not migrate or rewrite old entries unnecessarily.
+
+19. NO UNRELATED CHANGES
+
+Do NOT touch:
+
+reader
+UI
+components unrelated to ingestion
+storage logic
+translation
+annotations
+streak
+offline system
+technical taxonomy unless a genuinely new category is required
+existing project features
+20. BUILD VALIDATION
+
+After successful ingestion:
+
+Run:
+
+npm run build
+
+Only once.
+
+Do NOT enter repeated build/dev loops.
+
+If build fails:
+
+protect the last known-good catalog
+report exact error
+do not continue unrelated modifications
+21. FINAL BATCH REPORT
+
+Return:
+
+Detected
+
+Count
+
+Added
+
+Count + titles
+
+Duplicates
+
+Count + files
+
+Invalid / Placeholder
+
+Count + files
+
+Needs Review
+
+Count + files
+
+Renamed
+
+Old → New
+
+Covers
+
+Generated count
+
+Catalog
+
+Before → After
+
+Build
+
+Actual result
+
+Safety
+
+Confirm existing catalog/features were preserved.
+
+22. STOP AFTER THIS BATCH
+
+Process ONLY the current newly added PDFs.
+
+Do NOT continue scanning for future files.
+
+Do NOT add anything that belongs to a later batch.
+
+Stop after the report.
+
+FINAL WORKFLOW
+
+Future usage should be:
+
+Drop 20–30 new PDFs into public/pdfs/
+Run:
+
+npm run ingest-batch -- --dry-run
+
+Review
+Run:
+
+npm run ingest-batch
+
+Build/test
+Stop
+FINAL PRINCIPLE
+DELTA ONLY.
+NEW PDFs ONLY.
+EXISTING DATA PROTECTED.
+NO DUPLICATES.
+NO UNRELATED CHANGES.
+SAFE + IDEMPOTENT + MODULAR INGESTION.

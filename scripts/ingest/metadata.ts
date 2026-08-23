@@ -190,11 +190,23 @@ export async function extractPdfMetadata(filePath: string, filename: string): Pr
     const devanagariMatch = extractedText.match(/[\u0900-\u097F\s]{3,40}/);
     let devanagariTitle = devanagariMatch ? devanagariMatch[0].trim() : "";
     
+    // Clean discourse boilerplate
+    devanagariTitle = devanagariTitle
+      .replace(/प्र\s*[वविि]चन\s*[-–—:]*\s*\d*/g, "")
+      .replace(/अ[नुि]क्र\s*म/g, "")
+      .replace(/अनुक्रम/g, "")
+      .replace(/प्र\s*विन/g, "")
+      .trim();
+
     // Clean english base
-    let base = filename.replace(/\.pdf$/i, "").replace(/ByOsho/gi, "").replace(/Osho/gi, "");
+    let base = filename
+      .replace(/\.pdf$/i, "")
+      .replace(/ByOsho/gi, "")
+      .replace(/Osho/gi, "")
+      .replace(/Translation/gi, "");
     base = base.replace(/([a-z])([A-Z])/g, "$1 $2").trim();
 
-    if (devanagariTitle && devanagariTitle.length >= 3 && !devanagariTitle.includes("अनुक्रम") && !devanagariTitle.includes("प्रवचन")) {
+    if (devanagariTitle && devanagariTitle.length >= 3) {
       title = `${base} (${devanagariTitle})`;
     } else {
       title = base;
