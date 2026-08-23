@@ -90,6 +90,7 @@ export default function BookReader({ book }: BookReaderProps) {
     checkOfflineStatus,
     saveBookOffline,
     removeBookOffline,
+    addBookReadingTime,
   } = useLibrary();
 
   // Load saved position from centralized storage or context
@@ -245,6 +246,7 @@ export default function BookReader({ book }: BookReaderProps) {
   const recordSessionEventRef = useRef(recordSessionEvent);
   const endReadingSessionRef = useRef(endReadingSession);
   const recordActiveReadingRef = useRef(recordActiveReading);
+  const addBookReadingTimeRef = useRef(addBookReadingTime);
 
   useEffect(() => {
     activeSessionRef.current = activeSession;
@@ -263,7 +265,8 @@ export default function BookReader({ book }: BookReaderProps) {
     recordSessionEventRef.current = recordSessionEvent;
     endReadingSessionRef.current = endReadingSession;
     recordActiveReadingRef.current = recordActiveReading;
-  }, [showToast, recordSessionEvent, endReadingSession, recordActiveReading]);
+    addBookReadingTimeRef.current = addBookReadingTime;
+  }, [showToast, recordSessionEvent, endReadingSession, recordActiveReading, addBookReadingTime]);
 
   const registerActivity = useCallback(() => {
     lastActivityTimestampRef.current = Date.now();
@@ -356,7 +359,7 @@ export default function BookReader({ book }: BookReaderProps) {
       .sort((a, b) => a.page - b.page);
   }, [annotations, bookmarks]);
 
-  // 1.5. Intelligent Active Reading Timer (Diwali Diya Tracker)
+  // 1.5. Intelligent Active Reading Timer (Diwali Diya & Book Memory Tracker)
   useEffect(() => {
     const IDLE_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes grace period for stationary reading
 
@@ -374,8 +377,10 @@ export default function BookReader({ book }: BookReaderProps) {
           accumulatedSecondsRef.current += 1;
 
           if (accumulatedSecondsRef.current >= 5) {
-            const res = recordActiveReadingRef.current(accumulatedSecondsRef.current);
+            const secs = accumulatedSecondsRef.current;
             accumulatedSecondsRef.current = 0;
+            const res = recordActiveReadingRef.current(secs);
+            addBookReadingTimeRef.current(book.id, secs);
             if (res.justQualified) {
               showToastRef.current("🪔 15-minute daily reading goal reached! Your Diwali Diya is lit! ✨");
             }
@@ -408,8 +413,10 @@ export default function BookReader({ book }: BookReaderProps) {
     return () => {
       clearInterval(timer);
       if (accumulatedSecondsRef.current > 0) {
-        recordActiveReadingRef.current(accumulatedSecondsRef.current);
+        const secs = accumulatedSecondsRef.current;
         accumulatedSecondsRef.current = 0;
+        recordActiveReadingRef.current(secs);
+        addBookReadingTimeRef.current(book.id, secs);
       }
     };
   }, [loading, book.id]);

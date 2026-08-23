@@ -22,7 +22,7 @@ export default function BookReadingMemory({
   onClose,
   onJumpToPage,
 }: BookReadingMemoryProps) {
-  const { getReadingProgress, getReadingMemory } = useLibrary();
+  const { getReadingProgress, getReadingMemory, globalActiveSeconds } = useLibrary();
   const [activeTab, setActiveTab] = useState<MemoryTab>("overview");
   const [selectedHighlightColor, setSelectedHighlightColor] = useState<string>("all");
   const [showPrintReport, setShowPrintReport] = useState<boolean>(false);
@@ -33,7 +33,23 @@ export default function BookReadingMemory({
 
   if (!isOpen) return null;
 
-  const totalMinutes = Math.floor((memory.totalSeconds || 0) / 60);
+  const readingSeconds = memory.totalSeconds || 0;
+  const readingMinutes = Math.floor(readingSeconds / 60);
+  const readingTimeFormatted =
+    readingMinutes >= 60
+      ? `${Math.floor(readingMinutes / 60)}h ${readingMinutes % 60}m`
+      : readingMinutes > 0
+      ? `${readingMinutes}m`
+      : progress?.progress && progress.progress > 0
+      ? "< 1m"
+      : "0m";
+
+  const siteActiveMinutes = Math.floor(globalActiveSeconds / 60);
+  const siteActiveFormatted =
+    siteActiveMinutes >= 60
+      ? `${Math.floor(siteActiveMinutes / 60)}h ${siteActiveMinutes % 60}m`
+      : `${siteActiveMinutes}m`;
+
   const highlights = annotations.highlights || [];
   const notes = annotations.notes || [];
   const bookmarks = annotations.bookmarks || [];
@@ -42,7 +58,6 @@ export default function BookReadingMemory({
 
   const totalAnnotations = highlights.length + notes.length + bookmarks.length + drawingPages.length;
 
-  // 1. Calculate Annotation Density across pages
   const totalPages = Number(book.pages) || progress?.totalPages || 100;
   const pageDensityMap: Record<number, number> = {};
 
@@ -59,7 +74,6 @@ export default function BookReadingMemory({
     pageDensityMap[p] = (pageDensityMap[p] || 0) + (drawings[p]?.length || 1);
   });
 
-  // Find most annotated page
   let mostAnnotatedPage: number | null = null;
   let maxPageCount = 0;
   Object.entries(pageDensityMap).forEach(([pageStr, count]) => {
@@ -69,7 +83,6 @@ export default function BookReadingMemory({
     }
   });
 
-  // Bucket density for visual heatmap (20 segments)
   const segmentsCount = Math.min(20, Math.max(5, totalPages));
   const pagesPerSegment = Math.ceil(totalPages / segmentsCount);
   const densitySegments = Array.from({ length: segmentsCount }).map((_, idx) => {
@@ -94,7 +107,6 @@ export default function BookReadingMemory({
     selectedHighlightColor === "all" ? true : h.color === selectedHighlightColor
   );
 
-  // Authentic Reading Replay timeline from recorded sessions
   const timelineEvents: ReadingTimelineEvent[] = memory.timeline || [];
 
   const handlePrint = () => {
@@ -103,12 +115,9 @@ export default function BookReadingMemory({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md animate-fade-in text-left">
-      {/* Backdrop click */}
       <div className="fixed inset-0" onClick={onClose} aria-hidden="true" />
 
-      {/* Modal Container */}
       <div className="relative w-full max-w-3xl max-h-[90vh] bg-[var(--card)] border border-[var(--border)] rounded-3xl shadow-2xl overflow-hidden z-10 flex flex-col justify-between animate-scale-up">
-        {/* Header */}
         <div className="p-5 sm:p-6 border-b border-[var(--border)] bg-[var(--card)]/90 backdrop-blur-xl flex items-start justify-between gap-4">
           <div className="flex items-center gap-4 min-w-0">
             <div className="relative w-14 h-20 rounded-xl overflow-hidden book-shadow flex-shrink-0 border border-[var(--border)]">
@@ -118,83 +127,96 @@ export default function BookReadingMemory({
               <div className="flex items-center gap-2">
                 <span className="text-base">🧠</span>
                 <h3 className="font-serif font-bold text-base sm:text-lg text-[var(--foreground)] truncate">
-                  My Reading Memory 2.0
+                  {book.title}
                 </h3>
               </div>
-              <h4 className="text-xs font-semibold text-[var(--accent)] truncate mt-0.5">
-                {book.title}
-              </h4>
-              <p className="text-[11px] text-[var(--text-secondary)] truncate">
-                by {book.author} • {totalMinutes}m active reading • {totalAnnotations} personal markings
+              <p className="text-xs text-[var(--text-secondary)] mt-0.5 truncate">
+                {book.author} • My Reading Memory &amp; Insights
               </p>
+              <div className="flex items-center gap-2 mt-2">
+                <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-[var(--accent)]/15 text-[var(--accent)] font-semibold border border-[var(--accent)]/30">
+                  {readingTimeFormatted} Read
+                </span>
+                <span className="text-[11px] text-[var(--text-secondary)]">
+                  {totalAnnotations} study annotations
+                </span>
+              </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowPrintReport(!showPrintReport)}
-              className="px-3 py-1.5 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] text-xs font-semibold border border-[var(--border)] transition-all flex items-center gap-1.5 cursor-pointer"
-              title="Print or Export Reading Report"
-            >
-              <span>🖨️</span>
-              <span className="hidden sm:inline">Report</span>
-            </button>
-            <button
-              onClick={onClose}
-              className="w-8 h-8 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--foreground)] flex items-center justify-center text-xs transition-all cursor-pointer flex-shrink-0"
-            >
-              ✕
-            </button>
-          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] flex items-center justify-center transition-colors cursor-pointer flex-shrink-0"
+            aria-label="Close memory view"
+          >
+            ✕
+          </button>
         </div>
 
-        {/* Tab Filter Navigation */}
-        <div className="flex items-center gap-1.5 px-5 pt-3 border-b border-[var(--border)] bg-[var(--secondary)]/20 overflow-x-auto">
-          {[
-            { id: "overview", label: "Overview", icon: "📊" },
-            { id: "replay", label: "Reading Replay", icon: "🎬", count: timelineEvents.length },
-            { id: "highlights", label: "Highlights", icon: "🖍️", count: highlights.length },
-            { id: "notes", label: "Notes", icon: "📝", count: notes.length },
-            { id: "drawings", label: "Drawings", icon: "🎨", count: drawingPages.length },
-            { id: "bookmarks", label: "Bookmarks", icon: "🔖", count: bookmarks.length },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`px-3 py-2 rounded-t-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 border-b-2 ${
-                activeTab === tab.id
-                  ? "border-[var(--accent)] text-[var(--accent)] bg-[var(--card)] shadow-xs"
-                  : "border-transparent text-[var(--text-secondary)] hover:text-[var(--foreground)]"
-              }`}
-            >
-              <span>{tab.icon}</span>
-              <span>{tab.label}</span>
-              {tab.count !== undefined && tab.count > 0 && (
-                <span className="px-1.5 py-0.2 rounded-full bg-[var(--secondary)] text-[10px] text-[var(--accent)] font-bold">
-                  {tab.count}
-                </span>
-              )}
-            </button>
-          ))}
+        <div className="flex items-center gap-1.5 px-5 sm:px-6 py-2 border-b border-[var(--border)] bg-[var(--secondary)]/30 overflow-x-auto text-xs font-semibold">
+          <button
+            onClick={() => { setActiveTab("overview"); setShowPrintReport(false); }}
+            className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === "overview" && !showPrintReport
+                ? "bg-[var(--card)] text-[var(--accent)] shadow-sm border border-[var(--border)]"
+                : "text-[var(--text-secondary)] hover:text-[var(--foreground)]"
+            }`}
+          >
+            📊 Overview &amp; Density
+          </button>
+          <button
+            onClick={() => { setActiveTab("replay"); setShowPrintReport(false); }}
+            className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === "replay" && !showPrintReport
+                ? "bg-[var(--card)] text-[var(--accent)] shadow-sm border border-[var(--border)]"
+                : "text-[var(--text-secondary)] hover:text-[var(--foreground)]"
+            }`}
+          >
+            ⏪ Reading Replay ({timelineEvents.length})
+          </button>
+          <button
+            onClick={() => { setActiveTab("highlights"); setShowPrintReport(false); }}
+            className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === "highlights" && !showPrintReport
+                ? "bg-[var(--card)] text-[var(--accent)] shadow-sm border border-[var(--border)]"
+                : "text-[var(--text-secondary)] hover:text-[var(--foreground)]"
+            }`}
+          >
+            🌟 Highlights ({highlights.length})
+          </button>
+          <button
+            onClick={() => { setActiveTab("notes"); setShowPrintReport(false); }}
+            className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === "notes" && !showPrintReport
+                ? "bg-[var(--card)] text-[var(--accent)] shadow-sm border border-[var(--border)]"
+                : "text-[var(--text-secondary)] hover:text-[var(--foreground)]"
+            }`}
+          >
+            📝 Notes ({notes.length})
+          </button>
+          <button
+            onClick={() => { setActiveTab("drawings"); setShowPrintReport(false); }}
+            className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer whitespace-nowrap ${
+              activeTab === "drawings" && !showPrintReport
+                ? "bg-[var(--card)] text-[var(--accent)] shadow-sm border border-[var(--border)]"
+                : "text-[var(--text-secondary)] hover:text-[var(--foreground)]"
+            }`}
+          >
+            ✏️ Sketches ({drawingPages.length})
+          </button>
         </div>
 
-        {/* Scrollable Content Body */}
         <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6">
-          {/* Printable Report View (Modal Overlay Inside Container) */}
-          {showPrintReport && (
-            <div className="p-6 bg-[var(--card)] border border-[var(--accent)]/40 rounded-2xl shadow-xl space-y-4 mb-4">
-              <div className="flex items-center justify-between border-b border-[var(--border)] pb-3">
+          {showPrintReport ? (
+            <div className="space-y-6 print:m-0 print:p-0">
+              <div className="flex items-center justify-between pb-3 border-b border-[var(--border)]">
                 <div>
-                  <h4 className="font-serif font-bold text-base text-[var(--foreground)]">
-                    Official Reading Study Report
-                  </h4>
-                  <p className="text-xs text-[var(--text-secondary)]">
-                    Generated locally from browser memory for &ldquo;{book.title}&rdquo;
-                  </p>
+                  <h4 className="font-serif font-bold text-lg text-[var(--foreground)]">Study Dossier &amp; Synthesis</h4>
+                  <p className="text-xs text-[var(--text-secondary)]">Complete export of your thoughts and annotations</p>
                 </div>
                 <button
                   onClick={handlePrint}
-                  className="px-4 py-2 rounded-xl bg-[var(--primary)] text-[var(--primary-foreground)] font-bold text-xs shadow-md hover:scale-105 transition-transform flex items-center gap-1.5 cursor-pointer"
+                  className="px-4 py-2 bg-[var(--accent)] text-black rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-md hover:opacity-90 cursor-pointer"
                 >
                   <span>🖨️</span>
                   <span>Print Document</span>
@@ -211,21 +233,19 @@ export default function BookReadingMemory({
                   <p className="font-bold text-[var(--foreground)]">Page {progress?.page || 1} of {totalPages}</p>
                 </div>
                 <div className="p-3 bg-[var(--secondary)]/40 rounded-xl border border-[var(--border)]">
-                  <span className="text-[10px] text-[var(--text-secondary)]">Study Markings</span>
-                  <p className="font-bold text-[var(--foreground)]">{totalAnnotations} total</p>
+                  <span className="text-[10px] text-[var(--text-secondary)]">Reading Time</span>
+                  <p className="font-bold text-[var(--accent)]">{readingTimeFormatted} (Book Reading)</p>
                 </div>
                 <div className="p-3 bg-[var(--secondary)]/40 rounded-xl border border-[var(--border)]">
-                  <span className="text-[10px] text-[var(--text-secondary)]">Active Reading Time</span>
-                  <p className="font-bold text-[var(--foreground)]">{totalMinutes} minutes</p>
+                  <span className="text-[10px] text-[var(--text-secondary)]">Active Site Time</span>
+                  <p className="font-bold text-[var(--foreground)]">{siteActiveFormatted} (Engagement)</p>
                 </div>
               </div>
             </div>
-          )}
+          ) : null}
 
-          {/* ----------------- Tab 1: Overview & Density Heatmap ----------------- */}
-          {activeTab === "overview" && (
+          {activeTab === "overview" && !showPrintReport && (
             <div className="space-y-6">
-              {/* Derived Reading Insights Summary */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
                 <div className="p-3.5 rounded-2xl bg-[var(--secondary)]/40 border border-[var(--border)]">
                   <span className="text-[10px] text-[var(--text-secondary)] block">Progress</span>
@@ -237,29 +257,41 @@ export default function BookReadingMemory({
                   </span>
                 </div>
 
-                <div className="p-3.5 rounded-2xl bg-[var(--secondary)]/40 border border-[var(--border)]">
-                  <span className="text-[10px] text-[var(--text-secondary)] block">Active Time</span>
+                <div
+                  className="p-3.5 rounded-2xl bg-[var(--secondary)]/40 border border-[var(--border)]"
+                  title="Genuine active time spent reading this book (powers your Diya and streak)."
+                >
+                  <span className="text-[10px] text-[var(--text-secondary)] block flex items-center justify-center gap-1">
+                    <span>Reading Time</span>
+                    <span className="text-[9px] text-[var(--accent)]">📖</span>
+                  </span>
                   <strong className="text-sm font-bold text-[var(--foreground)] font-mono">
-                    {totalMinutes} min
+                    {readingTimeFormatted}
                   </strong>
                   <span className="text-[10px] text-[var(--text-secondary)] block">
-                    {memory.sessionsCount || 1} sessions logged
+                    {memory.sessionsCount || (readingSeconds > 0 ? 1 : 0)} sessions logged
                   </span>
                 </div>
 
-                <div className="p-3.5 rounded-2xl bg-[var(--secondary)]/40 border border-[var(--border)]">
-                  <span className="text-[10px] text-[var(--text-secondary)] block">Most Annotated</span>
-                  <strong className="text-sm font-bold text-amber-400 font-mono">
-                    {mostAnnotatedPage ? `Page ${mostAnnotatedPage}` : "None yet"}
+                <div
+                  className="p-3.5 rounded-2xl bg-[var(--secondary)]/40 border border-[var(--border)]"
+                  title="Total meaningful time spent exploring, searching, and studying across Reader's HUB."
+                >
+                  <span className="text-[10px] text-[var(--text-secondary)] block flex items-center justify-center gap-1">
+                    <span>Active Time</span>
+                    <span className="text-[9px] text-emerald-400">⚡</span>
+                  </span>
+                  <strong className="text-sm font-bold text-emerald-400 font-mono">
+                    {siteActiveFormatted}
                   </strong>
                   <span className="text-[10px] text-[var(--text-secondary)] block">
-                    {maxPageCount > 0 ? `${maxPageCount} study marks` : "No marks"}
+                    Meaningful site use
                   </span>
                 </div>
 
                 <div className="p-3.5 rounded-2xl bg-[var(--secondary)]/40 border border-[var(--border)]">
                   <span className="text-[10px] text-[var(--text-secondary)] block">Study Density</span>
-                  <strong className="text-sm font-bold text-emerald-400 font-mono">
+                  <strong className="text-sm font-bold text-amber-400 font-mono">
                     {totalAnnotations}
                   </strong>
                   <span className="text-[10px] text-[var(--text-secondary)] block">
@@ -268,7 +300,6 @@ export default function BookReadingMemory({
                 </div>
               </div>
 
-              {/* Page Interaction Density Heatmap */}
               <div className="glass-card p-4 sm:p-5 rounded-2xl border border-[var(--border)] bg-[var(--card)] space-y-3">
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-bold text-[var(--foreground)] flex items-center gap-1.5">

@@ -13,10 +13,14 @@ import {
   importUserData,
   getReadingActivityData,
   addActiveReadingTime,
+  getWebsiteActiveTimeData,
+  addWebsiteActiveSeconds,
+  addBookReadingSeconds,
   getLocalDateKey,
   DAILY_READING_GOAL_SECONDS,
   ReadingStats,
   ReadingStreakData,
+  WebsiteActiveTimeData,
   BookReadingMemory,
   ReadingTimelineEvent,
   getBookReadingMemory,
@@ -77,6 +81,12 @@ interface LibraryContextType {
   refreshStats: () => void;
   exportData: () => string;
   importData: (jsonStr: string) => { success: boolean; message: string };
+  // Active Time vs Reading Time Distinction
+  globalActiveSeconds: number;
+  todayActiveSeconds: number;
+  globalReadingSeconds: number;
+  recordWebsiteActiveTime: (seconds: number) => { totalActiveSeconds: number; todayActiveSeconds: number };
+  addBookReadingTime: (bookId: string, seconds: number) => BookReadingMemory;
   // Streak & Active Reading Extensions (Diwali Diya)
   streakData: ReadingStreakData;
   todayReadingSeconds: number;
@@ -115,6 +125,10 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   const [readingHistory, setReadingHistory] = useState<ReadingProgressItem[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [activeSession, setActiveSession] = useState<ActiveReadingSession | null>(null);
+  const [activeTimeState, setActiveTimeState] = useState<{
+    totalActiveSeconds: number;
+    todayActiveSeconds: number;
+  }>({ totalActiveSeconds: 0, todayActiveSeconds: 0 });
   const [streakData, setStreakData] = useState<ReadingStreakData>({
     daily: {},
     currentStreak: 0,
@@ -133,14 +147,81 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     readingStreakDays: 0,
     todayReadingSeconds: 0,
     isTodayQualified: false,
+    totalReadingSeconds: 0,
+    totalActiveSeconds: 0,
+    todayActiveSeconds: 0,
   });
   const [mounted, setMounted] = useState(false);
 
   const refreshStats = useCallback(() => {
     const calculated = calculateReadingStats();
     const act = getReadingActivityData();
+    const actTime = getWebsiteActiveTimeData();
+    const todayKey = getLocalDateKey();
     setStats(calculated);
     setStreakData(act);
+    setActiveTimeState({
+      totalActiveSeconds: actTime.totalActiveSeconds || 0,
+      todayActiveSeconds: actTime.daily[todayKey] || 0,
+    });
+  }, []);
+
+  // Global Website Engagement & Active Time Tracker (Meaningful Site Interaction)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const SITE_IDLE_TIMEOUT_MS = 60 * 1000; // 60 seconds inactivity threshold
+    let lastSiteActivity = Date.now();
+    let accumulatedSiteSecs = 0;
+
+    const registerSiteActivity = () => {
+      lastSiteActivity = Date.now();
+    };
+
+    const events = ["pointerdown", "keydown", "scroll", "touchstart", "wheel"];
+    events.forEach((ev) => window.addEventListener(ev, registerSiteActivity, { passive: true }));
+
+    const interval = setInterval(() => {
+      if (
+        typeof document !== "undefined" &&
+        document.visibilityState === "visible" &&
+        Date.now() - lastSiteActivity < SITE_IDLE_TIMEOUT_MS
+      ) {
+        accumulatedSiteSecs += 1;
+        if (accumulatedSiteSecs >= 5) {
+          const res = addWebsiteActiveSeconds(accumulatedSiteSecs);
+          accumulatedSiteSecs = 0;
+          setActiveTimeState(res);
+        }
+      }
+    }, 1000);
+
+    const flushSiteActiveTime = () => {
+      if (accumulatedSiteSecs > 0) {
+        const res = addWebsiteActiveSeconds(accumulatedSiteSecs);
+        accumulatedSiteSecs = 0;
+        setActiveTimeState(res);
+      }
+    };
+
+    const handleVisibility = () => {
+      if (document.visibilityState !== "visible") {
+        flushSiteActiveTime();
+      } else {
+        lastSiteActivity = Date.now();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibility);
+    window.addEventListener("beforeunload", flushSiteActiveTime);
+
+    return () => {
+      clearInterval(interval);
+      flushSiteActiveTime();
+      events.forEach((ev) => window.removeEventListener(ev, registerSiteActivity));
+      document.removeEventListener("visibilitychange", handleVisibility);
+      window.removeEventListener("beforeunload", flushSiteActiveTime);
+    };
   }, []);
 
   useEffect(() => {
@@ -430,6 +511,18 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     showToast("All local data reset to defaults ✨");
   }, [refreshStats, showToast]);
 
+  const recordWebsiteActiveTime = useCallback((seconds: number) => {
+    const res = addWebsiteActiveSeconds(seconds);
+    setActiveTimeState(res);
+    return res;
+  }, []);
+
+  const addBookReadingTime = useCallback((bookId: string, seconds: number) => {
+    const mem = addBookReadingSeconds(bookId, seconds);
+    refreshStats();
+    return mem;
+  }, [refreshStats]);
+
   // Derive actual book objects
   const favoriteBooks = mounted
     ? favorites
@@ -455,6 +548,14 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   const todaySeconds = streakData.daily[todayKey]?.seconds || 0;
   const isTodayQualified = Boolean(streakData.daily[todayKey]?.qualified || todaySeconds >= DAILY_READING_GOAL_SECONDS);
 
+  const globalReadingSeconds = useMemo(() => {
+    let total = 0;
+    Object.values(streakData.daily || {}).forEach((d) => {
+      total += d.seconds || 0;
+    });
+    return total;
+  }, [streakData]);
+
   const contextValue = useMemo<LibraryContextType>(
     () => ({
       favorites,
@@ -479,6 +580,11 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       refreshStats,
       exportData,
       importData: handleImportData,
+      globalActiveSeconds: activeTimeState.totalActiveSeconds,
+      todayActiveSeconds: activeTimeState.todayActiveSeconds,
+      globalReadingSeconds,
+      recordWebsiteActiveTime,
+      addBookReadingTime,
       streakData,
       todayReadingSeconds: todaySeconds,
       isTodayQualified,
@@ -520,6 +626,11 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       refreshStats,
       exportData,
       handleImportData,
+      activeTimeState.totalActiveSeconds,
+      activeTimeState.todayActiveSeconds,
+      globalReadingSeconds,
+      recordWebsiteActiveTime,
+      addBookReadingTime,
       streakData,
       todaySeconds,
       isTodayQualified,

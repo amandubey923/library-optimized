@@ -109,6 +109,12 @@ export interface BookReadingMemory {
   timeline: ReadingTimelineEvent[];
 }
 
+export interface WebsiteActiveTimeData {
+  totalActiveSeconds: number; // Global cumulative active website usage
+  daily: Record<string, number>; // "YYYY-MM-DD" -> active seconds on that day
+  lastUpdated: number;
+}
+
 export interface ReadingStats {
   booksStarted: number;
   booksCompleted: number;
@@ -121,6 +127,9 @@ export interface ReadingStats {
   readingStreakDays: number;
   todayReadingSeconds: number;
   isTodayQualified: boolean;
+  totalReadingSeconds: number; // Genuine reading time across all books
+  totalActiveSeconds: number;  // Meaningful website engagement time
+  todayActiveSeconds: number;  // Today's website engagement time
 }
 
 export interface ReaderHubExportData {
@@ -132,6 +141,7 @@ export interface ReaderHubExportData {
   bookmarks: Record<string, BookmarkItem[]>;
   readingActivity?: ReadingStreakData;
   readingMemories?: Record<string, BookReadingMemory>;
+  activeTime?: WebsiteActiveTimeData;
   preferences?: any;
 }
 
@@ -148,6 +158,7 @@ const ANNOTATIONS_KEY_PREFIX = "readershub:annotations:v1";
 const BOOKMARKS_KEY_PREFIX = "readershub:bookmarks:v1";
 const MEMORY_KEY_PREFIX = "readershub:memory:v1";
 const ACTIVITY_KEY = "readershub:reading-activity:v1";
+const ACTIVE_TIME_KEY = "readershub:active-time:v1";
 const FAVORITES_KEY = "readers_hub_favorites_v2";
 const HISTORY_KEY = "readers_hub_reading_progress_v2";
 const OFFLINE_CACHE_NAME = "readershub-offline-books-v1";
@@ -157,6 +168,7 @@ const progressCache = new Map<string, ReadingProgressData>();
 const annotationsCache = new Map<string, BookAnnotations>();
 const bookmarksCache = new Map<string, BookmarkItem[]>();
 const memoryCache = new Map<string, BookReadingMemory>();
+let activeTimeCache: WebsiteActiveTimeData | null = null;
 
 export const DAILY_READING_GOAL_SECONDS = 15 * 60; // 15 minutes = 900 seconds
 
@@ -324,6 +336,81 @@ export function addActiveReadingTime(secondsToAdd: number): {
 }
 
 // -------------------------------------------------------------
+// Website-Wide Active Time Tracking (Meaningful Site Engagement)
+// -------------------------------------------------------------
+
+export function getWebsiteActiveTimeData(): WebsiteActiveTimeData {
+  if (activeTimeCache) {
+    return activeTimeCache;
+  }
+
+  const defaultData: WebsiteActiveTimeData = {
+    totalActiveSeconds: 0,
+    daily: {},
+    lastUpdated: Date.now(),
+  };
+
+  if (typeof window === "undefined") return defaultData;
+
+  try {
+    const raw = localStorage.getItem(ACTIVE_TIME_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      const data: WebsiteActiveTimeData = {
+        totalActiveSeconds: Number(parsed.totalActiveSeconds) || 0,
+        daily: parsed.daily && typeof parsed.daily === "object" ? parsed.daily : {},
+        lastUpdated: Number(parsed.lastUpdated) || Date.now(),
+      };
+      activeTimeCache = data;
+      return data;
+    }
+  } catch (e) {
+    console.warn("[ReaderStorage] Error reading website active time:", e);
+  }
+
+  activeTimeCache = defaultData;
+  return defaultData;
+}
+
+export function addWebsiteActiveSeconds(secondsToAdd: number): {
+  totalActiveSeconds: number;
+  todayActiveSeconds: number;
+} {
+  if (typeof window === "undefined" || secondsToAdd <= 0) {
+    const current = getWebsiteActiveTimeData();
+    const todayKey = getLocalDateKey();
+    return {
+      totalActiveSeconds: current.totalActiveSeconds,
+      todayActiveSeconds: current.daily[todayKey] || 0,
+    };
+  }
+
+  const data = getWebsiteActiveTimeData();
+  const todayKey = getLocalDateKey();
+
+  const currentToday = data.daily[todayKey] || 0;
+  const newToday = currentToday + secondsToAdd;
+  const newTotal = (data.totalActiveSeconds || 0) + secondsToAdd;
+
+  data.totalActiveSeconds = newTotal;
+  data.daily[todayKey] = newToday;
+  data.lastUpdated = Date.now();
+
+  activeTimeCache = data;
+
+  try {
+    localStorage.setItem(ACTIVE_TIME_KEY, JSON.stringify(data));
+  } catch (e) {
+    console.warn("[ReaderStorage] Error saving website active time:", e);
+  }
+
+  return {
+    totalActiveSeconds: newTotal,
+    todayActiveSeconds: newToday,
+  };
+}
+
+// -------------------------------------------------------------
 // My Reading Memory Storage & Timeline
 // -------------------------------------------------------------
 
@@ -364,6 +451,31 @@ export function getBookReadingMemory(bookId: string): BookReadingMemory {
 
   memoryCache.set(bookId, defaultMemory);
   return defaultMemory;
+}
+
+export function addBookReadingSeconds(
+  bookId: string,
+  secondsToAdd: number,
+  startPage?: number,
+  endPage?: number
+): BookReadingMemory {
+  const mem = getBookReadingMemory(bookId);
+  if (typeof window === "undefined" || !bookId || secondsToAdd <= 0) return mem;
+
+  try {
+    mem.totalSeconds += secondsToAdd;
+    mem.lastReadAt = Date.now();
+    if (!mem.firstReadAt) {
+      mem.firstReadAt = Date.now();
+    }
+
+    memoryCache.set(bookId, mem);
+    localStorage.setItem(`${MEMORY_KEY_PREFIX}:${bookId}`, JSON.stringify(mem));
+  } catch (e) {
+    console.warn(`[ReaderStorage] Failed to add reading seconds for ${bookId}:`, e);
+  }
+
+  return mem;
 }
 
 export function recordReadingMemorySession(event: Omit<ReadingTimelineEvent, "id">): void {
@@ -714,6 +826,16 @@ export function calculateReadingStats(): ReadingStats {
   const todaySeconds = streakData.daily[todayKey]?.seconds || 0;
   const isTodayQualified = Boolean(streakData.daily[todayKey]?.qualified || todaySeconds >= DAILY_READING_GOAL_SECONDS);
 
+  const activeTimeData = getWebsiteActiveTimeData();
+  const todayActiveSeconds = activeTimeData.daily[todayKey] || 0;
+  const totalActiveSeconds = activeTimeData.totalActiveSeconds || 0;
+
+  // Compute total reading seconds across all recorded daily history
+  let totalReadingSeconds = 0;
+  Object.values(streakData.daily || {}).forEach((d) => {
+    totalReadingSeconds += d.seconds || 0;
+  });
+
   if (typeof window === "undefined") {
     return {
       booksStarted: 0,
@@ -727,6 +849,9 @@ export function calculateReadingStats(): ReadingStats {
       readingStreakDays: streakData.currentStreak,
       todayReadingSeconds: todaySeconds,
       isTodayQualified,
+      totalReadingSeconds,
+      totalActiveSeconds,
+      todayActiveSeconds,
     };
   }
 
@@ -797,6 +922,9 @@ export function calculateReadingStats(): ReadingStats {
     readingStreakDays: streakData.currentStreak,
     todayReadingSeconds: todaySeconds,
     isTodayQualified,
+    totalReadingSeconds,
+    totalActiveSeconds,
+    todayActiveSeconds,
   };
 }
 
@@ -808,7 +936,7 @@ export function exportAllUserData(): string {
   if (typeof window === "undefined") return "{}";
 
   const exportData: ReaderHubExportData = {
-    version: "1.2.0",
+    version: "1.3.0",
     exportedAt: Date.now(),
     favorites: [],
     readingHistory: [],
@@ -816,6 +944,7 @@ export function exportAllUserData(): string {
     bookmarks: {},
     readingActivity: getReadingActivityData(),
     readingMemories: getAllReadingMemories(),
+    activeTime: getWebsiteActiveTimeData(),
   };
 
   try {
@@ -891,7 +1020,18 @@ export function importUserData(jsonString: string): { success: boolean; message:
       importedHistory = validHistory.length;
     }
 
-    // 3. Annotations
+    // 3. Active Time
+    if (data.activeTime && typeof data.activeTime === "object") {
+      const actTime: WebsiteActiveTimeData = {
+        totalActiveSeconds: Number(data.activeTime.totalActiveSeconds) || 0,
+        daily: data.activeTime.daily && typeof data.activeTime.daily === "object" ? data.activeTime.daily : {},
+        lastUpdated: Number(data.activeTime.lastUpdated) || Date.now(),
+      };
+      activeTimeCache = actTime;
+      localStorage.setItem(ACTIVE_TIME_KEY, JSON.stringify(actTime));
+    }
+
+    // 4. Annotations
     if (data.annotations && typeof data.annotations === "object") {
       for (const [bookId, ann] of Object.entries(data.annotations)) {
         if (typeof bookId === "string" && ann && typeof ann === "object") {
@@ -1009,6 +1149,7 @@ export async function factoryResetAllData(): Promise<void> {
     annotationsCache.clear();
     bookmarksCache.clear();
     memoryCache.clear();
+    activeTimeCache = null;
 
     const keysToRemove: string[] = [];
     for (let i = 0; i < localStorage.length; i++) {

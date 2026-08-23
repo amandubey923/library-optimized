@@ -839,6 +839,54 @@ export default function FavoritesPage() {
           </div>
 
           {/* Real Local Statistics Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div
+              className="p-5 rounded-3xl bg-[var(--card)] border border-[var(--border)] shadow-xl flex items-center justify-between gap-4"
+              title="Time you actively spent exploring, searching, and studying on Reader's HUB."
+            >
+              <div className="space-y-1">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)]">
+                  <span>⚡</span>
+                  <span>Website Active Time</span>
+                </div>
+                <h4 className="text-2xl sm:text-3xl font-bold font-serif text-emerald-400 font-mono">
+                  {Math.floor((stats.totalActiveSeconds || 0) / 60) >= 60
+                    ? `${Math.floor((stats.totalActiveSeconds || 0) / 3600)}h ${Math.floor(((stats.totalActiveSeconds || 0) % 3600) / 60)}m`
+                    : `${Math.floor((stats.totalActiveSeconds || 0) / 60)}m`}
+                </h4>
+                <p className="text-[11px] text-[var(--text-secondary)]">
+                  Meaningful time spent using Reader&apos;s HUB
+                </p>
+              </div>
+              <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-xl flex-shrink-0">
+                ⚡
+              </div>
+            </div>
+
+            <div
+              className="p-5 rounded-3xl bg-[var(--card)] border border-[var(--border)] shadow-xl flex items-center justify-between gap-4"
+              title="Actual active book-reading time used by your Diya and reading streak."
+            >
+              <div className="space-y-1">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)]">
+                  <span>📖</span>
+                  <span>Genuine Reading Time</span>
+                </div>
+                <h4 className="text-2xl sm:text-3xl font-bold font-serif text-[var(--accent)] font-mono">
+                  {Math.floor((stats.totalReadingSeconds || 0) / 60) >= 60
+                    ? `${Math.floor((stats.totalReadingSeconds || 0) / 3600)}h ${Math.floor(((stats.totalReadingSeconds || 0) % 3600) / 60)}m`
+                    : `${Math.floor((stats.totalReadingSeconds || 0) / 60)}m`}
+                </h4>
+                <p className="text-[11px] text-[var(--text-secondary)]">
+                  Actual active time spent reading books
+                </p>
+              </div>
+              <div className="w-12 h-12 rounded-2xl bg-[var(--accent)]/10 border border-[var(--accent)]/20 text-[var(--accent)] flex items-center justify-center text-xl flex-shrink-0">
+                🪔
+              </div>
+            </div>
+          </div>
+
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div className="p-5 rounded-3xl bg-[var(--card)] border border-[var(--border)] shadow-xl text-center space-y-1">
               <span className="text-2xl">📖</span>

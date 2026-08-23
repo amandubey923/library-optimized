@@ -5,11 +5,12 @@ import { useLibrary } from "@/context/LibraryContext";
 import { getLocalDateKey, getPreviousDateKey, DAILY_READING_GOAL_SECONDS } from "@/lib/reader-storage";
 
 export default function DiwaliDiya() {
-  const { streakData, todayReadingSeconds, isTodayQualified } = useLibrary();
+  const { streakData, todayReadingSeconds, isTodayQualified, todayActiveSeconds, globalActiveSeconds } = useLibrary();
   const [isOpen, setIsOpen] = useState(false);
   const popoverRef = useRef<HTMLDivElement>(null);
 
-  const todayMinutes = Math.floor(todayReadingSeconds / 60);
+  const todayReadingMinutes = Math.floor(todayReadingSeconds / 60);
+  const todayActiveMinutes = Math.floor(todayActiveSeconds / 60);
   const progressPercent = Math.min(100, Math.round((todayReadingSeconds / DAILY_READING_GOAL_SECONDS) * 100));
 
   // STRICT LIT CONDITION:
@@ -144,9 +145,9 @@ export default function DiwaliDiya() {
         }`}
         title={
           isLit
-            ? `Diwali Diya Lit! ${streakData.currentStreak} Day Streak (${todayMinutes}m read today)`
-            : todayMinutes > 0
-            ? `Reading in Progress: ${todayMinutes}/15 min to light your Diya`
+            ? `Diwali Diya Lit! ${streakData.currentStreak} Day Streak (${todayReadingMinutes}m read today)`
+            : todayReadingMinutes > 0
+            ? `Reading in Progress: ${todayReadingMinutes}/15 min to light your Diya`
             : "Read 15 minutes today to light your Diwali Diya"
         }
         aria-label="Daily Reading Streak"
@@ -312,7 +313,7 @@ export default function DiwaliDiya() {
 
           {/* Desktop Label */}
           <span className="hidden sm:inline text-[11px] text-[var(--text-secondary)] font-medium">
-            {isLit ? "Streak" : `${todayMinutes}/15m`}
+            {isLit ? "Streak" : `${todayReadingMinutes}/15m`}
           </span>
         </div>
 
@@ -346,8 +347,8 @@ export default function DiwaliDiya() {
                 <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">
                   {isLit
                     ? "✨ Your Diwali Diya is lit today!"
-                    : todayMinutes > 0
-                    ? `🔥 ${15 - todayMinutes} more min to light your Diya`
+                    : todayReadingMinutes > 0
+                    ? `🔥 ${15 - todayReadingMinutes} more min of book reading to light your Diya`
                     : "Read 15 min today to light your Diya"}
                 </p>
               </div>
@@ -364,9 +365,11 @@ export default function DiwaliDiya() {
           {/* Today's Reading Goal Progress Bar */}
           <div className="space-y-1.5 bg-[var(--secondary)]/40 p-3.5 rounded-2xl border border-[var(--border)]">
             <div className="flex justify-between text-xs font-semibold">
-              <span className="text-[var(--text-secondary)]">Today&apos;s Active Reading</span>
+              <span className="text-[var(--text-secondary)] flex items-center gap-1">
+                <span>📖 Today&apos;s Book Reading</span>
+              </span>
               <span className={isLit ? "text-[var(--accent)] font-bold" : "text-[var(--foreground)]"}>
-                {todayMinutes} / 15 min {isLit && "✓"}
+                {todayReadingMinutes} / 15 min {isLit && "✓"}
               </span>
             </div>
 
@@ -380,17 +383,18 @@ export default function DiwaliDiya() {
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
-            <p className="text-[10px] text-[var(--text-secondary)] italic text-right">
-              {isLit
-                ? "Goal completed! Extra reading time continues to record."
-                : "Time accumulates only while actively reading in the reader."}
-            </p>
+            <div className="flex items-center justify-between text-[10px] text-[var(--text-secondary)] pt-0.5">
+              <span>⚡ Site Active: {todayActiveMinutes}m today</span>
+              <span className="italic">
+                {isLit ? "Goal achieved!" : "Diya uses book reading only"}
+              </span>
+            </div>
           </div>
 
           {/* Last 7 Days Visual Calendar */}
           <div className="space-y-2">
             <span className="text-[11px] font-bold text-[var(--text-secondary)] uppercase tracking-wider">
-              Last 7 Days Activity
+              Last 7 Days Book Reading
             </span>
             <div className="grid grid-cols-7 gap-1.5 text-center">
               {last7Days.map((day) => (
