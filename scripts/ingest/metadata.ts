@@ -193,7 +193,7 @@ export async function extractPdfMetadata(filePath: string, filename: string): Pr
     // Clean discourse boilerplate
     devanagariTitle = devanagariTitle
       .replace(/प्र\s*[वविि]चन\s*[-–—:]*\s*\d*/g, "")
-      .replace(/अ[नुि]क्र\s*म/g, "")
+      .replace(/अ[नुि]?\s*क्\s*रा?म?/g, "")
       .replace(/अनुक्रम/g, "")
       .replace(/प्र\s*विन/g, "")
       .trim();
@@ -203,6 +203,7 @@ export async function extractPdfMetadata(filePath: string, filename: string): Pr
       .replace(/\.pdf$/i, "")
       .replace(/ByOsho/gi, "")
       .replace(/Osho/gi, "")
+      .replace(/Lect\s*ALL/gi, "Complete Lectures")
       .replace(/Translation/gi, "");
     base = base.replace(/([a-z])([A-Z])/g, "$1 $2").trim();
 
