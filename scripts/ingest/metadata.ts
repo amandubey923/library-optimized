@@ -210,6 +210,7 @@ export async function extractPdfMetadata(filePath: string, filename: string): Pr
       .replace(/Lect\s*ALL/gi, "Complete Lectures")
       .replace(/200Translated\s*Letters\s*Source\s*Info/gi, "Letters Collection")
       .replace(/Source\s*Info/gi, "")
+      .replace(/Only\s*Chapter\s*\d+/gi, "")
       .replace(/Translation/gi, "");
     base = base.replace(/([a-z])([A-Z])/g, "$1 $2").trim();
 
