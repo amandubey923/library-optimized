@@ -1,6 +1,7 @@
 import "./globals.css";
 import type { Metadata, Viewport } from "next";
 import { ReactNode } from "react";
+import { AuthProvider } from "@/context/AuthContext";
 import { LibraryProvider } from "@/context/LibraryContext";
 import { ThemeProvider } from "@/components/visual/ThemeProvider";
 import CustomCursor from "@/components/visual/CustomCursor";
@@ -9,6 +10,8 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import Toast from "@/components/Toast";
 import LibraryAssistant from "@/components/assistant/LibraryAssistant";
+
+import Script from "next/script";
 
 export const viewport: Viewport = {
   themeColor: "#0b0d13",
@@ -84,31 +87,28 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" data-theme="original" className="scroll-smooth" suppressHydrationWarning>
-      <head>
-        <script
+      <body className="min-h-screen flex flex-col bg-[var(--background)] text-[var(--foreground)] selection:bg-[var(--primary)] selection:text-[var(--primary-foreground)] relative">
+        <Script
+          id="theme-initializer"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
-            __html: `
-              try {
-                var theme = localStorage.getItem('readers_hub_theme_v3') || localStorage.getItem('readers_hub_theme_v2') || localStorage.getItem('readers_hub_theme') || 'original';
-                document.documentElement.setAttribute('data-theme', theme);
-              } catch (e) {}
-            `,
+            __html: `try{var theme=localStorage.getItem('readers_hub_theme_v3')||localStorage.getItem('readers_hub_theme_v2')||localStorage.getItem('readers_hub_theme')||'original';document.documentElement.setAttribute('data-theme',theme);}catch(e){}`,
           }}
         />
-      </head>
-      <body className="min-h-screen flex flex-col bg-[var(--background)] text-[var(--foreground)] selection:bg-[var(--primary)] selection:text-[var(--primary-foreground)] relative">
         <ThemeProvider>
-          <LibraryProvider>
-            <AmbientEffects />
-            <CustomCursor />
-            <Navbar />
-            <div className="flex-1 flex flex-col pt-16 relative z-10">
-              {children}
-            </div>
-            <Footer />
-            <LibraryAssistant />
-            <Toast />
-          </LibraryProvider>
+          <AuthProvider>
+            <LibraryProvider>
+              <AmbientEffects />
+              <CustomCursor />
+              <Navbar />
+              <div className="flex-1 flex flex-col pt-16 relative z-10">
+                {children}
+              </div>
+              <Footer />
+              <LibraryAssistant />
+              <Toast />
+            </LibraryProvider>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

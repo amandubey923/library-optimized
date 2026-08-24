@@ -4,6 +4,7 @@ import React, { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useLibrary } from "@/context/LibraryContext";
+import { useAuth } from "@/context/AuthContext";
 import {
   getComprehensiveAnalytics,
   formatAnalyticsDuration,
@@ -11,13 +12,16 @@ import {
   HeatmapCell,
 } from "@/lib/reading-analytics";
 import ReadingReportCardModal from "@/components/profile/ReadingReportCardModal";
+import AuthModal from "@/components/auth/AuthModal";
 
 export default function ProfilePage() {
   const { streakData, stats, globalActiveSeconds, todayReadingSeconds, todayActiveSeconds } = useLibrary();
+  const { user, signOutUser } = useAuth();
   const [timeFilter, setTimeFilter] = useState<AnalyticsTimeFilter>("all");
   const [hoveredCell, setHoveredCell] = useState<HeatmapCell | null>(null);
   const [selectedCell, setSelectedCell] = useState<HeatmapCell | null>(null);
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -26,9 +30,28 @@ export default function ProfilePage() {
 
   // Compute analytics dynamically based on storage & state
   const analytics = useMemo(() => {
-    if (!mounted) return getComprehensiveAnalytics(timeFilter);
     return getComprehensiveAnalytics(timeFilter);
-  }, [mounted, timeFilter, streakData, stats, globalActiveSeconds, todayReadingSeconds, todayActiveSeconds]);
+  }, [timeFilter, streakData, stats, globalActiveSeconds, todayReadingSeconds, todayActiveSeconds]);
+
+  if (!mounted) {
+    return (
+      <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] pt-24 pb-20 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto space-y-8 animate-pulse">
+          <div className="h-44 rounded-3xl bg-[var(--card)]/70 border border-[var(--border)]" />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 h-64 rounded-3xl bg-[var(--card)]/70 border border-[var(--border)]" />
+            <div className="h-64 rounded-3xl bg-[var(--card)]/70 border border-[var(--border)]" />
+          </div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="h-28 rounded-2xl bg-[var(--card)]/70 border border-[var(--border)]" />
+            <div className="h-28 rounded-2xl bg-[var(--card)]/70 border border-[var(--border)]" />
+            <div className="h-28 rounded-2xl bg-[var(--card)]/70 border border-[var(--border)]" />
+            <div className="h-28 rounded-2xl bg-[var(--card)]/70 border border-[var(--border)]" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const {
     profileHeader,
@@ -68,32 +91,58 @@ export default function ProfilePage() {
 
           <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
             <div className="flex items-center gap-5">
-              {/* Local User Avatar Glyph */}
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-tr from-[var(--primary)] to-[var(--accent-glow)] p-0.5 shadow-lg flex-shrink-0">
-                <div className="w-full h-full rounded-[14px] bg-[var(--card)] flex items-center justify-center text-[var(--accent)]">
-                  <svg className="w-8 h-8 sm:w-10 sm:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={1.75}
-                      d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+              {/* User Avatar Glyph / Google Photo */}
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-tr from-[var(--primary)] to-[var(--accent-glow)] p-0.5 shadow-lg flex-shrink-0 relative overflow-hidden">
+                <div className="w-full h-full rounded-[14px] bg-[var(--card)] flex items-center justify-center text-[var(--accent)] relative overflow-hidden">
+                  {user?.photoURL ? (
+                    <Image
+                      src={user.photoURL}
+                      alt={user.displayName || "User avatar"}
+                      fill
+                      sizes="80px"
+                      referrerPolicy="no-referrer"
+                      className="object-cover rounded-[14px]"
                     />
-                  </svg>
+                  ) : user?.displayName ? (
+                    <span className="font-bold text-2xl font-serif text-[var(--accent)]">
+                      {user.displayName.charAt(0).toUpperCase()}
+                    </span>
+                  ) : (
+                    <svg className="w-8 h-8 sm:w-10 sm:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1.75}
+                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                      />
+                    </svg>
+                  )}
                 </div>
               </div>
 
               <div>
                 <div className="flex items-center gap-2.5 flex-wrap">
                   <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--foreground)]">
-                    {profileHeader.userTitle}
+                    {user?.displayName || profileHeader.userTitle}
                   </h1>
-                  <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/30">
-                    Local Device
-                  </span>
+                  {user ? (
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5 shadow-xs">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      Cloud Synced ☁️
+                    </span>
+                  ) : (
+                    <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/30">
+                      Local Device (Guest)
+                    </span>
+                  )}
                 </div>
+
                 <p className="text-sm text-[var(--text-secondary)] mt-1">
-                  Your personal reading journey • Stored privately in this browser
+                  {user
+                    ? `Connected via Google (${user.email}) • Reading progress & library synced to cloud`
+                    : "Your personal reading journey is saved locally in this browser"}
                 </p>
+
                 {profileHeader.memberSince ? (
                   <p className="text-xs text-[var(--text-secondary)]/80 mt-1 flex items-center gap-1.5">
                     <span>🗓️ Reader since <strong>{profileHeader.memberSince}</strong></span>
@@ -105,6 +154,43 @@ export default function ProfilePage() {
                     First reading session begins today!
                   </p>
                 )}
+
+                {/* Primary Auth Action Trigger */}
+                <div className="flex items-center gap-3 mt-3">
+                  {user ? (
+                    <button
+                      onClick={signOutUser}
+                      className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition-all cursor-pointer shadow-xs active:scale-95"
+                    >
+                      Sign Out
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => setIsAuthModalOpen(true)}
+                      className="px-4 py-2 rounded-xl text-xs font-bold bg-white hover:bg-zinc-100 text-zinc-900 shadow-md hover:shadow-lg transition-all flex items-center gap-2.5 cursor-pointer active:scale-95 border border-zinc-200"
+                    >
+                      <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24">
+                        <path
+                          fill="#4285F4"
+                          d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"
+                        />
+                        <path
+                          fill="#34A853"
+                          d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.26v3.15C3.27 21.36 7.36 24 12 24z"
+                        />
+                        <path
+                          fill="#FBBC05"
+                          d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.26C.46 8.16 0 9.97 0 12s.46 3.84 1.26 5.42l4.02-3.15z"
+                        />
+                        <path
+                          fill="#EA4335"
+                          d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.36 0 3.27 2.64 1.26 6.58l4.02 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
+                        />
+                      </svg>
+                      <span>Sign In with Google to Sync</span>
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -857,13 +943,17 @@ export default function ProfilePage() {
 
       </div>
 
-      {/* =========================================================================
-          9. OFFICIAL READING REPORT CARD MODAL
-         ========================================================================= */}
+      {/* Official Reading Report Card Modal */}
       <ReadingReportCardModal
         isOpen={isReportModalOpen}
         onClose={() => setIsReportModalOpen(false)}
         initialFilter="month"
+      />
+
+      {/* Global Google Authentication Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
       />
     </div>
   );
