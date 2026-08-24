@@ -52,14 +52,104 @@ export default function AboutClient({ totalBooks, totalCategories }: AboutClient
   ];
 
   const technologies = [
-    { name: "Next.js (App Router)", category: "Core Framework", icon: "▲", desc: "Static Site Generation (SSG) & API routes" },
-    { name: "React 19", category: "UI Architecture", icon: "⚛", desc: "Modern concurrent component tree" },
-    { name: "TypeScript", category: "Language", icon: "TS", desc: "Strict end-to-end type safety" },
-    { name: "Tailwind CSS", category: "Design System", icon: "🎨", desc: "Dynamic CSS variable theme tokens" },
-    { name: "PDF.js & Web Workers", category: "Document Core", icon: "📄", desc: "High-fidelity in-browser PDF rendering" },
-    { name: "Sharp & WebP", category: "Asset Engine", icon: "🖼", desc: "Automated 3-tier editorial cover generator" },
-    { name: "Google Gemini AI", category: "Intelligence", icon: "✦", desc: "Grounded contextual Library Assistant" },
-    { name: "Local-First Storage", category: "Data Privacy", icon: "🛡️", desc: "100% client-side reading analytics & notes" },
+    {
+      name: "Next.js (App Router)",
+      category: "Core Framework",
+      why: "Production React framework with App Router, SSG prerendering & API routes.",
+      benefit: "Sub-second page delivery, zero hydration lag, and static rendering across 370+ books.",
+      iconSvg: (
+        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M18.665 21.978C16.758 23.255 14.465 24 12 24 5.377 24 0 18.623 0 12S5.377 0 12 0s12 5.377 12 12c0 3.583-1.574 6.801-4.067 9.001L9.219 7.2H7.2v9.596h1.615V9.251l9.85 12.727Zm-3.332-8.533 1.6 2.061V7.2h-1.6v6.245Z" />
+        </svg>
+      ),
+    },
+    {
+      name: "React 19",
+      category: "UI Architecture",
+      why: "Modern UI library with concurrent transitions & Server Component models.",
+      benefit: "Silky 60fps animations, instant React Portals, and fluid user interactions.",
+      iconSvg: (
+        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <ellipse cx="12" cy="12" rx="10" ry="4.5" />
+          <ellipse cx="12" cy="12" rx="10" ry="4.5" transform="rotate(60 12 12)" />
+          <ellipse cx="12" cy="12" rx="10" ry="4.5" transform="rotate(120 12 12)" />
+          <circle cx="12" cy="12" r="1.8" fill="currentColor" />
+        </svg>
+      ),
+    },
+    {
+      name: "TypeScript",
+      category: "Language Core",
+      why: "Strict static type system applied across the entire application and data pipelines.",
+      benefit: "Prevents runtime crashes, guarantees catalog consistency, and accelerates refactoring.",
+      iconSvg: (
+        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M1.125 0C.502 0 0 .502 0 1.125v21.75C0 23.498.502 24 1.125 24h21.75c.623 0 1.125-.502 1.125-1.125V1.125C24 .502 23.498 0 22.875 0zm17.363 9.75c.612 0 1.154.037 1.627.111a6.38 6.38 0 0 1 1.306.34v2.458a3.95 3.95 0 0 0-.643-.361 5.093 5.093 0 0 0-.717-.26 5.453 5.453 0 0 0-1.426-.2c-.3 0-.573.028-.819.086a2.1 2.1 0 0 0-.623.242c-.17.104-.3.229-.393.374a.888.888 0 0 0-.14.49c0 .196.053.373.156.529.104.156.252.304.443.444s.423.276.696.41c.273.135.582.274.926.416.47.197.892.407 1.266.628.374.222.695.473.963.753.268.279.472.598.614.957.142.359.214.776.214 1.253 0 .657-.125 1.21-.373 1.656a3.033 3.033 0 0 1-1.012 1.085 4.38 4.38 0 0 1-1.487.596c-.566.12-1.163.18-1.79.18a9.916 9.916 0 0 1-1.84-.164 5.544 5.544 0 0 1-1.512-.493v-2.63a5.033 5.033 0 0 0 3.237 1.2c.333 0 .624-.03.872-.09.249-.06.456-.144.623-.25.166-.108.29-.234.373-.38a1.023 1.023 0 0 0-.074-1.089 2.12 2.12 0 0 0-.537-.5 5.597 5.597 0 0 0-.807-.444 27.72 27.72 0 0 0-1.007-.436c-.918-.383-1.602-.852-2.053-1.405-.45-.553-.676-1.222-.676-2.005 0-.614.123-1.141.369-1.582.246-.441.58-.804 1.004-1.089a4.494 4.494 0 0 1 1.47-.629 7.536 7.536 0 0 1 1.77-.201zm-15.113.188h9.563v2.166H9.506v9.646H6.789v-9.646H3.375z" />
+        </svg>
+      ),
+    },
+    {
+      name: "Tailwind CSS",
+      category: "Design System",
+      why: "Utility-first CSS styling powered by dynamic theme custom property tokens.",
+      benefit: "Instant real-time theme customization across 7 palettes with zero CSS overhead.",
+      iconSvg: (
+        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12.001 4.8c-3.2 0-5.2 1.6-6 4.8 1.2-1.6 2.6-2.2 4.2-1.8.913.228 1.565.89 2.288 1.624C13.666 10.618 15.027 12 18.001 12c3.2 0 5.2-1.6 6-4.8-1.2 1.6-2.6 2.2-4.2 1.8-.913-.228-1.565-.89-2.288-1.624C16.337 6.182 14.976 4.8 12.001 4.8zm-6 7.2c-3.2 0-5.2 1.6-6 4.8 1.2-1.6 2.6-2.2 4.2-1.8.913.228 1.565.89 2.288 1.624 1.177 1.194 2.538 2.576 5.512 2.576 3.2 0 5.2-1.6 6-4.8-1.2 1.6-2.6 2.2-4.2 1.8-.913-.228-1.565-.89-2.288-1.624C10.336 13.382 8.975 12 6.001 12z" />
+        </svg>
+      ),
+    },
+    {
+      name: "PDF.js & Web Workers",
+      category: "Document Core",
+      why: "Canvas document rendering offloaded entirely to background Web Workers.",
+      benefit: "High-DPI rendering, responsive dual-page mode, and zero UI thread freeze.",
+      iconSvg: (
+        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+          <polyline points="14 2 14 8 20 8" />
+          <line x1="16" y1="13" x2="8" y2="13" />
+          <line x1="16" y1="17" x2="8" y2="17" />
+          <polyline points="10 9 9 9 8 9" />
+        </svg>
+      ),
+    },
+    {
+      name: "Sharp & WebP",
+      category: "Asset Pipeline",
+      why: "Automated Node.js image pipeline generating 3-tier WebP editorial covers.",
+      benefit: "80% smaller cover payloads, crisp 600×900 resolution, and instant gallery scroll.",
+      iconSvg: (
+        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+          <circle cx="8.5" cy="8.5" r="1.5" />
+          <polyline points="21 15 16 10 5 21" />
+        </svg>
+      ),
+    },
+    {
+      name: "Google Gemini AI",
+      category: "Intelligence",
+      why: "Server-side streaming API connecting Gemini LLM with grounded library context.",
+      benefit: "Smart literary recommendations, contextual discovery, and intelligent book query assistance.",
+      iconSvg: (
+        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 0C12 6.627 6.627 12 0 12c6.627 0 12 5.373 12 12 0-6.627 5.373-12 12-12-6.627 0-12-5.373-12-12Z" />
+        </svg>
+      ),
+    },
+    {
+      name: "Local-First Storage",
+      category: "Data Privacy",
+      why: "Zero-cloud architecture utilizing browser localStorage & IndexedDB paradigms.",
+      benefit: "100% private notes, reading analytics, bookmarks, and streaks with zero external telemetry.",
+      iconSvg: (
+        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+          <path d="m9 12 2 2 4-4" />
+        </svg>
+      ),
+    },
   ];
 
   const developerHighlights = {
@@ -68,7 +158,7 @@ export default function AboutClient({ totalBooks, totalCategories }: AboutClient
       title: "Why I Built Reader's HUB as a Solo Engineer",
       paragraphs: [
         "I created Reader's HUB to solve a frustration shared by avid readers: the modern web has turned reading into an obstacle course of subscriptions, cookie banners, tracking scripts, and clunky PDF readers.",
-        "As an Information Technology engineer, I wanted to build a digital reading sanctum that honors literature. Every interface element, canvas rendering pipeline, and theme palette was designed from scratch to deliver a calm, distraction-free reading experience.",
+        "As an Information Technology engineer, I wanted to build a digital reading sanctum that honors literature. And theme palette was designed from scratch to deliver a calm, distraction-free reading experience.",
       ],
       points: [
         "Solo-engineered architecture: full-stack, UI/UX, pipeline, and AI integration",
@@ -105,25 +195,39 @@ export default function AboutClient({ totalBooks, totalCategories }: AboutClient
   };
 
   return (
-    <div className="space-y-16 sm:space-y-20 max-w-6xl mx-auto">
+    <div className="space-y-16 sm:space-y-24 max-w-6xl mx-auto relative">
+      {/* Global Background Ambient Glow Orbs */}
+      <div
+        className="pointer-events-none absolute -top-20 left-1/2 -translate-x-1/2 w-[700px] h-[350px] rounded-full blur-[140px] opacity-25 -z-10"
+        style={{
+          background: "radial-gradient(circle, var(--accent) 0%, var(--primary) 45%, transparent 70%)",
+        }}
+      />
+      <div
+        className="pointer-events-none absolute top-[40%] -right-40 w-[500px] h-[350px] rounded-full blur-[140px] opacity-15 -z-10"
+        style={{
+          background: "radial-gradient(circle, var(--primary) 0%, var(--accent) 50%, transparent 70%)",
+        }}
+      />
+      <div
+        className="pointer-events-none absolute top-[75%] -left-40 w-[500px] h-[350px] rounded-full blur-[140px] opacity-15 -z-10"
+        style={{
+          background: "radial-gradient(circle, var(--accent) 0%, var(--primary) 50%, transparent 70%)",
+        }}
+      />
+
       {/* -------------------------------------------------------------
        * HERO SECTION: Compact Cinematic Overview & Platform Stats
        * ------------------------------------------------------------- */}
-      <section className="relative pt-2 pb-6 text-center space-y-6">
-        {/* Soft Ambient Background Glow */}
-        <div
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[250px] rounded-full blur-[100px] pointer-events-none opacity-20"
-          style={{ background: "var(--accent)" }}
-        />
-
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[var(--card)] border border-[var(--border)] text-[var(--accent)] text-xs font-bold uppercase tracking-widest shadow-xs">
+      <section className="relative pt-4 pb-6 text-center space-y-6">
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[var(--card)]/90 backdrop-blur-md border border-[var(--border)] text-[var(--accent)] text-xs font-bold uppercase tracking-widest shadow-[0_0_20px_var(--theme-glow)]/20 transition-all hover:scale-105 hover:border-[var(--accent)]/40">
           <span className="w-2 h-2 rounded-full bg-[var(--accent)] animate-pulse" />
           <span>Platform Overview &amp; Developer Story</span>
         </div>
 
-        <h1 className="text-3xl sm:text-5xl lg:text-6xl font-bold font-serif text-[var(--foreground)] tracking-tight leading-[1.15] max-w-3xl mx-auto">
+        <h1 className="text-3xl sm:text-5xl lg:text-6xl font-bold font-serif text-[var(--foreground)] tracking-tight leading-[1.12] max-w-3xl mx-auto">
           A barrier-free digital reading sanctuary,{" "}
-          <span className="italic text-[var(--accent)] bg-clip-text">
+          <span className="italic text-[var(--accent)] bg-clip-text drop-shadow-[0_0_25px_var(--theme-glow)]">
             built with craftsmanship.
           </span>
         </h1>
@@ -133,17 +237,17 @@ export default function AboutClient({ totalBooks, totalCategories }: AboutClient
         </p>
 
         {/* Quick Action Buttons */}
-        <div className="flex flex-wrap items-center justify-center gap-3 pt-1">
+        <div className="flex flex-wrap items-center justify-center gap-3.5 pt-1">
           <Link
             href="/library"
-            className="px-6 py-3 rounded-xl bg-gradient-to-r from-[var(--primary)] to-[var(--accent-secondary)] hover:opacity-95 text-[var(--primary-foreground)] font-bold text-xs shadow-md transition-all hover:scale-105 hover:shadow-[0_0_16px_var(--theme-glow)] flex items-center gap-2"
+            className="px-6 py-3 rounded-xl bg-gradient-to-r from-[var(--primary)] to-[var(--accent-secondary)] hover:opacity-95 text-[var(--primary-foreground)] font-bold text-xs shadow-lg transition-all hover:scale-105 hover:shadow-[0_0_24px_var(--theme-glow)] flex items-center gap-2"
           >
             <span>Explore the Library</span>
             <span>→</span>
           </Link>
           <a
             href="#developer-story"
-            className="px-5 py-3 rounded-xl bg-[var(--card)] hover:bg-[var(--secondary)] text-[var(--foreground)] border border-[var(--border)] hover:border-[var(--accent)]/50 font-semibold text-xs transition-all shadow-xs"
+            className="px-5 py-3 rounded-xl bg-[var(--card)]/90 hover:bg-[var(--secondary)] text-[var(--foreground)] border border-[var(--border)] hover:border-[var(--accent)]/60 font-semibold text-xs transition-all shadow-xs hover:scale-102 hover:shadow-[0_0_15px_var(--theme-glow)]/30"
           >
             Read Developer Story ↓
           </a>
@@ -151,8 +255,8 @@ export default function AboutClient({ totalBooks, totalCategories }: AboutClient
 
         {/* Platform Metric Badges */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 pt-4 max-w-4xl mx-auto">
-          <div className="p-4 rounded-2xl glass-card border border-[var(--border)] text-center space-y-1 hover:border-[var(--accent)]/40 transition-all">
-            <div className="text-2xl sm:text-3xl font-extrabold font-serif text-[var(--foreground)]">
+          <div className="p-4 sm:p-5 rounded-2xl glass-card border border-[var(--border)] text-center space-y-1 hover:border-[var(--accent)]/50 transition-all hover:-translate-y-1 hover:shadow-[0_10px_25px_-10px_var(--theme-glow)] group">
+            <div className="text-2xl sm:text-3xl font-extrabold font-serif text-[var(--foreground)] group-hover:text-[var(--accent)] transition-colors">
               {totalBooks}+
             </div>
             <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
@@ -160,8 +264,8 @@ export default function AboutClient({ totalBooks, totalCategories }: AboutClient
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl glass-card border border-[var(--border)] text-center space-y-1 hover:border-[var(--accent)]/40 transition-all">
-            <div className="text-2xl sm:text-3xl font-extrabold font-serif text-[var(--foreground)]">
+          <div className="p-4 sm:p-5 rounded-2xl glass-card border border-[var(--border)] text-center space-y-1 hover:border-[var(--accent)]/50 transition-all hover:-translate-y-1 hover:shadow-[0_10px_25px_-10px_var(--theme-glow)] group">
+            <div className="text-2xl sm:text-3xl font-extrabold font-serif text-[var(--foreground)] group-hover:text-[var(--accent)] transition-colors">
               {totalCategories}
             </div>
             <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
@@ -169,8 +273,8 @@ export default function AboutClient({ totalBooks, totalCategories }: AboutClient
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl glass-card border border-[var(--border)] text-center space-y-1 hover:border-[var(--accent)]/40 transition-all">
-            <div className="text-2xl sm:text-3xl font-extrabold font-serif text-[var(--foreground)]">
+          <div className="p-4 sm:p-5 rounded-2xl glass-card border border-[var(--border)] text-center space-y-1 hover:border-[var(--accent)]/50 transition-all hover:-translate-y-1 hover:shadow-[0_10px_25px_-10px_var(--theme-glow)] group">
+            <div className="text-2xl sm:text-3xl font-extrabold font-serif text-[var(--foreground)] group-hover:text-[var(--accent)] transition-colors">
               0s
             </div>
             <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
@@ -178,8 +282,8 @@ export default function AboutClient({ totalBooks, totalCategories }: AboutClient
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl glass-card border border-[var(--border)] text-center space-y-1 hover:border-[var(--accent)]/40 transition-all">
-            <div className="text-2xl sm:text-3xl font-extrabold font-serif text-[var(--foreground)]">
+          <div className="p-4 sm:p-5 rounded-2xl glass-card border border-[var(--border)] text-center space-y-1 hover:border-[var(--accent)]/50 transition-all hover:-translate-y-1 hover:shadow-[0_10px_25px_-10px_var(--theme-glow)] group">
+            <div className="text-2xl sm:text-3xl font-extrabold font-serif text-[var(--foreground)] group-hover:text-[var(--accent)] transition-colors">
               100%
             </div>
             <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
@@ -192,13 +296,13 @@ export default function AboutClient({ totalBooks, totalCategories }: AboutClient
       {/* -------------------------------------------------------------
        * SECTION 2: WHY IT WAS BUILT & PLATFORM PILLARS
        * ------------------------------------------------------------- */}
-      <section className="space-y-6 text-left">
+      <section className="space-y-6 text-left relative">
         <div className="max-w-xl space-y-1.5">
           <div className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--accent)] uppercase tracking-widest">
             <span>✦</span>
             <span>Core Pillars</span>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-bold font-serif text-[var(--foreground)] tracking-tight">
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold font-serif text-[var(--foreground)] tracking-tight">
             Why Reader&#39;s HUB Exists
           </h2>
           <p className="text-xs sm:text-sm text-[var(--text-secondary)] leading-relaxed">
@@ -210,18 +314,20 @@ export default function AboutClient({ totalBooks, totalCategories }: AboutClient
           {platformPillars.map((pillar) => (
             <div
               key={pillar.step}
-              className="p-6 rounded-2xl glass-panel border border-[var(--border)] hover:border-[var(--accent)]/50 transition-all space-y-3 relative group bg-[var(--card)]/70"
+              className="p-6 sm:p-7 rounded-2xl glass-panel border border-[var(--border)] hover:border-[var(--accent)]/60 transition-all duration-300 space-y-3 relative group bg-[var(--card)]/75 hover:-translate-y-1 hover:shadow-[0_12px_30px_-10px_var(--theme-glow)] overflow-hidden"
             >
+              <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[var(--accent)]/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <span className="text-xl">{pillar.icon}</span>
+                  <span className="text-2xl group-hover:scale-110 transition-transform duration-300">{pillar.icon}</span>
                   <span className="text-[10px] font-extrabold uppercase tracking-widest text-[var(--accent)]">
                     {pillar.step} — {pillar.tag}
                   </span>
                 </div>
               </div>
 
-              <h3 className="text-base sm:text-lg font-bold font-serif text-[var(--foreground)]">
+              <h3 className="text-base sm:text-lg font-bold font-serif text-[var(--foreground)] group-hover:text-[var(--accent)] transition-colors">
                 {pillar.title}
               </h3>
 
@@ -233,7 +339,7 @@ export default function AboutClient({ totalBooks, totalCategories }: AboutClient
                 {pillar.highlights.map((h, i) => (
                   <span
                     key={i}
-                    className="px-2.5 py-0.5 rounded-md bg-[var(--secondary)] text-[var(--foreground)] text-[10px] font-medium border border-[var(--border)]"
+                    className="px-2.5 py-1 rounded-lg bg-[var(--secondary)] text-[var(--foreground)] text-[10px] font-medium border border-[var(--border)] group-hover:border-[var(--accent)]/30 transition-colors"
                   >
                     ✓ {h}
                   </span>
@@ -247,13 +353,13 @@ export default function AboutClient({ totalBooks, totalCategories }: AboutClient
       {/* -------------------------------------------------------------
        * SECTION 3: VERIFIED TECH STACK
        * ------------------------------------------------------------- */}
-      <section className="space-y-6 text-left">
+      <section className="space-y-6 text-left relative">
         <div className="max-w-xl space-y-1.5">
           <div className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--accent)] uppercase tracking-widest">
             <span>⚡</span>
             <span>Architecture &amp; Stack</span>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-bold font-serif text-[var(--foreground)] tracking-tight">
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold font-serif text-[var(--foreground)] tracking-tight">
             Engineered with Modern Tools
           </h2>
           <p className="text-xs sm:text-sm text-[var(--text-secondary)] leading-relaxed">
@@ -261,26 +367,38 @@ export default function AboutClient({ totalBooks, totalCategories }: AboutClient
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {technologies.map((tech) => (
             <div
               key={tech.name}
-              className="p-4 rounded-2xl glass-card border border-[var(--border)] hover:border-[var(--accent)]/50 transition-all space-y-1.5 bg-[var(--card)]/70 hover:scale-[1.01]"
+              className="p-5 rounded-2xl glass-card border border-[var(--border)] hover:border-[var(--accent)]/60 transition-all duration-300 space-y-3 bg-[var(--card)]/80 hover:scale-[1.02] hover:shadow-[0_10px_25px_-8px_var(--theme-glow)] flex flex-col justify-between group"
             >
-              <div className="flex items-center justify-between">
-                <span className="w-7 h-7 rounded-lg bg-[var(--secondary)] text-[var(--accent)] flex items-center justify-center font-bold text-xs">
-                  {tech.icon}
-                </span>
-                <span className="text-[9px] uppercase font-bold text-[var(--text-secondary)] tracking-wider">
-                  {tech.category}
-                </span>
+              <div className="space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="w-10 h-10 rounded-xl bg-[var(--secondary)] text-[var(--accent)] flex items-center justify-center font-bold text-xs group-hover:scale-110 transition-transform shadow-sm border border-[var(--border)] group-hover:border-[var(--accent)]/40">
+                    {tech.iconSvg}
+                  </div>
+                  <span className="text-[9px] uppercase font-bold text-[var(--text-secondary)] tracking-wider px-2 py-0.5 rounded bg-[var(--background)] border border-[var(--border)]">
+                    {tech.category}
+                  </span>
+                </div>
+
+                <h3 className="text-sm font-bold text-[var(--foreground)] group-hover:text-[var(--accent)] transition-colors">
+                  {tech.name}
+                </h3>
+
+                <div className="space-y-1 text-[11px] leading-relaxed">
+                  <p className="text-[var(--text-secondary)]">
+                    <strong className="text-[var(--foreground)] font-semibold">Why: </strong>
+                    {tech.why}
+                  </p>
+                </div>
               </div>
-              <h3 className="text-xs sm:text-sm font-bold text-[var(--foreground)]">
-                {tech.name}
-              </h3>
-              <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed">
-                {tech.desc}
-              </p>
+
+              <div className="pt-2 border-t border-[var(--border)] text-[10.5px] text-[var(--accent)] font-medium leading-normal">
+                <strong className="text-[var(--foreground)] font-semibold">Benefit: </strong>
+                {tech.benefit}
+              </div>
             </div>
           ))}
         </div>
@@ -288,14 +406,15 @@ export default function AboutClient({ totalBooks, totalCategories }: AboutClient
 
       {/* -------------------------------------------------------------
        * SECTION 4: DEVELOPER STORY & CREATOR DOSSIER (Aman Dubey)
+       * Fixed/Stable Dimensions Outer Card with Zero Tab Resizing
        * ------------------------------------------------------------- */}
-      <section id="developer-story" className="scroll-mt-20 space-y-6 text-left">
+      <section id="developer-story" className="scroll-mt-20 space-y-6 text-left relative">
         <div className="max-w-xl space-y-1.5">
           <div className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--accent)] uppercase tracking-widest">
             <span>👨‍💻</span>
             <span>Developer Story &amp; Dossier</span>
           </div>
-          <h2 className="text-2xl sm:text-3xl font-bold font-serif text-[var(--foreground)] tracking-tight">
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold font-serif text-[var(--foreground)] tracking-tight">
             Meet the Creator Behind Reader&#39;s HUB
           </h2>
           <p className="text-xs sm:text-sm text-[var(--text-secondary)] leading-relaxed">
@@ -303,163 +422,217 @@ export default function AboutClient({ totalBooks, totalCategories }: AboutClient
           </p>
         </div>
 
-        {/* Master Developer Story Card */}
-        <div className="p-6 sm:p-8 rounded-3xl glass-panel border border-[var(--border)] relative overflow-hidden bg-[var(--card)]/80">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            {/* Left Column: Creator Identity & Photo Card */}
-            <div className="lg:col-span-4 flex flex-col items-center sm:items-start text-center sm:text-left space-y-4">
-              <div className="relative w-44 h-44 sm:w-52 sm:h-52 rounded-2xl overflow-hidden border-2 border-[var(--accent)]/40 shadow-xl bg-[var(--card)] group">
-                <Image
-                  src="/images/hero.png"
-                  alt="Aman Dubey - Developer & Creator of Reader's HUB"
-                  fill
-                  className="object-cover object-top group-hover:scale-105 transition-transform duration-500"
-                  sizes="208px"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-[var(--background)]/80 via-transparent to-transparent" />
-                <div className="absolute bottom-2 left-2 right-2 text-center">
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-[var(--background)]/90 text-[var(--accent)] border border-[var(--border)]">
-                    Solo Creator &amp; Engineer
-                  </span>
-                </div>
-              </div>
+        {/* Master Developer Story Card with Animated Chromatic / Rainbow Glow Ring */}
+        <div className="developer-story-wrapper group relative p-[2.5px] rounded-3xl overflow-hidden shadow-2xl transition-all duration-500 hover:shadow-[0_0_45px_var(--theme-glow)]">
+          {/* Traveling Multi-Color / Chromatic Gradient Beam (Perimeter Ring) */}
+          <span className="chromatic-border-beam absolute inset-[-200%] pointer-events-none" />
 
-              <div className="space-y-1 w-full">
-                <h3 className="text-xl font-bold font-serif text-[var(--foreground)]">
-                  Aman Dubey
-                </h3>
-                <p className="text-xs text-[var(--accent)] font-semibold">
-                  Full-Stack Software Engineer
-                </p>
-                <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed pt-0.5">
-                  Information Technology • Specializing in high-performance Next.js, React, TypeScript &amp; scalable web systems.
-                </p>
-              </div>
+          {/* Ambient Outer Aura Glow Layer */}
+          <div className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-[var(--primary)] via-[var(--accent)] to-[#a855f7] opacity-25 blur-xl group-hover:opacity-45 transition-opacity duration-500 pointer-events-none -z-10" />
 
-              {/* Creator Direct Dossier Links */}
-              <div className="flex flex-wrap gap-2 w-full pt-1">
-                <a
-                  href="https://github.com/amandubey923"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-3 py-1.5 rounded-lg bg-[var(--secondary)] hover:bg-[var(--accent)]/15 text-[var(--foreground)] text-[11px] font-medium border border-[var(--border)] transition-colors flex items-center gap-1.5 shadow-xs"
-                >
-                  <svg className="w-3.5 h-3.5 text-[var(--accent)]" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
-                  </svg>
-                  <span>GitHub</span>
-                </a>
-
-                <a
-                  href="https://www.linkedin.com/in/aman-kr-dubey"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-3 py-1.5 rounded-lg bg-[var(--secondary)] hover:bg-[var(--accent)]/15 text-[var(--foreground)] text-[11px] font-medium border border-[var(--border)] transition-colors flex items-center gap-1.5 shadow-xs"
-                >
-                  <svg className="w-3.5 h-3.5 text-[var(--accent)]" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" />
-                  </svg>
-                  <span>LinkedIn</span>
-                </a>
-
-                <a
-                  href="https://aman-portfolio-next.netlify.app/dossier"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-3 py-1.5 rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] text-[11px] font-bold shadow-sm hover:opacity-90 transition-opacity flex items-center gap-1"
-                >
-                  <span>Dossier</span>
-                  <span>↗</span>
-                </a>
-              </div>
-            </div>
-
-            {/* Right Column: Tabbed Dossier Narrative */}
-            <div className="lg:col-span-8 space-y-4">
-              {/* Segmented Navigation Switcher */}
-              <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[var(--background)] border border-[var(--border)] max-w-fit">
-                <button
-                  onClick={() => setActiveTab("origin")}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                    activeTab === "origin"
-                      ? "bg-[var(--card)] text-[var(--accent)] shadow-xs border border-[var(--border)]"
-                      : "text-[var(--text-secondary)] hover:text-[var(--foreground)]"
-                  }`}
-                >
-                  Origin &amp; Purpose
-                </button>
-                <button
-                  onClick={() => setActiveTab("philosophy")}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                    activeTab === "philosophy"
-                      ? "bg-[var(--card)] text-[var(--accent)] shadow-xs border border-[var(--border)]"
-                      : "text-[var(--text-secondary)] hover:text-[var(--foreground)]"
-                  }`}
-                >
-                  Engineering Philosophy
-                </button>
-                <button
-                  onClick={() => setActiveTab("engineering")}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-                    activeTab === "engineering"
-                      ? "bg-[var(--card)] text-[var(--accent)] shadow-xs border border-[var(--border)]"
-                      : "text-[var(--text-secondary)] hover:text-[var(--foreground)]"
-                  }`}
-                >
-                  Technical Highlights
-                </button>
-              </div>
-
-              {/* Active Tab Content */}
-              <div className="space-y-3 pt-1 animate-fade-in">
-                <div className="inline-flex items-center gap-2 text-[10px] font-mono text-[var(--accent)] uppercase tracking-widest">
-                  <span>// {developerHighlights[activeTab].badge}</span>
-                </div>
-
-                <h4 className="text-lg sm:text-xl font-bold font-serif text-[var(--foreground)]">
-                  {developerHighlights[activeTab].title}
-                </h4>
-
-                {developerHighlights[activeTab].paragraphs.map((p, idx) => (
-                  <p key={idx} className="text-xs sm:text-sm text-[var(--text-secondary)] leading-relaxed font-normal">
-                    {p}
-                  </p>
-                ))}
-
-                <div className="space-y-1.5 pt-2">
-                  {developerHighlights[activeTab].points.map((pt, idx) => (
-                    <div key={idx} className="flex items-start gap-2 text-xs text-[var(--foreground)] font-medium">
-                      <span className="text-[var(--accent)] flex-shrink-0 mt-0.5">✦</span>
-                      <span>{pt}</span>
+          {/* Inner Clean Content Card Container with Stable Height */}
+          <div className="relative z-10 w-full h-full rounded-[22px] bg-[var(--card)]/95 backdrop-blur-2xl p-6 sm:p-9">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+              {/* Left Column: Creator Identity & Photo Card (Permanently Stable) */}
+              <div className="lg:col-span-4 flex flex-col items-center sm:items-start text-center sm:text-left justify-between space-y-4">
+                <div className="space-y-4 w-full flex flex-col items-center sm:items-start">
+                  <div className="relative w-44 h-44 sm:w-52 sm:h-52 rounded-2xl overflow-hidden border-2 border-[var(--accent)]/50 shadow-2xl bg-[var(--card)] group/photo">
+                    <Image
+                      src="/images/hero.png"
+                      alt="Aman Dubey - Developer & Creator of Reader's HUB"
+                      fill
+                      className="object-cover object-top group-hover/photo:scale-105 transition-transform duration-500"
+                      sizes="(max-width: 640px) 176px, 208px"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-[var(--background)]/85 via-transparent to-transparent" />
+                    <div className="absolute bottom-2.5 left-2.5 right-2.5 text-center">
+                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[var(--background)]/90 text-[var(--accent)] border border-[var(--border)] shadow-xs">
+                        Solo Creator &amp; Engineer
+                      </span>
                     </div>
-                  ))}
+                  </div>
+
+                  <div className="space-y-1 w-full">
+                    <h3 className="text-xl sm:text-2xl font-bold font-serif text-[var(--foreground)] tracking-wide">
+                      Aman Dubey
+                    </h3>
+                    <p className="text-xs text-[var(--accent)] font-semibold">
+                      Full-Stack Software Engineer
+                    </p>
+                    <p className="text-[11px] text-[var(--text-secondary)] leading-relaxed pt-0.5">
+                      Information Technology • Specializing in high-performance Next.js, React, TypeScript &amp; scalable web systems.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Creator Direct Dossier Links */}
+                <div className="flex flex-wrap gap-2 w-full pt-2">
+                  <a
+                    href="https://github.com/amandubey923"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3.5 py-1.5 rounded-xl bg-[var(--secondary)] hover:bg-[var(--accent)]/20 text-[var(--foreground)] text-[11px] font-semibold border border-[var(--border)] hover:border-[var(--accent)]/50 transition-all flex items-center gap-1.5 shadow-xs hover:scale-105"
+                  >
+                    <svg className="w-3.5 h-3.5 text-[var(--accent)]" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z" />
+                    </svg>
+                    <span>GitHub</span>
+                  </a>
+
+                  <a
+                    href="https://www.linkedin.com/in/aman-kr-dubey"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3.5 py-1.5 rounded-xl bg-[var(--secondary)] hover:bg-[var(--accent)]/20 text-[var(--foreground)] text-[11px] font-semibold border border-[var(--border)] hover:border-[var(--accent)]/50 transition-all flex items-center gap-1.5 shadow-xs hover:scale-105"
+                  >
+                    <svg className="w-3.5 h-3.5 text-[var(--accent)]" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z" />
+                    </svg>
+                    <span>LinkedIn</span>
+                  </a>
+
+                  <a
+                    href="https://aman-portfolio-next.netlify.app/dossier"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-[var(--primary)] to-[var(--accent-secondary)] text-[var(--primary-foreground)] text-[11px] font-bold shadow-md hover:opacity-95 transition-all flex items-center gap-1 hover:scale-105 hover:shadow-[0_0_16px_var(--theme-glow)]"
+                  >
+                    <span>Dossier</span>
+                    <span>↗</span>
+                  </a>
                 </div>
               </div>
 
-              {/* Dossier Footer Action Link */}
-              <div className="pt-4 border-t border-[var(--border)] flex flex-wrap items-center justify-between gap-3">
-                <p className="text-[11px] text-[var(--text-secondary)]">
-                  Explore my complete background, production projects, and technical milestones:
-                </p>
-                <a
-                  href="https://aman-portfolio-next.netlify.app/dossier"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--accent)] hover:underline"
-                >
-                  <span>View Complete Developer Dossier</span>
-                  <span>↗</span>
-                </a>
+              {/* Right Column: Tabbed Dossier Narrative with Stable Fixed Content Height */}
+              <div className="lg:col-span-8 flex flex-col justify-between space-y-4">
+                {/* Segmented Navigation Switcher (Position remains permanently locked) */}
+                <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[var(--background)] border border-[var(--border)] max-w-fit shadow-inner">
+                  <button
+                    onClick={() => setActiveTab("origin")}
+                    className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                      activeTab === "origin"
+                        ? "bg-[var(--card)] text-[var(--accent)] shadow-sm border border-[var(--border)]"
+                        : "text-[var(--text-secondary)] hover:text-[var(--foreground)]"
+                    }`}
+                  >
+                    Origin &amp; Purpose
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("philosophy")}
+                    className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                      activeTab === "philosophy"
+                        ? "bg-[var(--card)] text-[var(--accent)] shadow-sm border border-[var(--border)]"
+                        : "text-[var(--text-secondary)] hover:text-[var(--foreground)]"
+                    }`}
+                  >
+                    Engineering Philosophy
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("engineering")}
+                    className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                      activeTab === "engineering"
+                        ? "bg-[var(--card)] text-[var(--accent)] shadow-sm border border-[var(--border)]"
+                        : "text-[var(--text-secondary)] hover:text-[var(--foreground)]"
+                    }`}
+                  >
+                    Technical Highlights
+                  </button>
+                </div>
+
+                {/* Active Tab Content (Constrained to a permanent stable height) */}
+                <div className="min-h-[260px] sm:min-h-[235px] lg:min-h-[220px] flex flex-col justify-between space-y-2.5 pt-1">
+                  <div className="space-y-2.5 animate-fade-in">
+                    <div className="inline-flex items-center gap-2 text-[10px] font-mono text-[var(--accent)] uppercase tracking-widest font-bold">
+                      <span>// {developerHighlights[activeTab].badge}</span>
+                    </div>
+
+                    <h4 className="text-lg sm:text-xl font-bold font-serif text-[var(--foreground)]">
+                      {developerHighlights[activeTab].title}
+                    </h4>
+
+                    {developerHighlights[activeTab].paragraphs.map((p, idx) => (
+                      <p key={idx} className="text-xs sm:text-sm text-[var(--text-secondary)] leading-relaxed font-normal">
+                        {p}
+                      </p>
+                    ))}
+
+                    <div className="space-y-1.5 pt-1">
+                      {developerHighlights[activeTab].points.map((pt, idx) => (
+                        <div key={idx} className="flex items-start gap-2 text-xs text-[var(--foreground)] font-medium">
+                          <span className="text-[var(--accent)] flex-shrink-0 mt-0.5 font-bold">✦</span>
+                          <span>{pt}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Dossier Footer Action Link (Permanently Locked at Base) */}
+                <div className="pt-4 border-t border-[var(--border)] flex flex-wrap items-center justify-between gap-3">
+                  <p className="text-[11px] text-[var(--text-secondary)] font-medium">
+                    Explore my complete background, production projects, and technical milestones:
+                  </p>
+                  <a
+                    href="https://aman-portfolio-next.netlify.app/dossier"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--accent)] hover:underline hover:scale-102 transition-transform"
+                  >
+                    <span>View Complete Developer Dossier</span>
+                    <span>↗</span>
+                  </a>
+                </div>
               </div>
             </div>
           </div>
         </div>
+
+        {/* Scoped CSS for the Chromatic Rotating Border Beam Animation */}
+        <style jsx>{`
+          @keyframes chromaticSpin {
+            0% {
+              transform: rotate(0deg);
+            }
+            100% {
+              transform: rotate(360deg);
+            }
+          }
+          .chromatic-border-beam {
+            background: conic-gradient(
+              from 0deg,
+              transparent 0deg,
+              var(--accent) 55deg,
+              var(--primary) 115deg,
+              #8b5cf6 175deg,
+              #ec4899 235deg,
+              #06b6d4 295deg,
+              var(--accent) 345deg,
+              transparent 360deg
+            );
+            animation: chromaticSpin 7s linear infinite;
+            opacity: 0.85;
+          }
+          :global(.group:hover) .chromatic-border-beam {
+            animation-duration: 4s;
+            opacity: 1;
+          }
+          @media (prefers-reduced-motion: reduce) {
+            .chromatic-border-beam {
+              animation: none !important;
+            }
+          }
+        `}</style>
       </section>
 
       {/* -------------------------------------------------------------
        * SECTION 5: COMPACT CTA FOOTER BOX
        * ------------------------------------------------------------- */}
-      <div className="rounded-3xl p-6 sm:p-8 glass-card border border-[var(--accent)]/30 bg-[var(--card)] text-center max-w-3xl mx-auto space-y-3 shadow-lg">
+      <div className="rounded-3xl p-6 sm:p-9 glass-card border border-[var(--accent)]/40 bg-[var(--card)]/90 text-center max-w-3xl mx-auto space-y-3.5 shadow-2xl relative overflow-hidden group hover:border-[var(--accent)]/60 transition-all">
+        <div
+          className="absolute -top-12 left-1/2 -translate-x-1/2 w-72 h-32 rounded-full blur-2xl opacity-20 pointer-events-none"
+          style={{ background: "var(--accent)" }}
+        />
+
         <h2 className="text-xl sm:text-3xl font-bold font-serif text-[var(--foreground)]">
           Start Reading Right Now
         </h2>
@@ -469,7 +642,7 @@ export default function AboutClient({ totalBooks, totalCategories }: AboutClient
         <div className="pt-2">
           <Link
             href="/library"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-[var(--primary)] to-[var(--accent-secondary)] hover:opacity-95 text-[var(--primary-foreground)] font-bold text-xs shadow-md hover:shadow-[0_0_16px_var(--theme-glow)] hover:scale-105 transition-all"
+            className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl bg-gradient-to-r from-[var(--primary)] to-[var(--accent-secondary)] hover:opacity-95 text-[var(--primary-foreground)] font-bold text-xs shadow-xl hover:shadow-[0_0_25px_var(--theme-glow)] hover:scale-105 transition-all"
           >
             <span>Open Digital Library</span>
             <span>→</span>
