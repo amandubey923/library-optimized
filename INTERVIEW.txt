@@ -523,16 +523,16 @@ canvas is recycled for the new page without visual tearing or memory leaks.
 8. READING EXPERIENCE & CORE READER SUBSYSTEMS
 ================================================================================
 
-| Feature | Implementation Details | Storage Key | Performance Mechanism |
-| :--- | :--- | :--- | :--- |
-| Single / Dual Page Mode | Automatic dual-page spread on desktop (>=1024px); single page on mobile/tablet | readershub_reader_prefs_v1 | Canvas layout recalculation without reloading document |
-| Zoom Control | 70% to 150% with 10% steps | readershub_reader_prefs_v1 | CSS scale preview with debounced canvas re-rasterization |
-| Keyboard Navigation | ArrowLeft/ArrowRight for pages, Space for next, F for Focus, T for Translate | In-memory event listeners | Debounced input handling preventing event flood |
-| Page Audio Synthesizer | Procedural page-turn sound synthesized via Web Audio API oscillators | None (0 KB asset) | Zero external audio asset downloads; synthesized in real time |
-| Table of Contents | PDF Outlines extracted via pdfDoc.getOutline() | In-memory ref | Extracted once per book load |
-| Bookmarks System | Save page with custom label | readershub:bookmarks:v1:<bookId> | Instant bookmark drawer lookup with jump-to-page |
-| Text Highlighter | Amber, Mint, Cyan, Purple text markers | readershub:annotations:v1:<bookId> | Selection bounding rects saved with character offsets |
-| Study Notes | Page-specific margin notes with timestamp | readershub:annotations:v1:<bookId> | Filterable note sidebar with live update |
+| Feature                  | Implementation Details     | Storage Key | Performance Mechanism |
+| :---                     | :---                       | :--- | :--- |
+| Single / Dual Page Mode  | Automatic dual-page spread on desktop (>=1024px); single page on mobile/tablet | readershub_reader_prefs_v1 | Canvas layout recalculation without reloading document |
+| Zoom Control             | 70% to 150% with 10% steps | readershub_reader_prefs_v1 | CSS scale preview with debounced canvas re-rasterization |
+| Keyboard Navigation      | ArrowLeft/ArrowRight for pages, Space for next, F for Focus, T for Translate | In-memory event listeners | Debounced input handling preventing event flood |
+| Page Audio Synthesizer   | Procedural page-turn sound synthesized via Web Audio API oscillators | None (0 KB asset) | Zero external audio asset downloads; synthesized in real time |
+| Table of Contents        | PDF Outlines extracted via pdfDoc.getOutline() | In-memory ref | Extracted once per book load |
+| Bookmarks System         | Save page with custom label | readershub:bookmarks:v1:<bookId> | Instant bookmark drawer lookup with jump-to-page |
+| Text Highlighter         | Amber, Mint, Cyan, Purple text markers | readershub:annotations:v1:<bookId> | Selection bounding rects saved with character offsets |
+| Study Notes              | Page-specific margin notes with timestamp | readershub:annotations:v1:<bookId> | Filterable note sidebar with live update |
 
 ================================================================================
 9. FOCUS READING SESSION ENGINE

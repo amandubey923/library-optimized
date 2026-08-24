@@ -104,11 +104,11 @@ export default function Logo({
 
       {/* Optional Wordmark */}
       {showWordmark && (
-        <div className="flex flex-col">
-          <span className="font-bold text-lg tracking-tight text-[var(--foreground)] flex items-center gap-1.5 font-serif leading-none">
+        <div className="flex flex-col min-w-0">
+          <span className="font-bold text-base sm:text-lg tracking-tight text-[var(--foreground)] flex items-center gap-1.5 font-serif leading-none truncate">
             READER&apos;S <span className="text-[var(--accent)] font-extrabold">HUB</span>
           </span>
-          <span className="text-[9px] tracking-widest uppercase text-[var(--text-secondary)] font-medium mt-1">
+          <span className="hidden sm:block text-[9px] tracking-widest uppercase text-[var(--text-secondary)] font-medium mt-1">
             Explore • Read • Discover
           </span>
         </div>
