@@ -1,0 +1,1637 @@
+================================================================================
+                    READER'S HUB — ENGINEERING DOSSIER
+                  COMPLETE SYSTEM ARCHITECTURE & INTERVIEW GUIDE
+================================================================================
+Document Version  : 2.0 (Production Verified)
+Language Style    : English Technical Terminology + Intuitive Hinglish Explanations
+Target Audience   : Senior Software Engineers, Technical Interviewers & System Architects
+Project Repository: https://github.com/amandubey923/library-optimized.git
+Last Verification : August 2026
+
+================================================================================
+                               TABLE OF CONTENTS
+================================================================================
+ 1. PROJECT OVERVIEW
+ 2. TECH STACK & VERIFIED INVENTORY
+ 3. COMPLETE REPOSITORY FOLDER STRUCTURE
+ 4. SYSTEM ARCHITECTURE & SUBSYSTEM DEEP-DIVE
+ 5. COMPLETE END-TO-END USER FLOW
+ 6. BOOK DATA ARCHITECTURE & CATALOG SCHEMA
+ 7. PDF STORAGE & HIGH-PERFORMANCE RENDERING PIPELINE
+ 8. READING EXPERIENCE & CORE READER SUBSYSTEMS
+ 9. FOCUS READING SESSION ENGINE
+10. READING TIME vs ACTIVE TIME (MATHEMATICAL INVARIANTS)
+11. DIYA & DAILY STREAK ENGINE
+12. LOCAL STORAGE ARCHITECTURE & CACHING
+13. LOCAL-FIRST PRIVACY ARCHITECTURE
+14. STATE MANAGEMENT & CONTEXT ARCHITECTURE
+15. PERFORMANCE ENGINEERING & RUNTIME OPTIMIZATIONS
+16. EXCALIDRAW-LEVEL VECTOR ANNOTATION ENGINE
+17. CONTEXTUAL AI TRANSLATION SUBSYSTEM
+18. COMMAND PALETTE & REAL-TIME SEARCH
+19. LOCAL USER PROFILE & READING ANALYTICS ENGINE
+20. PROGRESSIVE WEB APP (PWA) & OFFLINE CACHE
+21. DELTA INGESTION PIPELINE (BATCH & WATCHDOG)
+22. GIT LFS & LARGE ASSET MANAGEMENT
+23. ERROR BOUNDARIES, FAULT TOLERANCE & RECOVERY
+24. SECURITY BOUNDARIES & SECRET ISOLATION
+25. ACCESSIBILITY (A11Y) & RESPONSIVE DESIGN
+26. MODULARITY & SEPARATION OF CONCERNS
+27. APPLIED DESIGN PATTERNS
+28. HIGH-LEVEL & SUBSYSTEM SYSTEM DESIGN DIAGRAMS
+29. SYSTEM DATA FLOWS
+30. "WHY THESE TECHNOLOGIES?" (ARCHITECTURAL DECISION RECORDS)
+31. REAL-WORLD PRODUCTION CHALLENGES & ROOT-CAUSE ANALYSES
+32. NOTABLE BUGS & ARCHITECTURAL LESSONS
+33. TESTING SUITE & QA VERIFICATION
+34. VERIFIED PERFORMANCE BENCHMARKS & BUILD METRICS
+35. FUTURE ARCHITECTURAL ROADMAP
+36. SCALABILITY MATRIX (100 -> 10,000+ BOOKS)
+37. ARCHITECTURAL TRADE-OFFS & DEFENSES
+38. 50+ COMPREHENSIVE INTERVIEW QUESTIONS & ANSWERS
+39. RAPID-FIRE INTERVIEW CHEAT SHEET
+40. 60-SECOND PROJECT ELEVATOR PITCH
+41. 5-MINUTE DEEP-DIVE TECHNICAL PRESENTATION SCRIPT
+42. INTERVIEWER FOLLOW-UP TRAPS & DEFENSIVE STRATEGIES
+43. COMPREHENSIVE PROJECT GLOSSARY
+
+================================================================================
+1. PROJECT OVERVIEW
+================================================================================
+
+What is Reader's HUB?
+--------------------
+Reader's HUB is a modern, privacy-first, local-first digital library and PDF reading 
+platform. Built on Next.js 16 (Turbopack) and React 19, it combines digital book 
+discovery with an embedded canvas-based PDF reader, vector annotations, Diwali 
+Diya streak gamification, distraction-free Focus Mode sessions, AI translation, 
+and client-side reading analytics.
+
+What Problem Does It Solve?
+---------------------------
+Traditional PDF readers in web browsers are static, memory-heavy, and disconnected 
+from personal reading habits. When users read PDFs in browser default viewers:
+1. Reading history, progress, notes, and highlights are not structured.
+2. There is no motivation system (streak/daily habit tracking).
+3. Distractions break reading flow.
+4. Language barriers in complex books require switching tabs to translation tools.
+Reader's HUB solves this by bringing an Excalidraw-grade study tool, a Pomodoro-style 
+Focus Session, contextual multi-language translation, and a 100% private local analytics 
+dashboard into one cohesive, high-performance web application.
+
+Target User:
+------------
+Students, researchers, lifelong readers, and engineers who study long-form PDF books, 
+technical documentation, philosophy treatises, and classics, requiring private 
+reading telemetry without creating server-side accounts or syncing data to third-party 
+clouds.
+
+What Makes It Different from a Simple PDF Viewer?
+-------------------------------------------------
+| Feature | Simple PDF Viewer | Reader's HUB |
+| :--- | :--- | :--- |
+| Rendering Engine | Native browser embed/iframe | Dedicated PDF.js worker on HTML5 Canvas |
+| State Persistence | Lost on tab close | Local-first namespaced storage with in-memory caching |
+| Drawing & Notes | Flat bitmap / none | Vector-based object model with selection, drag & resize |
+| Reading Habits | No habit tracking | Diwali Diya streak (15m goal) + 53-week reading heatmap |
+| Focus System | Standard full-screen | Fullscreen + reversible countdown + exit warning guard |
+| Translation | External copy-paste | Contextual in-reader translation into Hindi & Hinglish |
+| User Privacy | Often tracks telemetries | Zero logins, zero trackers, 100% on-device calculations |
+
+Main Product Philosophy:
+------------------------
+"Privacy-First, Local-First, Zero-Friction Reading."
+Har reading session user ki personal property hai. Bina login, email, ya password maange, 
+application user ke browser me hi ek complete reading ecosystem build karti hai.
+
+Interview Answers:
+------------------
+A) 30-Second Interview Answer:
+"Reader's HUB is a local-first digital library and PDF study platform built with Next.js 16 
+and React 19. It renders 360+ curated books via an optimized PDF.js canvas pipeline, 
+offering vector annotations, contextual AI translation, a 15-minute daily Diwali Diya 
+reading streak, and a 100% client-side reading analytics dashboard—all running privately 
+in the browser without backend user accounts."
+
+B) 1-Minute Interview Answer:
+"Reader's HUB is engineered to transform static PDF reading into an interactive, habit-forming 
+study experience. Architecturally, it is divided into a SSG catalog layer rendering 360+ books, 
+a canvas-based PDF.js reader with render-cancellation and DPI scaling, an Excalidraw-like 
+vector annotation engine, and a centralized local storage layer. It solves common web reader 
+bottlenecks like canvas memory bloat, render race conditions on rapid page flips, and React 
+re-render loops. The platform includes a strict invariant timing engine that differentiates 
+genuine PDF reading time from site exploration, powering a living Diwali Diya streak and 
+profile analytics dashboard without requiring cloud databases."
+
+C) 2-Minute Detailed Answer:
+"When designing Reader's HUB, our core objective was building a production-grade reading 
+platform that provides an desktop-app-like experience inside the browser. We chose Next.js 16 
+App Router with static site generation for 377 routes to guarantee sub-millisecond page loads. 
+For reading, instead of using laggy iframes, we built a custom reader over PDF.js with dedicated 
+web workers, rendering spreads directly to HTML5 Canvases with devicePixelRatio normalization 
+and AbortController-driven render cancellation.
+
+We engineered three standout systems:
+First, a Vector Annotation Canvas supporting freeform pen strokes, geometric shapes with 
+8-point resize handles, and draggable text, all stored as normalized 0-to-1 coordinates so 
+drawings scale perfectly across any viewport, DPI, or zoom level.
+Second, a strict Timing Engine enforcing the invariant that Active Time >= Reading Time, 
+preventing double-counting while reading and driving a daily Diwali Diya streak.
+Third, a Delta Ingestion Pipeline in TypeScript that hashes PDFs with SHA-256 to automatically 
+extract metadata, generate WebP covers via Sharp, and update the catalog in seconds. 
+Everything is 100% private, accessible offline via Service Workers and CacheStorage."
+
+Hinglish Explanation:
+---------------------
+"Reader's HUB ek aisi digital library hai jo browser me hi ek premium study environment 
+create karti hai. Normally PDF padhte waqt progress kho jati hai aur notes lene ke liye 
+doosra software chahiye hota hai. Reader's HUB me book kholte hi PDF.js canvas pe render hoti hai, 
+aap Excalidraw ki tarah arrows, notes aur shapes draw kar sakte ho, aur 15 minute padhne pe 
+Diwali Diya jalta hai jo daily streak maintain karta hai. Sabse special baat ye hai ki isme koi 
+login ya database nahi hai—pura data user ke browser ke localStorage me encrypted and cached 
+rehta hai, jisse privacy 100% secure rehti hai."
+
+Intentionally NOT Included:
+---------------------------
+- No cloud authentication (no Cognito, Auth0, Firebase, or Supabase).
+- No relational user database server (no Postgres, MongoDB, MySQL).
+- No paid paywalls or ad tracking telemetry.
+
+================================================================================
+2. TECH STACK & VERIFIED INVENTORY
+================================================================================
+
+| Technology | Version | Purpose in Codebase | Architectural Justification |
+| :--- | :--- | :--- | :--- |
+| Next.js | 16.2.1 | Core Framework, App Router, SSG & API routes | 377 static routes generated at build time; fast serverless API routes for AI translation and contact |
+| React & React-DOM | 19.2.4 | UI Component Engine, Context & Hooks | React 19 concurrent features, optimized reconciliation, fine-grained state management |
+| TypeScript | 5.x | Strict Type Checking & Interface Contracts | Comprehensive interfaces for Storage, Annotations, Timing, and Catalog; 0 build errors |
+| Tailwind CSS | 4.x | Utility-first Theme Styling & Animations | PostCSS v4 engine; CSS variable-driven theme system with custom keyframes |
+| @google/genai | 2.18.0 | Server-side AI Translation & Assistant | Gemini 2.5 / 3.5 multi-model fallback in API route for literary page translation |
+| pdfjs-dist | 6.2.108 | Client-side PDF Parsing & Canvas Renderer | Dedicated web worker execution; off-main-thread binary PDF decoding and canvas rasterization |
+| sharp | 0.35.3 | High-Performance Cover Image Generation | Fast C++ libvips binding used in delta ingestion scripts to generate WebP covers |
+| pdf-lib & pdf-parse | 1.17.1 / 2.4.5 | Server-side PDF Metadata & Page Extraction | Inspects unindexed PDF byte streams, extracts page counts, titles, and text layers |
+| chokidar | 5.0.0 | File Watchdog for Ingestion | Watches public/pdfs/ for hot addition of new books in development mode |
+| tsx | 4.23.12 | TypeScript Script Execution Runner | Executes standalone automation scripts (ingest-batch.ts, QA test suites) |
+| LocalStorage & Cache API | Browser Native | Client-side Persistence & Offline PDF Storage | Zero-latency reads with in-memory caching Map layer; CacheStorage for offline PDFs |
+
+================================================================================
+3. COMPLETE REPOSITORY FOLDER STRUCTURE
+================================================================================
+
+Reader's HUB/
+├── app/                                # Next.js 16 App Router (Pages & API routes)
+│   ├── about/page.tsx                  # About Reader's HUB & Mission
+│   ├── api/
+│   │   ├── chat/route.ts               # Gemini-powered conversational assistant API
+│   │   ├── contact/route.ts            # Nodemailer / Resend feedback pipeline
+│   │   └── translate/route.ts          # Server-side Gemini multi-page translation API
+│   ├── book/[id]/
+│   │   ├── page.tsx                    # Static SSG route pre-generating 363+ book detail pages
+│   │   └── BookDetailClient.tsx        # Client orchestrator for Book details, reader & memory
+│   ├── contact/page.tsx                # Contact & reader inquiry page
+│   ├── favorites/page.tsx              # "My Shelf" — Reading history, favorites, goal tracker & recovery
+│   ├── library/page.tsx                # Catalog browser with multi-filter, search & category pills
+│   ├── profile/page.tsx                # Local User Profile & Reading Analytics Dashboard
+│   ├── globals.css                     # Design tokens, themes (Dracula, Luxury, etc.), keyframe animations
+│   ├── layout.tsx                      # Root layout wrapping ThemeProvider & LibraryProvider
+│   ├── not-found.tsx                   # Customized 404 error screen
+│   ├── page.tsx                        # Homepage: Hero, Featured Carousel, Continue Reading, Categories
+│   ├── robots.ts                       # Search engine crawler instructions
+│   └── sitemap.ts                      # Dynamic XML sitemap generator covering all 363+ books
+│
+├── components/                         # Modular React UI Components
+│   ├── about/                          # Mission cards, stats counters, value pillars
+│   ├── assistant/                      # AI Study Assistant chat modal
+│   ├── memory/                         # BookReadingMemory modal (timeline, replay, stats)
+│   ├── reader/                         # Core PDF reading components
+│   │   ├── AnnotationDrawer.tsx        # Floating toolbar for tools, colors, widths & stroke inspector
+│   │   ├── BookReader.tsx              # Monolithic, high-speed Canvas reader (135KB production-hardened)
+│   │   ├── DrawingCanvas.tsx           # Object-based vector canvas (pen, shapes, text, arrows, selection)
+│   │   └── TranslationDrawer.tsx       # Split-pane & drawer translation viewer with copy & speech
+│   ├── visual/                         # Ambient visual effects and design components
+│   │   ├── AmbientEffects.tsx          # Particle canvas & background glow
+│   │   ├── CardTilt.tsx                # 3D interactive tilt effect on book cards
+│   │   ├── CustomCursor.tsx            # Theme-aware custom pointer
+│   │   ├── DiwaliDiya.tsx              # Living animated flame Diya with 7-day streak popover
+│   │   ├── Hero3DLayer.tsx             # 3D layered parallax illustration on homepage
+│   │   ├── NavbarThemeControl.tsx      # Top-right quick theme switcher
+│   │   ├── ReadingUniverse.tsx         # Interactive constellation background
+│   │   ├── ThemeProvider.tsx           # CSS variable theme provider
+│   │   └── ThemeSwitcher.tsx           # Full theme picker modal
+│   ├── BookCard.tsx                    # Book item card with 3D tilt, cover image, category & progress
+│   ├── CategoryPills.tsx               # Horizontal scrolling category filter
+│   ├── ContinueReading.tsx             # In-progress books shelf on homepage
+│   ├── FeaturedCarousel.tsx            # Curated book highlight carousel
+│   ├── Footer.tsx                      # Global footer with links, copyright & privacy pledge
+│   ├── HeroVideo.tsx                   # Video / dynamic visual background for hero section
+│   ├── Logo.tsx                        # Custom SVG Reader's HUB logo with book & flame icon
+│   ├── Navbar.tsx                      # Global sticky navbar with search, Diya, Profile & theme controls
+│   ├── PdfReader.tsx                   # Lightweight dynamic wrapper for reader
+│   ├── SearchModal.tsx                 # Command Palette (Cmd+K) with live search and quick actions
+│   └── Toast.tsx                       # Global notification toast renderer
+│
+├── context/
+│   └── LibraryContext.tsx              # Central state engine managing favorites, history, streak & timers
+│
+├── data/
+│   ├── books.json                      # Master database of 363 book records with metadata, hashes & tags
+│   └── books.ts                        # TypeScript bindings, category definitions & helper queries
+│
+├── lib/                                # Core Utility & Business Logic Engines
+│   ├── library-assistant.ts            # Client helpers for assistant queries
+│   ├── pageSound.ts                    # Synthesized Web Audio API page-flip sound generator
+│   ├── reader-storage.ts               # Storage layer, caching, schema migrations & telemetry math
+│   ├── reading-analytics.ts            # Pure analytical computation engine for profile dashboard
+│   └── translator.ts                   # Client-side translation manager with in-memory DJB2 hash caching
+│
+├── public/                             # Static Assets
+│   ├── images/books/                   # 363+ optimized WebP/JPEG book covers
+│   ├── pdfs/                           # 363+ physical PDF books (~1.65 GB catalog)
+│   ├── vendor/pdfjs/                   # Local standalone PDF.js library & web worker files
+│   └── manifest.json                   # PWA web app manifest
+│
+├── scripts/                            # Delta Ingestion & Automation Tooling
+│   ├── ingest/                         # Modular ingestion engine (scanner, naming, metadata, covers, writer)
+│   ├── create-sample-inbox.ts          # Generates test inbox for automated testing
+│   ├── import-books.ts                 # Full ingestion script
+│   ├── ingest-batch.ts                 # CLI entry point for batch delta processing
+│   └── watch-books.ts                  # Hot-folder file watcher daemon
+│
+└── scratch/                            # Automated QA Test Suites (100% verified test runners)
+
+================================================================================
+4. SYSTEM ARCHITECTURE & SUBSYSTEM DEEP-DIVE
+================================================================================
+
+High-Level Architecture Diagram:
+--------------------------------
+
+ ┌───────────────────────────────────────────────────────────────────────────┐
+ │                                BROWSER                                    │
+ │                                                                           │
+ │  ┌─────────────────────────────────────────────────────────────────────┐  │
+ │  │                       PRESENTATION LAYER (UI)                       │  │
+ │  │  Homepage  │  Library Catalog  │  My Shelf  │  Profile Dashboard    │  │
+ │  └───────────────────────────────────┬─────────────────────────────────┘  │
+ │                                      │                                    │
+ │  ┌───────────────────────────────────▼─────────────────────────────────┐  │
+ │  │                      READER & STUDY SUBSYSTEM                       │  │
+ │  │  ┌────────────────────────┐  ┌───────────────────────────────────┐  │  │
+ │  │  │   BookReader Engine    │  │   DrawingCanvas (Vector Engine)   │  │  │
+ │  │  │   - Canvas Rendering   │  │   - Pen, Highlighter, Shapes      │  │  │
+ │  │  │   - DPI Scaling        │  │   - 8-Point Resize Handles        │  │  │
+ │  │  │   - Render Cancel      │  │   - Normalized 0-1 Coordinates    │  │  │
+ │  │  └───────────┬────────────┘  └─────────────────┬─────────────────┘  │  │
+ │  │              │                                 │                    │  │
+ │  │  ┌───────────▼────────────┐  ┌─────────────────▼─────────────────┐  │  │
+ │  │  │  Focus Session Engine  │  │    Contextual AI Translation      │  │  │
+ │  │  │  - 15/30/45m Countdown │  │    - Text Layer Extraction        │  │  │
+ │  │  │  - Exit Protection     │  │    - In-Memory DJB2 Cache         │  │  │
+ │  │  └───────────┬────────────┘  └─────────────────┬─────────────────┘  │  │
+ │  └──────────────┼─────────────────────────────────┼────────────────────┘  │
+ │                 │                                 │                       │
+ │  ┌──────────────▼─────────────────────────────────▼────────────────────┐  │
+ │  │                    CENTRAL STATE & TIMING LAYER                     │  │
+ │  │                         (LibraryContext)                            │  │
+ │  │   - Reading Time (T)   │  - Exploration Time   │  - Active Time     │  │
+ │  │   - Diwali Diya Streak │  - Book Reading Memory│  - Favorites       │  │
+ │  └───────────────────────────────────┬─────────────────────────────────┘  │
+ │                                      │                                    │
+ │  ┌───────────────────────────────────▼─────────────────────────────────┐  │
+ │  │                   LOCAL PERSISTENCE & CACHING LAYER                 │  │
+ │  │                       (reader-storage.ts)                           │  │
+ │  │   - In-Memory Map Layer (Zero JSON Overhead)                        │  │
+ │  │   - Namespaced LocalStorage Schemas                                 │  │
+ │  │   - CacheStorage API (Offline PDF Blobs)                            │  │
+ │  └─────────────────────────────────────────────────────────────────────┘  │
+ └──────────────────────────────────────┬────────────────────────────────────┘
+                                        │ (Optional Translation / Chat Only)
+                                        ▼
+                         ┌─────────────────────────────┐
+                         │   Next.js API Gateway       │
+                         │   (/api/translate, /chat)   │
+                         └──────────────┬──────────────┘
+                                        │
+                                        ▼
+                         ┌─────────────────────────────┐
+                         │   Google Gemini AI Engine   │
+                         └─────────────────────────────┘
+
+Subsystems Breakdown:
+---------------------
+1. Presentation Layer: Next.js 16 App Router. Pages are pre-rendered at build time (SSG). 
+   Interactive components use client boundaries ("use client").
+2. Reader Layer: High-performance canvas-based rendering using PDF.js worker. Manages 
+   virtual viewport, single/dual page spread rendering, DPI scaling, and touch gestures.
+3. Vector Annotation Layer: HTML5 Canvas overlay operating over normalized (0 to 1) 
+   coordinates. Supports multi-tool drawing, geometric shapes, 8-point bounding boxes, 
+   and inline text.
+4. Central State Layer (LibraryContext): Single source of truth for all global telemetry, 
+   reading progress, streak calculation, and active timers.
+5. Storage Layer (reader-storage.ts): Encapsulated repository pattern with in-memory 
+   Map caching to prevent JSON parse overhead on frequent timer updates.
+6. Translation Layer: Extracts text directly from the PDF text layer and sends it to 
+   /api/translate, caching responses deterministically with DJB2 string hashes.
+
+================================================================================
+5. COMPLETE END-TO-END USER FLOW
+================================================================================
+
+Step-by-Step Execution Lifecycle:
+---------------------------------
+
+User Lands on Website (/)
+       │
+       ▼
+Hydration & LocalStorage Warm-up:
+- LibraryProvider mounts.
+- reader-storage.ts populates in-memory Map caches from localStorage.
+- Streak data, today's reading time, and active website time are computed.
+       │
+       ▼
+Catalog Discovery & Search (/library or Cmd+K):
+- User filters by Category (e.g., "Classics", "Philosophy") or types in SearchModal.
+- Search query performs real-time multi-attribute matching across titles, authors, and tags.
+       │
+       ▼
+Book Selection (/book/[id]):
+- Static HTML loaded instantly (pre-generated via generateStaticParams).
+- BookDetailClient mounts; verifies previous reading page and loads saved annotations.
+       │
+       ▼
+Reader Initialization (BookReader.tsx):
+- Standalone PDF.js worker loaded asynchronously from /vendor/pdfjs/pdf.worker.min.js.
+- PDF binary fetched from /pdfs/<filename>.pdf (or retrieved from CacheStorage if offline).
+- Page viewport computed based on container width and device pixel ratio (window.devicePixelRatio).
+       │
+       ▼
+Canvas Rasterization & Rendering:
+- Page viewport renders to HTML5 Canvas.
+- Previous pending render tasks are cancelled via renderTask.cancel() to prevent race conditions.
+- Vector annotations for that page are loaded from reader-storage and drawn on top.
+       │
+       ▼
+Active Reading & Invariant Telemetry Tracking:
+- Reader checks user activity every 1 second. If active within 3-minute idle window:
+  -> Genuine Reading Time (T) increments by 1 second.
+  -> Every 5 seconds, time flushes to readershub:reading-activity:v1 and readershub:memory:v1:<id>.
+  -> If T >= 15 minutes (900 seconds), Diwali Diya flame lights up and daily streak qualifies.
+       │
+       ▼
+Study & Annotation:
+- User selects Pen, Highlighter, Arrow, Shape, or Text.
+- Objects are placed using normalized coordinates (0-1) and saved to localStorage.
+- User opens Translation Drawer -> Current page text extracted and translated into Hindi/Hinglish.
+       │
+       ▼
+Focus Session (Optional):
+- User selects 15m, 30m, or 45m.
+- Browser enters Fullscreen and Focus Mode; reverse countdown begins.
+- Exit protection prevents accidental cancellation.
+       │
+       ▼
+Session Review & Profile Analytics (/profile):
+- User opens Profile page.
+- Analytics engine aggregates all daily reading sessions into 53-week heatmap, genre breakdown, 
+  and reading habits without sending any data to external servers.
+
+================================================================================
+6. BOOK DATA ARCHITECTURE & CATALOG SCHEMA
+================================================================================
+
+Master Catalog Location:
+------------------------
+Primary: data/books.json (363 verified book objects)
+TypeScript Definitions: data/books.ts
+
+Sanitized Book Object Schema:
+-----------------------------
+{
+  "id": "1984",
+  "title": "1984",
+  "author": "George Orwell",
+  "category": "Fiction & Dystopian",
+  "cover": "/images/books/1984.jpeg",
+  "pdf": "/pdfs/1984GeorgeOrwell.pdf",
+  "description": "A chilling prophecy about the future where the Party and Big Brother monitor every movement and thought. Winston Smith struggles against omnipresent surveillance and totalitarian control in a world where truth is rewritten daily.",
+  "year": 1949,
+  "pages": 328,
+  "language": "English",
+  "rating": 4.8,
+  "featured": true,
+  "tags": [
+    "Dystopian",
+    "Classics",
+    "Political Fiction",
+    "Surveillance"
+  ],
+  "excerpt": "War is peace. Freedom is slavery. Ignorance is strength.",
+  "fileHash": "d53c42029872588bad85208db8a72bc3c18e93c6dba5e7cfaff14734b35db229"
+}
+
+Field Explanations:
+-------------------
+- id: URL-safe kebab-case unique identifier (e.g. crime-and-punishment, 1984).
+- title: Clean canonical title of the book.
+- author: Primary author name.
+- category: Primary classification (e.g., "Classics", "Philosophy & Spirituality", "Technical Knowledge").
+- cover: Absolute public path to the optimized WebP/JPEG cover asset.
+- pdf: Absolute public path to the PDF binary file in public/pdfs/.
+- description: 2-4 sentence summary of the book.
+- year: Publication year.
+- pages: Total page count extracted during delta ingestion.
+- rating: Editorial rating on a 5.0 scale.
+- featured: Boolean flag determining placement in homepage curated carousel.
+- tags: Search keywords for the Command Palette.
+- fileHash: SHA-256 hash of the PDF file to ensure strict deduplication during ingestion.
+
+How /book/[id] Works:
+-----------------------
+In app/book/[id]/page.tsx, Next.js executes generateStaticParams() at build time:
+export async function generateStaticParams() {
+  return BOOKS.map((book) => ({ id: book.id }));
+}
+This pre-renders all 363 book detail routes to static HTML during npm run build, resulting in 
+0ms server latency on page navigation.
+
+================================================================================
+7. PDF STORAGE & HIGH-PERFORMANCE RENDERING PIPELINE
+================================================================================
+
+PDF Pipeline Diagram:
+---------------------
+
+  PDF File (/pdfs/*.pdf)
+           │
+           ▼
+  PDF.js Standalone Worker (pdf.worker.min.js)
+           │ (Off-Main-Thread Binary Parsing)
+           ▼
+  PDFDocumentProxy (pdfDocRef.current)
+           │
+           ▼
+  Page Calculation (getPage(pageNum))
+           │
+           ▼
+  Viewport & DPI Normalization:
+  - scale = (containerWidth / page.width) * (zoom / 100)
+  - dpr = Math.min(window.devicePixelRatio || 1, 2.5)
+  - canvas.width = viewport.width * dpr
+  - canvas.height = viewport.height * dpr
+  - ctx.scale(dpr, dpr)
+           │
+           ▼
+  Render Task Execution (page.render({ canvasContext, viewport })):
+  - If previous render in progress: activeRenderTask.cancel()
+  - Catch RenderingCancelledException silently
+           │
+           ▼
+  Render Completed -> Vector Annotations Painted on Overlay Canvas
+
+Why PDF.js on HTML5 Canvas Instead of Native Browser <iframe embed>?
+----------------------------------------------------------------------
+1. Complete UI Control: Native iframes display browser-specific toolbars (Chrome, Safari, Firefox 
+   all look different) and prevent custom dark mode styling.
+2. In-Reader Annotations: Canvases allow pixel-perfect overlay of vector drawings, highlights, 
+   and notes directly synchronized with the page coordinate system.
+3. Single & Dual Spread Mode: Native embeds cannot easily render dual-page book spreads with 
+   custom page-flip animations.
+4. Text Extraction for Translation: PDF.js provides direct programmatic access to page text 
+   tokens via page.getTextContent().
+
+RenderTask Cancellation & Rapid Flip Safety:
+--------------------------------------------
+When a user presses the Right Arrow key rapidly, multiple page render requests can fire in 
+milliseconds. In PDF.js, drawing to a canvas while another render task is actively writing to it 
+throws a CanvasGraphics conflict error.
+Reader's HUB solves this by maintaining a reference map of active render tasks:
+if (renderTasksRef.current[pageKey]) {
+  try {
+    renderTasksRef.current[pageKey].cancel();
+  } catch {
+    // Ignore cancellation
+  }
+}
+const renderTask = page.render(renderContext);
+renderTasksRef.current[pageKey] = renderTask;
+
+If a render task is cancelled, the RenderingCancelledException is caught gracefully and the 
+canvas is recycled for the new page without visual tearing or memory leaks.
+
+================================================================================
+8. READING EXPERIENCE & CORE READER SUBSYSTEMS
+================================================================================
+
+| Feature | Implementation Details | Storage Key | Performance Mechanism |
+| :--- | :--- | :--- | :--- |
+| Single / Dual Page Mode | Automatic dual-page spread on desktop (>=1024px); single page on mobile/tablet | readershub_reader_prefs_v1 | Canvas layout recalculation without reloading document |
+| Zoom Control | 70% to 150% with 10% steps | readershub_reader_prefs_v1 | CSS scale preview with debounced canvas re-rasterization |
+| Keyboard Navigation | ArrowLeft/ArrowRight for pages, Space for next, F for Focus, T for Translate | In-memory event listeners | Debounced input handling preventing event flood |
+| Page Audio Synthesizer | Procedural page-turn sound synthesized via Web Audio API oscillators | None (0 KB asset) | Zero external audio asset downloads; synthesized in real time |
+| Table of Contents | PDF Outlines extracted via pdfDoc.getOutline() | In-memory ref | Extracted once per book load |
+| Bookmarks System | Save page with custom label | readershub:bookmarks:v1:<bookId> | Instant bookmark drawer lookup with jump-to-page |
+| Text Highlighter | Amber, Mint, Cyan, Purple text markers | readershub:annotations:v1:<bookId> | Selection bounding rects saved with character offsets |
+| Study Notes | Page-specific margin notes with timestamp | readershub:annotations:v1:<bookId> | Filterable note sidebar with live update |
+
+================================================================================
+9. FOCUS READING SESSION ENGINE
+================================================================================
+
+Focus Session Lifecycle Diagram:
+--------------------------------
+
+  User Clicks "Start Session"
+               │
+               ▼
+  Select Duration: [ 15 min ]  [ 30 min ]  [ 45 min ]
+               │
+               ▼
+  Session Initialized:
+  - activeSession state set
+  - Focus Mode activated (UI distraction chrome hidden)
+  - Browser Fullscreen requested (element.requestFullscreen())
+  - Reverse Countdown Timer started
+               │
+               ▼
+  Draggable Floating Timer Overlay:
+  - Rendered in portal inside reader viewport
+  - Position persisted to readershub_focus_timer_prefs_v1
+  - Dragging uses direct transform (zero React re-renders)
+               │
+               ▼
+  Exit Protection Guard:
+  - User presses Escape / clicks Exit -> Intercepted
+  - Dialog: "Exit Focus Session? Unfinished time will not count towards session completion."
+  - User can [ Resume ] or [ Confirm Exit ]
+               │
+               ▼
+  Session Complete (00:00 reached):
+  - Success sound & celebration dialog
+  - Session logged to readershub:memory:v1:<bookId> timeline
+  - Fullscreen restored
+
+Why Abandoned Sessions Do Not Count Towards Session Goals:
+---------------------------------------------------------
+Hinglish Explanation:
+"Agar user 30 minute ka session start kare aur 3 minute baad quit kar de, toh session complete 
+nahi maana jayega. Par jo 3 minute usne actual PDF padhi hai, wo uske daily Reading Time (T) 
+me add hogi taaki uska time waste na ho. Lekin structured session completion event tabhi fire 
+hoga jab countdown 00:00 reach kare."
+
+================================================================================
+10. READING TIME vs ACTIVE TIME (MATHEMATICAL INVARIANTS)
+================================================================================
+
+Core Mathematical Model:
+------------------------
+
+T = Actual Genuine PDF / Book Reading Time
+
+Reading Time === T
+Diya / Streak Time === T
+Total Active Time = T + Website Exploration Time
+Active Time >= Reading Time (For all days and all-time totals)
+
+Definitions:
+------------
+1. Genuine Reading Time (T): Time spent inside BookReader.tsx with the document visible, 
+   not loading, and user interaction (mouse move, scroll, keypress, touch) detected within a 
+   3-minute idle window.
+2. Website Exploration Time: Meaningful active time spent browsing catalog, searching, reading 
+   About page, or reviewing My Shelf outside the active PDF reader.
+3. Total Active Time: The holistic sum of genuine reading plus website exploration.
+
+Invariant Truth Table & Examples:
+---------------------------------
+| User Activity Scenario | Reading Time (T) | Diya / Streak Time | Exploration Time | Total Active Time | Diya Status |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **A. 20m Reading Only** | 20m | 20m | 0m | **20m** | LIT (>=15m) |
+| **B. 30m Browsing Only** | 0m | 0m | 30m | **30m** | UNLIT |
+| **C. 20m Reading + 10m Browsing** | 20m | 20m | 10m | **30m** | LIT (>=15m) |
+| **D. 12m Book A + 8m Book B** | 20m | 20m | 0m | **20m** | LIT (>=15m) |
+
+How Double-Counting is Prevented:
+---------------------------------
+In LibraryContext.tsx, the global site exploration interval tracks route pathname via pathnameRef:
+const interval = setInterval(() => {
+  const isReadingPdf = pathnameRef.current?.startsWith("/book/");
+  if (document.visibilityState === "visible" && !isReadingPdf && isUserActive) {
+    accumulatedSiteSecs += 1;
+    // Flushes to explorationDaily in readershub:active-time:v1
+  }
+}, 1000);
+
+Jab user /book/[id] pe book padh raha hota hai, isReadingPdf true ho jata hai. Global site 
+tracker exploration time add karna band kar deta hai. Isse reading time aur exploration time 
+kabhi ek saath tick nahi hote aur zero double-counting ensure hoti hai.
+
+================================================================================
+11. DIYA & DAILY STREAK ENGINE
+================================================================================
+
+What Does the Diwali Diya Represent?
+------------------------------------
+The Diya is a cultural and psychological habit-building token. It represents focused daily 
+reading enlightenment.
+- 0 to 14:59 minutes of daily reading: Diya remains unlit (calm clay lamp, no flame).
+- 15:00+ minutes of daily reading (T >= 900s): Diya illuminates with an authentic, 
+  animated CSS keyframe living flame and glowing ambient halo.
+
+Streak Calculation Algorithm (lib/reader-storage.ts):
+------------------------------------------------------
+export function calculateStreak(dailyMap: Record<string, DailyReadingActivity>) {
+  const todayKey = getLocalDateKey();
+  const yesterdayKey = getPreviousDateKey(todayKey);
+  
+  let currentStreak = 0;
+  let checkKey = dailyMap[todayKey]?.qualified ? todayKey : yesterdayKey;
+
+  while (dailyMap[checkKey]?.qualified) {
+    currentStreak++;
+    checkKey = getPreviousDateKey(checkKey);
+  }
+  // longestStreak computed across entire historical record
+  return { currentStreak, longestStreak };
+}
+
+Streak Grace Rule:
+Agar user ne aaj abhi tak 15 minute complete nahi kiye, lekin kal complete kiye the, toh uska 
+current streak break nahi hota. Wo aaj raat 11:59 PM tak 15 minute padh kar apna streak maintain 
+kar sakta hai.
+
+================================================================================
+12. LOCAL STORAGE ARCHITECTURE & CACHING
+================================================================================
+
+Complete Storage Inventory:
+---------------------------
+| Storage Key | Data Structure | Purpose | Cache Layer |
+| :--- | :--- | :--- | :--- |
+| readershub:reading-activity:v1 | ReadingStreakData (daily record map of seconds & qualified boolean) | Daily reading time T, current streak, longest streak | Memory Map |
+| readershub:active-time:v1 | WebsiteActiveTimeData (totalActive, daily active & exploration maps) | Total composite active website usage telemetry | Memory Map |
+| readershub:progress:v1:<bookId> | ReadingProgressData ({ page, totalPages, progress, lastReadAt }) | Last read page position and progress percentage | progressCache |
+| readershub:annotations:v1:<bookId> | BookAnnotations ({ highlights, notes, drawings, bookmarks }) | All vector strokes, highlights and margin notes | annotationsCache |
+| readershub:bookmarks:v1:<bookId> | BookmarkItem[] | Dedicated bookmark list for fast drawer retrieval | bookmarksCache |
+| readershub:memory:v1:<bookId> | BookReadingMemory ({ totalSeconds, sessionsCount, timeline }) | Per-book lifetime reading memory & session timeline | memoryCache |
+| readers_hub_favorites_v2 | string[] (Array of book IDs) | Favorited books saved to "My Shelf" | Context state |
+| readers_hub_reading_progress_v2 | ReadingProgressItem[] (Max 16 recent items) | "Continue Reading" shelf on homepage and My Shelf | Context state |
+| readershub_reader_prefs_v1 | ReaderPrefs ({ zoom, spreadMode, singlePageMode }) | User reading layout preferences | Component state |
+| readershub_focus_timer_prefs_v1 | { x: number, y: number } | Floating focus timer window coordinates | Component state |
+| readershub-theme | string ("dracula" | "luxury" | "sepia" | ...) | Global theme identifier applied to <html> | ThemeProvider |
+| readershub-offline-books-v1 | CacheStorage binary blobs | Offline cached PDF documents | Browser Cache API |
+
+Storage Quota & Corruption Protection:
+--------------------------------------
+1. In-Memory Write-Through Caching: Every read first hits high-speed in-memory JavaScript Maps. 
+   LocalStorage is only accessed on initialization and updated on debounced writes.
+2. Corrupted JSON Tolerance: All parsing is wrapped in try / catch blocks with fallback defaults. 
+   If a key contains malformed JSON, it is safely repaired without crashing the application.
+3. Quota Exceeded Defense: If browser storage quota is hit, non-critical telemetry writes fail 
+   gracefully without breaking active PDF reading.
+
+================================================================================
+13. LOCAL-FIRST PRIVACY ARCHITECTURE
+================================================================================
+
+Why Local-First?
+----------------
+1. Zero Data Harvesting: User ki reading habits, highlights, notes aur daily time trackings 
+   kisi server pe transmit nahi hoti.
+2. Instant Offline Availability: Internet disconnect hone par bhi saved books, bookmarks aur 
+   analytics 100% functional rehte hain.
+3. Zero Account Friction: User ko sign up, OTP, ya password yaad rakhne ki zaroorat nahi. 
+   Website open karte hi unki personal library ready hoti hai.
+
+Backup & Portability:
+---------------------
+To prevent data loss on browser cache clear, favorites/page.tsx provides a JSON Export & Import 
+engine (exportAllUserData() / importUserData()). Users can download their entire library 
+telemetry as a single .json backup file and restore it on any device in one click.
+
+================================================================================
+14. STATE MANAGEMENT & CONTEXT ARCHITECTURE
+================================================================================
+
+Why React Context API?
+----------------------
+Reader's HUB uses LibraryContext located in context/LibraryContext.tsx.
+Reasons for choosing Context API over Redux / Zustand:
+1. Native React Integration: Zero external runtime dependencies.
+2. Scoped Telemetry: Shared state (favorites, recent history, active timer, toast) is 
+   consumed across 15+ components without prop-drilling.
+3. Stable Action References: All mutation functions (recordReading, toggleFavorite, refreshStats) 
+   are memoized with useCallback to guarantee stable reference identities.
+
+Preventing Context Re-Render Cascades:
+--------------------------------------
+A common pitfall with React Context is that all consumers re-render whenever any value in the 
+context changes.
+How Reader's HUB solves this:
+1. Context value object is wrapped in a strict useMemo block with granular dependency arrays.
+2. Telemetry setters are decoupled from animation loops.
+3. recordReading checks whether page, totalPages, and progress have actually changed 
+   before dispatching state updates, preventing infinite render loops.
+
+================================================================================
+15. PERFORMANCE ENGINEERING & RUNTIME OPTIMIZATIONS
+================================================================================
+
+Summary of Key Optimizations:
+-----------------------------
+
+1. Direct DOM Pointer Transforms on Mouse Movement:
+   - Problem: Updating React state on every mousemove / pointermove event (60-120fps) causes 
+     constant component re-rendering, virtual DOM diffing, and lag.
+   - Solution: In CustomCursor.tsx and CardTilt.tsx, mouse coordinates update component useRefs 
+     and write directly to element style.transform via requestAnimationFrame.
+   - Result: 60 FPS silky-smooth mouse movements with 0 React renders.
+
+2. PDF.js Render Cancellation on Rapid Page Turns:
+   - Problem: Rapidly flipping pages fires multiple overlapping page.render() tasks on the same canvas, 
+     causing memory spikes and browser crashes.
+   - Solution: Active renderTask references are tracked in a ref map; previous tasks are cancelled 
+     via task.cancel() before new pages render.
+   - Result: Instant page flips with zero canvas corruption.
+
+3. Standalone Vendor Worker Isolation:
+   - Problem: Bundling PDF.js worker in main JavaScript bundle adds ~1.2 MB to initial page load.
+   - Solution: Worker is hosted statically in public/vendor/pdfjs/pdf.worker.min.js and loaded 
+     asynchronously in a dedicated browser thread only when the reader opens.
+   - Result: Fast initial homepage loading.
+
+4. Image Optimization via Next.js & Sharp:
+   - All 363 book covers are converted to modern WebP formats and served through Next.js Image 
+     Optimization with 30-day client cache TTLs.
+
+================================================================================
+16. EXCALIDRAW-LEVEL VECTOR ANNOTATION ENGINE
+================================================================================
+
+Architecture (components/reader/DrawingCanvas.tsx):
+-----------------------------------------------------
+The annotation subsystem is a full vector-based object model, NOT a flat pixel canvas.
+
+Supported Object Types:
+-----------------------
+- pen: Freehand continuous path with smooth polyline Bezier interpolation.
+- highlighter: Semi-transparent (opacity ~0.35) path with canvas multiply blend mode.
+- line & arrow: Directed vectors with customizable stroke width and arrowhead geometry.
+- rectangle, square, circle, diamond: Geometric bounding shapes with optional fill.
+- text: Editable text blocks with custom font size and color.
+
+Normalized Coordinate System:
+-----------------------------
+All drawing points are stored as normalized floats from 0.0 to 1.0 relative to the PDF page dimensions:
+x_normalized = x_canvas / pageWidth
+y_normalized = y_canvas / pageHeight
+
+Why Normalized Coordinates Matter:
+----------------------------------
+Hinglish Explanation:
+"Agar hum pixel coordinates (x: 450px, y: 300px) save karte, toh jab user zoom 100% se 150% 
+karega ya mobile screen pe kholega, toh drawing book ke text se out of alignment ho jayegi. 
+Normalized coordinates (0 se 1) use karne se jab canvas ka size double bhi hota hai, hum 
+x_normalized * newWidth karke exact usi word pe annotation render karte hain."
+
+Interactive Object Operations:
+------------------------------
+- Selection & Hit Testing: Uses point-to-segment distance algorithm (distToSegmentSquared) 
+  with a 10px tolerance threshold.
+- 8-Point Bounding Box: Selected objects display 8 interactive resize handles (nw, n, ne, 
+  e, se, s, sw, w) allowing freeform scaling.
+- Drag & Move: Selected strokes can be dragged across the canvas with real-time translation updates.
+- Duplication & Deletion: Shortcut keys (Cmd+D, Backspace) allow instant manipulation.
+
+================================================================================
+17. CONTEXTUAL AI TRANSLATION SUBSYSTEM
+================================================================================
+
+Translation Pipeline Diagram:
+-----------------------------
+
+  User Clicks "Translate Page"
+               │
+               ▼
+  Extract Visible Page Text:
+  - page.getTextContent() via PDF.js text layer
+  - normalizePdfText() merges fragmented glyphs into paragraphs
+               │
+               ▼
+  Check In-Memory Session Cache:
+  - Cache Key: fastHash(bookId + pageRange + targetLanguage + text)
+  - If cached -> Instant return (0ms latency, 0 API calls)
+               │
+               ▼
+  API Request to Server Route (/api/translate):
+  - Request payload contains max 2 visible pages
+  - Target: Hindi (Devanagari) | Hinglish (Roman Script) | English
+               │
+               ▼
+  Server-Side Model Execution:
+  - Model Waterfall: gemini-2.5-flash -> gemini-3.5-flash-lite -> gemini-3.7-flash
+  - Strict JSON output format: {"<pageNum>": "translated text..."}
+               │
+               ▼
+  Response Rendered in Side Drawer / Split Pane
+  - Full Text-to-Speech (Web Speech API) & One-Click Copy
+
+Security & Secret Isolation:
+----------------------------
+The Google Gemini API Key (GEMINI_API_KEY) is stored exclusively in server environment variables 
+and is NEVER exposed to the client bundle. The client communicates solely with the secure 
+Next.js endpoint /api/translate.
+
+================================================================================
+18. COMMAND PALETTE & REAL-TIME SEARCH
+================================================================================
+
+Command Palette Implementation (components/SearchModal.tsx):
+--------------------------------------------------------------
+- Activated via global hotkeys Cmd+K, Ctrl+K, or pressing /.
+- Searches across all 363 books indexing title, author, category, and tags.
+- Quick Action Shortcuts:
+  - Jump directly to "My Shelf" (/favorites)
+  - Jump to "Profile Analytics" (/profile)
+  - Jump to "Browse All Library" (/library)
+  - Instant Theme Selector
+- Performance: Uses pre-indexed in-memory catalog with substring and token matching, 
+  rendering results in under 5ms without server roundtrips.
+
+================================================================================
+19. LOCAL USER PROFILE & READING ANALYTICS ENGINE
+================================================================================
+
+Architecture (app/profile/page.tsx & lib/reading-analytics.ts):
+-------------------------------------------------------------------
+A comprehensive, client-side dashboard that computes high-level reading statistics directly 
+from the browser's historical telemetry.
+
+Analytics Metrics Computed:
+---------------------------
+1. Profile Header Snapshot: Total Books Started, Books Completed, All-Time Reading Hours, 
+   Global Active Time, Active Streak, and Diya Qualification Status.
+2. 53-Week Reading Heatmap: GitHub-style 365-day grid. Daily reading seconds are mapped to a 
+   7-level intensity scale (0m, 1-14m, 15-29m, 30-44m, 45-59m, 60-89m, 90m+).
+3. Core Stat Cards: Pages Read, Current Streak, Longest Streak, Notes Count, Highlights Count, 
+   and Drawn Annotations.
+4. Monthly Journey Breakdown: Visual bar chart displaying monthly reading progress over the 
+   past 6 calendar months.
+5. Authentic Favorite Genre: Derived by summing actual reading seconds spent across books in each 
+   category, ranking the user's genuine reading preference.
+6. Reading Habits Analysis: Computes Average Session Duration, Peak Reading Day of the Week, 
+   and Preferred Reading Time Window (Morning, Afternoon, Evening, Night).
+7. Ranked Book Grids: Most Read Volumes (ranked by total minutes) and Recently Active Books.
+
+================================================================================
+20. PROGRESSIVE WEB APP (PWA) & OFFLINE CACHE
+================================================================================
+
+Offline Architecture:
+---------------------
+- Manifest: Configured via public/manifest.json with theme color #9333ea and standalone display.
+- CacheStorage Integration (lib/reader-storage.ts):
+  Users can click "Save Offline" on any book. The PDF file is fetched and saved to the browser's 
+  CacheStorage under cache name readershub-offline-books-v1.
+- Offline Reading: When offline, the reader detects network disconnect and loads the cached 
+  PDF blob directly from CacheStorage.
+
+================================================================================
+21. DELTA INGESTION PIPELINE (BATCH & WATCHDOG)
+================================================================================
+
+Why Delta Ingestion?
+--------------------
+Traditional ingestion pipelines rescan and reprocess every file in the library on every run. 
+With 360+ PDFs (~1.65 GB), full re-ingestion takes minutes, re-generates existing covers, 
+and risks overwriting manual catalog edits.
+
+Delta Ingestion Flow (scripts/ingest-batch.ts):
+------------------------------------------------
+
+  Scan public/pdfs/*.pdf
+            │
+            ▼
+  Load Existing Catalog Index (data/books.json):
+  - Populate Set<fileHash> and Set<pdfPath>
+            │
+            ▼
+  Delta Detection (scanDeltaPdfs()):
+  - Identify ONLY files whose SHA-256 hash does NOT exist in catalog
+            │
+            ▼
+  If Delta Files Found:
+  1. Extract PDF Metadata (Title, Author, Page Count via pdf-parse)
+  2. Generate Canonical Kebab-Case Filename (resolveCanonicalFilename())
+  3. Render 1st Page to WebP Cover via Sharp (generateBookCover())
+  4. Append New Book Object to books.json atomically
+            │
+            ▼
+  Existing 363 Books Left 100% Untouched
+
+CLI Commands:
+-------------
+- npm run ingest-batch: Performs live delta ingestion of new PDFs.
+- npm run watch-books: Starts background Chokidar file watcher on public/pdfs/.
+
+================================================================================
+22. GIT LFS & LARGE ASSET MANAGEMENT
+================================================================================
+
+Git LFS Strategy:
+-----------------
+With 363 books totaling ~1.65 GB, storing large PDF binaries directly in standard Git git-objects 
+would cause repository bloat and slow clone times.
+- Configuration: .gitattributes tracks all PDF files under Git LFS:
+  public/pdfs/*.pdf filter=lfs diff=lfs merge=lfs -text
+- Remote Repository: Pushed to GitHub repository (https://github.com/amandubey923/library-optimized.git).
+
+================================================================================
+23. ERROR BOUNDARIES, FAULT TOLERANCE & RECOVERY
+================================================================================
+
+| Potential Failure Point | Automated Recovery Mechanism | User Impact |
+| :--- | :--- | :--- |
+| Corrupted LocalStorage JSON | try / catch wraps every parse; falls back to default empty state and self-heals | Zero page crashes; defaults restored gracefully |
+| LocalStorage Quota Exceeded | Catches quota error; discards oldest non-critical telemetry while keeping active progress | Reading continues uninterrupted |
+| PDF Render Race Condition | renderTask.cancel() aborts previous canvas draw before starting new page | Zero canvas graphics corruption |
+| Network Drops During PDF Load | Falls back to CacheStorage offline blob | Seamless reading if book was saved offline |
+| AI Translation Timeout | Multi-model fallback waterfall (gemini-2.5-flash -> 3.5-flash-lite -> 3.7-flash) | Fallback error message with retry button |
+| Missing PDF / Invalid Book ID | not-found.tsx renders custom illustrated 404 with link back to library | Friendly error screen with recovery navigation |
+| Accidental Browser Fullscreen Exit | Focus Session intercepts fullscreenchange and displays warning dialog | Prevents accidental focus session loss |
+
+================================================================================
+24. SECURITY BOUNDARIES & SECRET ISOLATION
+================================================================================
+
+Security Architecture:
+----------------------
+1. API Key Isolation: Google Gemini API keys exist exclusively on the server (process.env.GEMINI_API_KEY). 
+   No client-side JavaScript bundle has access to private credentials.
+2. Sanitized Storage: Local storage keys are namespaced with version prefixes (e.g. readershub:v1) 
+   to prevent collisions with third-party scripts.
+3. Safe HTML Rendering: User notes, highlights, and annotations are rendered via React text nodes 
+   rather than dangerouslySetInnerHTML, preventing Cross-Site Scripting (XSS) injection.
+4. Open Source Transparency: Zero user telemetry or tracking beacons are embedded in the application.
+
+================================================================================
+25. ACCESSIBILITY (A11Y) & RESPONSIVE DESIGN
+================================================================================
+
+Accessibility Features:
+-----------------------
+- Semantic HTML5 Landmarks: <header>, <main>, <nav>, <article>, <footer>.
+- Complete ARIA Attributes: aria-label, aria-expanded, aria-modal, role="dialog".
+- Keyboard Focus Navigation: Full focus rings and keyboard shortcuts (Cmd+K, F, T, arrows).
+- Reduced Motion Compliance: All keyframe animations and rotating conic borders respect 
+  @media (prefers-reduced-motion: reduce) by disabling or simplifying movement.
+- High-Contrast Theme Support: Custom themes (Dracula, Sepia, High Contrast) ensure legible text.
+
+================================================================================
+26. MODULARITY & SEPARATION OF CONCERNS
+================================================================================
+
+Architecture Layers:
+--------------------
+- UI Layer (app/, components/): Handles rendering, user interactions, and visual layout.
+- Reader Layer (components/reader/): Isolated canvas rendering and drawing tools.
+- Business Logic Layer (lib/): Pure analytical math, storage serialization, and translation helpers.
+- State Layer (context/): Centralized reactive store coordinating global updates.
+- Data Layer (data/): Static catalog schemas and index utilities.
+- Ingestion Layer (scripts/ingest/): Standalone Node.js scripts for asset processing.
+
+Why This Matters in an Interview:
+---------------------------------
+"Separating storage algorithms from React components ensures that our storage utilities 
+can be tested 100% headlessly in Node.js test scripts without needing a mocked browser DOM."
+
+================================================================================
+27. APPLIED DESIGN PATTERNS
+================================================================================
+
+1. Provider Pattern (LibraryProvider, ThemeProvider): Shares state across the tree without prop-drilling.
+2. Repository Pattern (reader-storage.ts): Centralizes all storage operations behind an abstract API.
+3. In-Memory Cache Pattern (Write-Through Caching): Caches localStorage data in Maps for 0ms reads.
+4. State Machine Pattern (Focus Session Lifecycle): Models session states (inactive -> active -> paused -> completed).
+5. Normalized Coordinate Pattern: Stores vector points as relative percentages (0.0 to 1.0) for resolution independence.
+6. Chain of Responsibility / Fallback Pattern: AI translation cascades across multiple Gemini models if one is rate-limited.
+7. Delta Processing Pattern: Ingestion script processes only new unindexed files using SHA-256 hash sets.
+
+================================================================================
+28. HIGH-LEVEL & SUBSYSTEM SYSTEM DESIGN DIAGRAMS
+================================================================================
+
+A. Overall System Architecture:
+-------------------------------
+  ┌─────────────────────────────────────────────────────────────────┐
+  │                    Browser Client (React 19)                    │
+  │                                                                 │
+  │   Next.js App Router  ──►  LibraryContext  ──►  BookReader      │
+  │          │                        │                 │           │
+  │          ▼                        ▼                 ▼           │
+  │   SSG Catalog (363)        LocalStorage       HTML5 Canvas      │
+  │   (books.json)             (In-Memory Map)    (PDF.js Worker)   │
+  └───────────────────────────────────┬─────────────────────────────┘
+                                      │ (Fetch API)
+                                      ▼
+                         ┌────────────────────────┐
+                         │  Next.js Server Route  │
+                         │    (/api/translate)    │
+                         └────────────┬───────────┘
+                                      │
+                                      ▼
+                         ┌────────────────────────┐
+                         │ Google Gemini AI Model │
+                         └────────────────────────┘
+
+B. PDF Rendering Pipeline:
+--------------------------
+  PDF URL ──► PDF.js Worker ──► PDFDocumentProxy ──► Page Viewport
+                                                           │
+  Cancel Prior Task ◄── Check Active RenderTask ◄──────────┘
+           │
+           ▼
+  Rasterize to HTML5 Canvas (DPI Scaled) ──► Overlay Vector Annotations
+
+C. Invariant Timing Engine:
+---------------------------
+  User in PDF Reader (Idle < 3m) ──► Reading Time (T) ++ ──► Diya Streak (T >= 15m)
+                                              │
+  User Browsing Site (Non-Reader) ──► Exploration Time ++
+                                              │
+                                              ▼
+                                 Active Time = T + Exploration Time
+
+D. Delta Ingestion Pipeline:
+----------------------------
+  public/pdfs/*.pdf ──► SHA-256 Hash ──► Compare with data/books.json
+                                                    │
+             ┌──────────────────────────────────────┴──────────────────────────────────────┐
+             │ Match Found (Existing Hash)                                                 │ New Delta PDF Detected
+             ▼                                                                             ▼
+       Skip File (0 Overhead)                                                      Extract Metadata & Pages
+                                                                                           │
+                                                                                           ▼
+                                                                                   Generate WebP Cover (Sharp)
+                                                                                           │
+                                                                                           ▼
+                                                                                   Atomic Write to books.json
+
+================================================================================
+29. SYSTEM DATA FLOWS
+================================================================================
+
+User Action Flow:
+-----------------
+1. User flips page in reader:
+   BookReader.tsx -> setPage(n) -> renderPage(n) -> recordReading(bookId, n) -> localStorage update.
+2. User draws an arrow:
+   DrawingCanvas.tsx -> pointer coordinates normalized to (0-1) -> stroke appended to page array -> saveBookAnnotations().
+3. User requests page translation:
+   TranslationDrawer.tsx -> page.getTextContent() -> /api/translate -> Gemini AI -> side drawer displays translated paragraphs.
+4. User completes 15 minutes of reading:
+   BookReader timer ticks -> T >= 900s -> isTodayQualified: true -> DiwaliDiya.tsx renders living flame.
+
+================================================================================
+30. "WHY THESE TECHNOLOGIES?" (ARCHITECTURAL DECISION RECORDS)
+================================================================================
+
+1. Why Next.js 16 App Router?
+   - Short: Static generation (SSG) for 377 routes delivers instant page loads with zero server hosting costs.
+   - Detailed: The catalog of 363 books is static. Generating all book detail pages at build time eliminates database query overhead during user navigation.
+   - Trade-off: Adding new books requires rebuilding static pages (next build), but our build takes only ~30s for all 377 pages.
+
+2. Why Canvas-based PDF.js instead of <iframe>?
+   - Short: Total control over rendering, DPI scaling, dark mode, and vector drawing overlays.
+   - Detailed: Browser native PDF viewers provide inconsistent UI across operating systems and do not allow vector annotations or text extraction for translation.
+   - Trade-off: Higher JavaScript bundle size compared to native iframes, mitigated by vendor code-splitting.
+
+3. Why LocalStorage with In-Memory Caching?
+   - Short: 100% privacy, zero server costs, and instant offline availability.
+   - Detailed: Storing reading progress in localStorage eliminates user login barriers. In-memory Map caching eliminates redundant JSON parsing on 1-second timer intervals.
+   - Trade-off: Data is tied to the user's specific browser; mitigated by providing a 1-click JSON backup export/import feature.
+
+4. Why Normalized Coordinates (0-1) for Drawings?
+   - Short: Guarantees vector drawings remain aligned when zooming, resizing, or switching devices.
+   - Detailed: Storing absolute pixel coordinates fails when screen resolutions or zoom levels change. Normalized floats scale mathematically to any canvas dimensions.
+   - Trade-off: Requires coordinate conversion on every pointer event.
+
+================================================================================
+31. REAL-WORLD PRODUCTION CHALLENGES & ROOT-CAUSE ANALYSES
+================================================================================
+
+Challenge 1: "Maximum update depth exceeded" in React
+-----------------------------------------------------
+- Root Cause: In LibraryContext.tsx, refreshStats() (which called setStats, setStreakData, and setActiveTimeState) was being called inside the functional state updater of setReadingHistory((prev) => { ... refreshStats(); return updated; }). This triggered synchronous cascading state dispatches during React's reconciliation phase.
+- Solution: Moved refreshStats() outside the setState functional updaters and made recordReading idempotent by checking if page and progress actually changed before dispatching updates.
+- Result: 100% elimination of infinite render loops.
+
+Challenge 2: PDF Fetch Aborts on Fast Re-Renders
+------------------------------------------------
+- Root Cause: Component remounting during state updates was cancelling in-flight PDF binary fetch requests, throwing TypeError: Failed to fetch.
+- Solution: Stabilized reader lifecycle effects and implemented clean AbortController cancellation handling in PDF.js loading tasks.
+- Result: Clean PDF loading without console network errors.
+
+Challenge 3: Timing Semantic Inconsistency (Active Time < Reading Time)
+-----------------------------------------------------------------------
+- Root Cause: Global website active time tracker was capturing pointer events while reading in BookReader.tsx, causing exploration seconds to tick simultaneously with reading seconds.
+- Solution: Added route-level isolation (pathnameRef.current?.startsWith("/book/")). When in the reader, exploration tracking halts and only genuine reading time (T) accumulates.
+- Result: Active Time >= Reading Time invariant holds 100% across all scenarios.
+
+================================================================================
+32. NOTABLE BUGS & ARCHITECTURAL LESSONS
+================================================================================
+
+1. Lesson 1: Never call setState inside another setState's functional updater. Always perform state updates sequentially or dispatch composite actions.
+2. Lesson 2: Canvas rendering must be cancellable. Without renderTask.cancel(), rapid user interactions will corrupt the HTML5 Canvas graphics context.
+3. Lesson 3: High-frequency pointer events (drag, hover, tilt) should bypass React state entirely and use useRef + direct CSS GPU transforms.
+
+================================================================================
+33. TESTING SUITE & QA VERIFICATION
+================================================================================
+
+Verified Automated Test Suites in scratch/:
+---------------------------------------------
+| Test Script | Purpose | Test Cases Validated | Result |
+| :--- | :--- | :--- | :--- |
+| test-react-runtime-depth-qa.js | React render depth & lifecycle stability | 100 consecutive mount/render evaluations without state drift | PASS (100%) |
+| test-active-reading-time-analytics.js | Invariant timing & streak math | Flows A through J (Reading only, Exploration only, Multi-book, Invariants) | PASS (100%) |
+| test-profile-analytics-qa.js | Profile analytics engine validation | 12 comprehensive analytical metrics (Heatmap, Habits, Journey, Genres) | PASS (100%) |
+| test-excalidraw-annotations-qa.js | Vector annotation engine verification | Arrow vectors, 8-point handles, text editing, coordinate normalization | PASS (100%) |
+| test-focus-session-flows.js | Focus mode lifecycle & exit protection | 15/30/45m sessions, countdown completion, abandonment reset, fullscreen | PASS (100%) |
+| test-final-production-audit.js | Comprehensive 7-point production audit | 363 books asset check, storage schema recovery, command palette, PWA | PASS (100%) |
+
+================================================================================
+34. VERIFIED PERFORMANCE BENCHMARKS & BUILD METRICS
+================================================================================
+
+Production Build Metrics (next build with Turbopack):
+-------------------------------------------------------
+- Total Pre-rendered Routes: 377 static SSG pages.
+- TypeScript Compilation Time: ~10.4s (0 type errors).
+- Static Page Generation Time: ~32.4s for all 377 pages.
+- Total Physical PDF Assets: 363 books (~1.65 GB payload).
+- Client Runtime Performance: 60 FPS scrolling and canvas navigation on standard laptop hardware.
+
+================================================================================
+35. FUTURE ARCHITECTURAL ROADMAP
+================================================================================
+
+1. IndexedDB Storage Migration:
+   - Current: LocalStorage (5-10 MB quota).
+   - Future: Migrate annotations and reading memory to IndexedDB via idb for gigabyte-scale offline storage.
+2. WebRTC Peer-to-Peer Collaborative Reading:
+   - Synchronize reading position and shared vector whiteboard annotations across study groups without centralized servers.
+3. Client-Side WebAssembly OCR:
+   - Integrate Tesseract.js / WebAssembly to perform in-browser optical character recognition on scanned image-based PDFs.
+
+================================================================================
+36. SCALABILITY MATRIX (100 -> 10,000+ BOOKS)
+================================================================================
+
+| Dimension | 363 Books (Current) | 1,000 Books | 10,000+ Books |
+| :--- | :--- | :--- | :--- |
+| Catalog Storage | data/books.json (376 KB) | Static JSON chunking | Remote Cloudflare R2 / S3 metadata index |
+| Search Architecture | In-memory substring filter | Pre-indexed MiniSearch / FlexSearch in Web Worker | Serverless Edge Search / MeiliSearch |
+| PDF Storage | public/pdfs/ with Git LFS | Git LFS on CDN | Cloudflare R2 / AWS S3 presigned URLs |
+| Build Generation | Static SSG (377 routes, 32s) | Incremental Static Regeneration (ISR) | Dynamic SSR with Edge Caching |
+| Ingestion Pipeline | Local Delta script (3-5s) | Distributed worker batch | S3 Bucket Trigger + Lambda WebP generator |
+
+================================================================================
+37. ARCHITECTURAL TRADE-OFFS & DEFENSES
+================================================================================
+
+1. LocalStorage vs Cloud Database:
+   - Decision: LocalStorage.
+   - Defense: Guarantees 100% user privacy, eliminates server database costs, and enables instant offline usage. JSON export/import provides data portability.
+2. Canvas Rendering vs SVG Text:
+   - Decision: Canvas rendering with separate invisible text layer.
+   - Defense: Canvas handles dense book illustrations and complex typography with predictable memory usage; SVG DOM nodes cause memory leaks on 500+ page books.
+3. React Context vs Redux Toolkit:
+   - Decision: React Context with memoized actions.
+   - Defense: Avoids 50+ KB of boilerplate library dependencies for a local-first application while maintaining clean unidirectional data flow.
+
+================================================================================
+38. 50+ COMPREHENSIVE INTERVIEW QUESTIONS & ANSWERS
+================================================================================
+
+--- SECTION A: PROJECT & HIGH-LEVEL ARCHITECTURE ---
+
+Q1: What is Reader's HUB and what is its core value proposition?
+Short Answer:
+Reader's HUB is a local-first, privacy-focused digital library and PDF reading platform with 360+ books, vector study annotations, AI translation, and a Diwali Diya reading streak system.
+Detailed Answer:
+It transforms static PDF reading into an interactive study workspace. By combining an optimized HTML5 Canvas reader, an Excalidraw-like vector drawing tool, Pomodoro focus sessions, and 100% client-side reading analytics, it motivates users to build consistent daily reading habits without requiring logins or cloud tracking.
+Hinglish Intuition:
+Ye ek complete private digital library hai jaha user bina account banaye 360+ books padh sakta hai, notes le sakta hai, aur 15 minute padhne pe daily streak ka Diya jala sakta hai.
+Follow-up: How do you persist user data if there are no server accounts?
+
+Q2: Why did you build Reader's HUB as a local-first application?
+Short Answer:
+To guarantee absolute user privacy, eliminate cloud hosting costs, and provide instant offline functionality with zero sign-up friction.
+Detailed Answer:
+Reading is an intimate, intellectual activity. Users should not have to trust third-party servers with their study notes, reading speed, or book preferences. A local-first architecture stores all telemetry in the browser, making the app blazing fast and resilient to internet drops.
+Hinglish Intuition:
+Logon ko notes aur reading habits private rakhna pasand hota hai. Local-first se data browser me rehta hai, server ka kharcha zero hota hai aur bina internet ke bhi sab chalta hai.
+Follow-up: What happens if a user clears their browser cache?
+
+Q3: Explain the high-level architecture of Reader's HUB.
+Short Answer:
+The system consists of a Next.js 16 SSG presentation layer, a PDF.js worker canvas reader, an Excalidraw-grade vector annotation overlay, a central LibraryContext state layer, and a namespaced storage repository.
+Detailed Answer:
+[Refer to the ASCII Architecture diagram in Section 4]. Next.js pre-renders all 377 routes. When a book is opened, PDF.js decodes the binary in a background worker and draws spreads onto HTML5 Canvases with devicePixelRatio scaling. The DrawingCanvas overlays vector strokes using normalized coordinates. All user telemetry flows into LibraryContext and is persisted to localStorage via in-memory cached helpers.
+Hinglish Intuition:
+UI Next.js pe hai, PDF background worker se canvas pe render hoti hai, drawing overlay normalized math use karta hai, aur LibraryContext sara data bina lag ke localStorage me cache karta hai.
+Follow-up: How do you prevent context re-renders from lagging the canvas?
+
+--- SECTION B: PDF RENDERING & READER SUBSYSTEM ---
+
+Q4: How does the PDF rendering engine work under the hood?
+Short Answer:
+It loads pdfjs-dist in a standalone web worker, decodes PDF page viewports based on container width and DPI, and paints them to HTML5 Canvases.
+Detailed Answer:
+When a book route loads, BookReader.tsx initializes the PDF.js document proxy. It calculates a zoom-adjusted viewport, multiplies dimensions by window.devicePixelRatio for high-DPI retina sharpness, and executes page.render().
+Hinglish Intuition:
+PDF.js worker background me PDF parse karta hai. Fir hum screen width aur screen ke pixel density (DPI) ke hisaab se canvas ka size set karke clean page draw karte hain.
+Follow-up: What happens if a user flips pages faster than the canvas can render?
+
+Q5: How do you handle render race conditions when users flip pages rapidly?
+Short Answer:
+By keeping a reference to the active renderTask and calling .cancel() on it before starting a new page render.
+Detailed Answer:
+PDF.js throws an error if page.render() is called on a canvas that is already rendering. We store active tasks in renderTasksRef.current. On page change, we cancel existing tasks and catch RenderingCancelledException silently, ensuring only the latest requested page paints.
+Hinglish Intuition:
+Jab user fast page flip karta hai, hum purani page rendering ko renderTask.cancel() se abort kar dete hain taaki canvas pe do pages ek saath draw hoke crash na ho.
+Follow-up: How do you handle memory cleanup when reading large 1000-page PDFs?
+
+Q6: Why did you choose HTML5 Canvas over SVG or iframe for PDF rendering?
+Short Answer:
+Canvas offers deterministic memory footprint, pixel-level manipulation, custom dark mode shaders, and perfect alignment for drawing overlays.
+Detailed Answer:
+Iframes rely on inconsistent browser native viewers. SVGs create thousands of DOM nodes for complex pages, causing severe memory leaks and garbage collection pauses. Canvas renders to a fixed pixel buffer, keeping memory usage constant regardless of page complexity.
+Hinglish Intuition:
+SVG me har letter ka DOM node banta hai jisse browser slow ho jata hai. Canvas ek image ki tarah flat buffer me draw hota hai jo bohot fast aur lightweight rehta hai.
+Follow-up: How do you implement text selection if the PDF is rendered on a Canvas?
+
+Q7: How is text selection and copy implemented on top of the canvas?
+Short Answer:
+PDF.js renders a transparent HTML text layer directly over the canvas, aligning invisible text spans with the rendered glyphs.
+Detailed Answer:
+page.getTextContent() extracts string tokens and transform matrices. A companion text layer container overlays the canvas with exact dimensions. When users highlight text with their mouse, they are selecting native DOM spans that map 1:1 with canvas coordinates.
+Hinglish Intuition:
+Canvas ke theek upar ek transparent text layer banti hai. Jab user mouse se text select karta hai, wo transparent text select ho raha hota hai jisse copy-paste natural lagta hai.
+Follow-up: How do you feed this text layer into the AI translation system?
+
+--- SECTION C: VECTOR ANNOTATION & DRAWING ENGINE ---
+
+Q8: How does the vector drawing engine work?
+Short Answer:
+It models drawings as structured vector objects with normalized 0-to-1 coordinates, rendering them over an overlay canvas with support for selection, drag, resize, and styling.
+Detailed Answer:
+Unlike basic raster paint tools that modify image pixels, DrawingCanvas.tsx maintains an array of DrawingStroke objects. Each stroke contains points, tool type, color, width, and opacity. Because points are normalized floats (0.0 to 1.0), drawings automatically adapt to any zoom level or screen resize.
+Hinglish Intuition:
+Ye raster drawing nahi balki vector object model hai jaise Excalidraw ya Figma me hota hai. Har line aur shape ke points percentage me save hote hain jisse zoom karne par bhi drawing apni jagah rehti hai.
+Follow-up: How does hit testing work when selecting a stroke?
+
+Q9: How do you calculate hit testing when selecting lines and shapes?
+Short Answer:
+By computing the minimum geometric distance from the pointer coordinates to each polyline segment using point-to-line-segment projection math.
+Detailed Answer:
+distToPolyline iterates through all line segments, calculating the orthogonal projection point t = ((P - A) . (B - A)) / (|B - A|^2) clamped between 0 and 1. If the shortest distance to the cursor is within the selection threshold (10px), the stroke is selected.
+Hinglish Intuition:
+Jab user click karta hai, algorithm cursor se har line segment ka shortest mathematical distance nikalta hai. Agar distance 10px se kam ho, toh wo stroke select ho jati hai.
+Follow-up: How do 8-point bounding box resize handles work?
+
+Q10: How do the 8-point bounding box handles resize vector shapes?
+Short Answer:
+By determining the drag handle anchor and recalculating the stroke's bounding box bounds and interior point positions proportionally.
+Detailed Answer:
+When a shape is selected, its bounding box (minX, minY, maxX, maxY) is calculated. Eight handle points are rendered. Dragging a handle (e.g., se for south-east) computes scale deltas (dx, dy) and transforms all constituent points relative to the opposite fixed anchor.
+Hinglish Intuition:
+Shape ke charo taraf 8 dots bante hain. Corner dot drag karne par opposite corner ko fixed rakh ke baaki points ko mathematically scale kar diya jata hai.
+Follow-up: Where are annotations stored and how do they load on page flip?
+
+--- SECTION D: TIMING SEMANTICS & INVARIANTS ---
+
+Q11: Explain the difference between Reading Time, Active Time, and Diya Time.
+Short Answer:
+Reading Time (T) is genuine time spent reading the PDF. Diya Time equals T. Active Time equals T plus website exploration time.
+Detailed Answer:
+The application strictly enforces the invariant:
+Reading Time === Diya/Streak Time === T
+Active Time = T + Exploration Time >= Reading Time
+Reading Time only increments when actively viewing a book inside the 3-minute idle threshold. Exploration time tracks meaningful browsing on other pages.
+Hinglish Intuition:
+Reading time sirf tab badhta hai jab book open ho. Diya time strictly reading time ke barabar hota hai. Active time = Reading time + baki website browse karne ka time. Active time kabhi reading time se kam nahi ho sakta.
+Follow-up: How do you prevent double-counting when reading a book?
+
+Q12: How do you prevent website exploration time from accumulating while reading a PDF?
+Short Answer:
+By checking route pathname in the global active tracker and disabling exploration accumulation when the route starts with /book/.
+Detailed Answer:
+In LibraryContext.tsx, pathnameRef.current is checked on every tick. If the user is on /book/[id], the global website exploration interval skips accumulation. All active seconds are instead handled exclusively by BookReader.tsx and attributed directly to reading time T.
+Hinglish Intuition:
+Global site tracker dekhta hai ki agar current URL /book/ se shuru ho raha hai, toh wo pause ho jata hai taaki exploration aur reading time dono ek saath na badhein.
+Follow-up: How does the Diwali Diya streak qualification work?
+
+Q13: How does the Diwali Diya streak system work?
+Short Answer:
+It checks if the user has accumulated >= 15 minutes (900 seconds) of genuine reading time (T) on the current calendar day.
+Detailed Answer:
+Each day's reading seconds are stored in readershub:reading-activity:v1 under the key YYYY-MM-DD. Once T >= 900s, qualified becomes true and the Diya flame renders with animated CSS sway keyframes. The current streak counts consecutive qualified days backward from today/yesterday.
+Hinglish Intuition:
+Diya tabhi jalta hai jab user aaj pure 15 minute PDF padh leta hai. Browsing time se Diya nahi jalta. Lagatar har din 15m padhne se streak count badhta hai.
+Follow-up: What happens if a user forgets to read for one day?
+
+--- SECTION E: FOCUS READING SESSION ---
+
+Q14: How is the Focus Reading Session architected?
+Short Answer:
+It creates an isolated state machine with fullscreen browser locking, reversible countdown timer, draggable HUD overlay, and exit protection warnings.
+Detailed Answer:
+When the user selects 15m, 30m, or 45m, startReadingSession initializes activeSession. It activates Focus Mode to hide all UI navigation, requests Fullscreen via element.requestFullscreen(), and begins a reverse countdown. Exiting is intercepted with a confirmation dialog to prevent accidental session abandonment.
+Hinglish Intuition:
+Focus Session ek Pomodoro style reader hai. Fullscreen me distraction-free environment banta hai aur ek floating timer chalta hai jisko user drag karke screen pe kahi bhi rakh sakta hai.
+Follow-up: What happens to reading time if a user abandons a focus session midway?
+
+Q15: Does abandoning a focus session discard the user's reading time?
+Short Answer:
+No. The structured session is marked incomplete, but genuine seconds spent reading are preserved in daily Reading Time and Book Memory.
+Detailed Answer:
+Session completion (which triggers celebration dialogs and timeline logs) requires reaching 00:00. However, every 5-second chunk of active reading is flushed to readershub:reading-activity:v1 regardless of session outcome, ensuring zero lost reading credit.
+Hinglish Intuition:
+Session pura na karne par completion badge nahi milega, lekin jitne minute user ne actual padhai ki hai, wo daily streak aur book memory me 100% credit hoti hai.
+Follow-up: How is the floating timer overlay styled to avoid moving when the PDF is zoomed?
+
+--- SECTION F: STATE MANAGEMENT & REACT LIFECYCLE ---
+
+Q16: Why did you choose React Context over Redux or Zustand?
+Short Answer:
+Context is built natively into React, provides zero bundle overhead, and easily manages our unified local-first reading and telemetry state.
+Detailed Answer:
+For a local-first application where state operations are atomic and primarily synced with browser storage, React Context combined with useMemo and useCallback provides clean architecture without adding 50+ KB of external Redux/Zustand dependencies.
+Hinglish Intuition:
+External library add karne se bundle size badhta hai. React ka built-in Context hamari requirement ke liye perfectly fast aur lightweight hai.
+Follow-up: What caused the "Maximum update depth exceeded" bug in Context and how did you fix it?
+
+Q17: What caused the "Maximum update depth exceeded" error and how was it solved?
+Short Answer:
+State dispatchers were being called inside another setState's functional updater, causing synchronous render loops.
+Detailed Answer:
+In LibraryContext.tsx, refreshStats() was invoked inside setReadingHistory((prev) => { ... refreshStats(); return updated; }). We extracted refreshStats() outside the updater and added equality guards in recordReading so state updates only fire when page or progress actually change.
+Hinglish Intuition:
+React me ek setState ke andar doosra setState call karne se infinite loop ban jata hai. Humne refreshStats ko updater se bahar nikala aur unnecessary updates ko block kiya.
+Follow-up: How do you optimize high-frequency events like mouse tracking and card tilts?
+
+Q18: How do you optimize mousemove events to prevent React re-render lag?
+Short Answer:
+By storing coordinates in useRef and applying CSS transforms directly to DOM elements via requestAnimationFrame.
+Detailed Answer:
+Instead of calling setState({ x, y }) on every mouse movement (which triggers 60-120 React virtual DOM diffing cycles per second), CustomCursor.tsx and CardTilt.tsx listen to window pointer events and write directly to element.style.transform.
+Hinglish Intuition:
+Mouse move hone par React ka setState call karne se frame drop hota hai. Hum direct DOM element ka CSS transform update karte hain jo GPU pe run hota hai aur 60 FPS deta hai.
+Follow-up: How do you manage storage schema evolution?
+
+--- SECTION G: LOCAL STORAGE & PERSISTENCE ---
+
+Q19: How do you prevent LocalStorage performance bottlenecks?
+Short Answer:
+By using an in-memory write-through caching layer with JavaScript Map objects.
+Detailed Answer:
+reader-storage.ts maintains in-memory caches (progressCache, annotationsCache, bookmarksCache, memoryCache). Reads return directly from memory in O(1) time without JSON string parsing. Writes update the memory cache instantly and flush to localStorage asynchronously.
+Hinglish Intuition:
+Har second localStorage se JSON parse karna slow hota hai. Hum RAM me Map rakhte hain jo instant result deta hai aur background me storage me save hota hai.
+Follow-up: What happens if localStorage gets corrupted?
+
+Q20: How does Reader's HUB recover from corrupted LocalStorage data?
+Short Answer:
+Every read is wrapped in safe JSON parse guards with automatic fallback defaults and self-healing schema repair.
+Detailed Answer:
+If a user edits or corrupts localStorage data, JSON.parse exceptions are caught, warning logs are recorded, and default initial state objects are returned. Subsequent writes automatically overwrite the invalid key with valid serialized JSON.
+Hinglish Intuition:
+Agar kisi key ka JSON kharab ho jaye, code crash nahi hota. Wo default clean value return karta hai aur next save pe data ko auto-repair kar deta hai.
+Follow-up: How does the backup export/import feature work?
+
+--- SECTION H: AI TRANSLATION & ASSISTANT ---
+
+Q21: How does the contextual in-reader translation system work?
+Short Answer:
+It extracts text tokens from the visible page, hashes the content with DJB2 for session caching, and sends it to a server-side Gemini API route.
+Detailed Answer:
+page.getTextContent() extracts string fragments, which are cleaned via normalizePdfText(). translatePageSpread checks the in-memory cache. If missing, it calls /api/translate, where Google Gemini AI translates the pages into Hindi (Devanagari) or Hinglish (Roman script).
+Hinglish Intuition:
+PDF ke text ko extract karke Gemini AI ke paas bheja jata hai jo usko Hindi ya Hinglish me translate karta hai. Ek baar translate hua page RAM me cache ho jata hai taaki dobara API call na lage.
+Follow-up: How is the Gemini API key secured?
+
+Q22: How do you secure the Gemini API key in Next.js?
+Short Answer:
+The key is stored strictly in server-side environment variables (GEMINI_API_KEY) and accessed only within Next.js Node.js Route Handlers.
+Detailed Answer:
+The client browser never receives or stores the API key. All translation and chat requests call internal routes (/api/translate, /api/chat). The Next.js server handles authentication with Google GenAI securely on the server runtime.
+Hinglish Intuition:
+API key .env file me server side rehti hai. Browser sirf /api/translate ko call karta hai, jisse key kabhi user ko inspect element me nahi dikhti.
+Follow-up: How do you handle API rate limits or model failures?
+
+Q23: How do you handle Gemini API rate limits or model downtime?
+Short Answer:
+Through a model waterfall fallback strategy (gemini-2.5-flash -> gemini-3.5-flash-lite -> gemini-3.7-flash).
+Detailed Answer:
+In app/api/translate/route.ts, the server iterates through a priority list of models. If a model throws a rate-limit (429) or transient error, the catch block logs the event and immediately retries the request with the next fallback model.
+Hinglish Intuition:
+Agar primary Gemini model busy ya rate-limited ho, system bina user ko error dikhaye turant doosre model pe switch karke translation complete karta hai.
+Follow-up: How does the Delta Ingestion pipeline work?
+
+--- SECTION I: DELTA INGESTION & ASSET MANAGEMENT ---
+
+Q24: What is the Delta Ingestion pipeline and why is it superior to full re-ingestion?
+Short Answer:
+It scans the library directory and processes ONLY newly added, unindexed PDF files using SHA-256 hash sets, leaving existing books untouched.
+Detailed Answer:
+Full re-ingestion of 360+ PDFs takes minutes and risks corrupting existing metadata. ingest-batch.ts hashes every file in public/pdfs/ and filters out known hashes. For new files, it extracts metadata, renders the first page to WebP via Sharp, and atomically updates data/books.json.
+Hinglish Intuition:
+Pehle 360 books ko baar-baar scan karna padta tha. Delta ingestion sirf nayi add hui PDFs ko pehchanta hai, unka cover banata hai aur 2 second me catalog update kar deta hai.
+Follow-up: How are book covers generated from PDF files?
+
+Q25: How does the ingestion engine generate WebP covers from PDF files?
+Short Answer:
+It extracts the first page of the PDF as an image buffer and compresses it into high-quality WebP format using Sharp.
+Detailed Answer:
+scripts/ingest/covers.ts parses page 1 raster objects or renders the page canvas, piping the raw image buffer through sharp(). Sharp resizes the cover to standard aspect ratios, applies 85% WebP compression, and saves it to public/images/books/<id>.webp.
+Hinglish Intuition:
+Ingestion script PDF ka pehla page extract karta hai aur Sharp library se use lightweight WebP image me convert karke save kar deta hai.
+Follow-up: How do you manage ~1.65 GB of PDF assets in Git?
+
+Q26: Why is Git LFS used in Reader's HUB?
+Short Answer:
+To track ~1.65 GB of PDF binary files outside standard Git history, keeping git clone and checkout operations fast and lightweight.
+Detailed Answer:
+Tracking binary files in Git bloats the .git repository folder on every commit. Git LFS (.gitattributes) replaces large PDF binaries with text pointer files in Git history while storing the actual binary payloads on dedicated LFS storage.
+Hinglish Intuition:
+1.65 GB ki PDFs ko normal git commit me daalne se repo bohot heavy ho jata hai. Git LFS actual files ko alag store karta hai aur repo me sirf lightweight pointers rakhta hai.
+Follow-up: How does the Command Palette search work?
+
+--- SECTION J: SEARCH, PERFORMANCE & PRODUCTION METRICS ---
+
+Q27: How is the Command Palette (Cmd+K) optimized for real-time search?
+Short Answer:
+By performing in-memory token and substring matching against pre-compiled static catalog data in under 5ms.
+Detailed Answer:
+SearchModal.tsx loads the static BOOKS array. When a user types, it searches across title, author, category, and tags with case-insensitive tokenization. Results are ranked and capped to the top 8 matches with keyboard arrow navigation.
+Hinglish Intuition:
+Sara book catalog browser memory me pehle se loaded hota hai. Search karne par koi network request nahi lagti, 5ms ke andar matching books display ho jati hain.
+Follow-up: How does the Profile Analytics page compute metrics without a backend database?
+
+Q28: How does the Profile Analytics page calculate reading heatmaps and genre stats locally?
+Short Answer:
+lib/reading-analytics.ts runs pure analytical aggregation algorithms over the daily reading activity map and book memory records in localStorage.
+Detailed Answer:
+[Refer to Section 19]. The analytics engine iterates over 365 calendar dates, calculating day-by-day intensity for the GitHub-style heatmap. It sums total seconds spent per book, groups them by category to identify the user's authentic favorite genre, and computes time-window distributions without server roundtrips.
+Hinglish Intuition:
+Browser ke localStorage me har din ka reading data save hota hai. Analytics engine us data pe mathematical loops chala kar 53-week heatmap aur favorite genre graph bana deta hai.
+Follow-up: How would you scale this platform to 10,000+ books?
+
+Q29: How would you scale Reader's HUB from 360 to 10,000+ books?
+Short Answer:
+By migrating PDF storage to Cloudflare R2 / S3, implementing Edge search indexing (MiniSearch / MeiliSearch), and using Next.js Incremental Static Regeneration (ISR).
+Detailed Answer:
+[Refer to Scalability Matrix in Section 36]. At 10,000 books, catalog JSON reaches ~10 MB. We would chunk the catalog, move PDFs to S3 with presigned URLs, index metadata in a Web Worker via FlexSearch, and transition from full SSG build to ISR with on-demand page revalidation.
+Hinglish Intuition:
+10,000 books ke liye PDFs ko S3/R2 cloud storage pe shift karenge, search ko Web Worker me daalenge, aur Next.js ISR use karenge taaki build time 30 second hi rahe.
+Follow-up: What is the single biggest technical challenge you solved in this project?
+
+Q30: What was the biggest technical challenge in this project and how did you resolve it?
+Short Answer:
+Synchronizing vector canvas annotations and invariant reading telemetry with high-frequency user interactions without causing React re-render performance bottlenecks.
+Detailed Answer:
+We faced two major challenges: first, coordinate drift on zooming/resizing PDFs, which we solved by creating a normalized 0-1 coordinate vector model. Second, React render cascades on timer ticks and mouse movement, which we resolved by implementing in-memory write-through caching, direct GPU DOM transforms, and strict lifecycle state decoupling.
+Hinglish Intuition:
+Sabse bada challenge tha PDF zoom hone par drawing ko perfectly usi word pe rakhna aur bina browser ko lag kiye 1-second timer aur mouse movement ko 60 FPS pe run karna. Humne normalized coordinate math aur direct GPU transforms use karke isko solve kiya.
+
+================================================================================
+39. RAPID-FIRE INTERVIEW CHEAT SHEET
+================================================================================
+
+| Interviewer Question | 2-3 Sentence Rapid-Fire Answer |
+| :--- | :--- |
+| **What is Reader's HUB?** | A local-first, privacy-first digital study library built on Next.js 16 and React 19 with 360+ books, canvas PDF reader, vector annotations, AI translation, and Diwali Diya streak tracking. |
+| **Why Next.js 16?** | Next.js App Router with Turbopack allows pre-rendering all 377 routes as static HTML (SSG), guaranteeing instant 0ms server latency on catalog browsing. |
+| **Why LocalStorage?** | It guarantees 100% privacy with zero server database costs and enables instant offline usage without requiring user login friction. |
+| **Why PDF.js on Canvas?** | Native iframes lack custom styling and dark mode; Canvas provides complete rendering control, high-DPI scaling, and pixel-perfect vector drawing overlays. |
+| **Why Normalized Coordinates?** | Storing drawing points as 0.0-1.0 floats ensures vector annotations scale perfectly across all viewport dimensions, screen sizes, and zoom levels. |
+| **What is the Timing Invariant?** | Reading Time === Diya Time = T, while Active Time = T + Exploration Time. Active Time is mathematically guaranteed to be >= Reading Time. |
+| **How does Diya Streak work?** | Accumulating >= 15 minutes (900s) of genuine PDF reading on a calendar day lights the living Diya flame and increments the consecutive daily streak. |
+| **Why Delta Ingestion?** | Scanning 360+ PDFs takes minutes. Delta ingestion uses SHA-256 hash sets to process ONLY new unindexed files in seconds without touching existing catalog entries. |
+| **Why Git LFS?** | Storing ~1.65 GB of PDF binary files directly in Git history bloats the repository; Git LFS replaces binaries with lightweight text pointers. |
+| **How is AI Translation secured?** | The Google Gemini API key resides strictly in server-side environment variables and is executed exclusively inside Next.js Route Handlers. |
+| **How do you avoid mouse lag?** | Mousemove events bypass React state updates, writing directly to element CSS transforms via requestAnimationFrame for 60 FPS performance. |
+| **How do you cancel PDF renders?** | We track active render tasks in a ref map and call renderTask.cancel() before painting new pages, preventing canvas graphics collisions. |
+| **How does offline reading work?** | Users can save books to CacheStorage (readershub-offline-books-v1). When offline, the reader detects network loss and loads the cached PDF blob. |
+| **How does Command Palette search?** | SearchModal indexes titles, authors, categories, and tags in memory, returning ranked search results in under 5ms without network calls. |
+| **How is Favorite Genre calculated?** | By calculating the exact sum of reading seconds spent across books in each category and ranking the user's authentic reading distribution. |
+
+================================================================================
+40. 60-SECOND PROJECT ELEVATOR PITCH
+================================================================================
+
+"Reader's HUB is a modern, privacy-first digital library and study platform that I built 
+using Next.js 16, React 19, and TypeScript. Most web PDF viewers are clunky and disconnected 
+from how people actually study. I wanted to build a unified workspace where reading a classic 
+or technical book feels as interactive as using Excalidraw, while keeping the user motivated 
+through a gamified daily habit system.
+
+Architecturally, the application is pre-rendered into 377 static routes. The PDF reader uses 
+PDF.js workers rendering directly to HTML5 Canvas with DPI normalization and render-task cancellation. 
+It features a vector annotation engine with normalized 0-to-1 coordinates, contextual Gemini AI 
+translation into Hindi and Hinglish, and a strict timing engine that drives a 15-minute daily 
+Diwali Diya streak. Best of all, it is 100% local-first—all reading telemetry, notes, and analytics 
+are computed and stored privately inside the browser without requiring a backend account."
+
+================================================================================
+41. 5-MINUTE DEEP-DIVE TECHNICAL PRESENTATION SCRIPT
+================================================================================
+
+[0:00 - 1:00] Introduction & Problem Space:
+"Good morning/afternoon. Today I'm presenting Reader's HUB, an open-source, local-first digital 
+reading platform. The core motivation behind this project was solving three problems with web-based 
+reading: first, the lack of private study tools like vector annotations directly inside PDFs; 
+second, the absence of habit-forming motivation engines; and third, the privacy concerns of 
+cloud-based readers that harvest personal reading telemetry."
+
+[1:00 - 2:00] Architecture & PDF Pipeline [Point to Architecture Diagram]:
+"To achieve instant page loads, I used Next.js 16 App Router with Turbopack to pre-generate 377 static 
+routes for our catalog of 363 books. When a user opens a book, instead of using an inflexible iframe, 
+we spawn a standalone PDF.js web worker. The worker decodes the binary off the main thread and renders 
+to an HTML5 Canvas. We normalize by window.devicePixelRatio for retina clarity, and we manage 
+render cancellation references so fast page flips never cause canvas collisions."
+
+[2:00 - 3:00] Vector Annotation & Invariant Timing Engines:
+"Over the canvas, we engineered an Excalidraw-like Vector Drawing subsystem. It supports freehand pens, 
+highlighters with multiply blend modes, arrows, geometric shapes with 8-point resize handles, and text. 
+Crucially, all coordinates are stored as normalized floats from 0 to 1, ensuring annotations stay 
+pixel-perfect across all zoom levels and window resizes.
+Alongside this, we built a strict Invariant Timing Engine. We define T as genuine PDF reading time. 
+Reading Time and Streak Time both equal T, while Total Active Time equals T plus site exploration. 
+When T reaches 15 minutes, our Diwali Diya lights up with authentic CSS sway animations, building 
+a daily reading habit."
+
+[3:00 - 4:00] Performance Engineering & State Management:
+"Performance was a major focus. We eliminated React re-render bottlenecks during pointer movement by 
+bypassing state and using useRef with direct CSS transforms. To prevent LocalStorage latency on 1-second 
+timer ticks, we implemented an in-memory write-through caching layer using JavaScript Maps. For our 
+catalog, we engineered a Delta Ingestion Pipeline in TypeScript that uses SHA-256 hash sets to index 
+new PDFs and generate WebP covers via Sharp in seconds."
+
+[4:00 - 5:00] Summary & Future Scalability:
+"In summary, Reader's HUB delivers a desktop-grade study environment in the browser with 0ms server 
+latency, complete offline capability via CacheStorage, and zero user privacy compromise. Moving forward, 
+our architectural roadmap includes migrating storage to IndexedDB for multi-gigabyte annotation scales 
+and introducing WebRTC peer-to-peer collaborative study rooms. Thank you, and I'd love to answer any questions."
+
+================================================================================
+42. INTERVIEWER FOLLOW-UP TRAPS & DEFENSIVE STRATEGIES
+================================================================================
+
+Trap 1: "You chose LocalStorage. What happens when the 5MB browser quota is exceeded?"
+Defensive Strategy:
+"That is a legitimate limitation of LocalStorage. In our architecture, text progress and streak data 
+consume less than 50 KB for hundreds of books. For heavy assets like vector strokes, our repository 
+layer in reader-storage.ts catches QuotaExceededError gracefully. Furthermore, heavy binary PDF 
+files are stored in the browser's CacheStorage API (which has gigabytes of storage quota), not in 
+localStorage. Our roadmap includes transitioning vector annotations to IndexedDB via the idb library."
+
+Trap 2: "Why didn't you use Redux or Zustand for global state?"
+Defensive Strategy:
+"We evaluated Redux and Zustand. However, because Reader's HUB is local-first with synchronized 
+write-through storage caches, our state transitions are largely atomic. Using React Context combined 
+with useMemo and useCallback allowed us to achieve clean unidirectional state flow with zero 
+external bundle dependencies. We eliminated unnecessary re-renders by decoupling high-frequency 
+mouse movements and adding equality checks before state dispatches."
+
+Trap 3: "How do you prove that your timing invariant Active Time >= Reading Time actually holds?"
+Defensive Strategy:
+"We verified this with automated test suites in scratch/test-active-reading-time-analytics.js. 
+We tested Flow A (reading only), Flow B (exploration only), Flow C (combination), and multi-book scenarios. 
+Additionally, we implemented route-aware isolation in LibraryContext.tsx so that exploration time 
+stops ticking the moment a user enters /book/*, making double-counting mathematically impossible."
+
+================================================================================
+43. COMPREHENSIVE PROJECT GLOSSARY
+================================================================================
+
+- SSG (Static Site Generation): Pre-rendering web pages into static HTML files at build time (next build).
+- PDF.js: Mozilla's open-source JavaScript library that parses and renders PDF documents in HTML5 Canvas.
+- DPI Scaling: Multiplying canvas pixel dimensions by window.devicePixelRatio to prevent blurry text on Retina screens.
+- RenderTask Cancellation: Aborting an ongoing PDF canvas draw task when a user navigates to another page before rendering finishes.
+- Normalized Coordinates: Representing points as 0.0 to 1.0 percentages of page width and height for resolution independence.
+- Local-First Software: An architectural paradigm where data is stored and computed on the user's local device first, working offline without cloud dependencies.
+- In-Memory Write-Through Cache: Storing data in RAM (Map objects) for instant reads while writing updates asynchronously to persistent storage.
+- Delta Ingestion: Processing only new or modified assets by comparing SHA-256 file hashes against an existing catalog index.
+- Diwali Diya: An animated flame gamification token that illuminates when a user achieves 15 minutes of genuine daily reading.
+- PWA (Progressive Web App): Web application utilizing manifests and Service Workers to deliver native app-like offline capability.
+- Git LFS (Large File Storage): Git extension that stores large binary files on remote servers while keeping lightweight pointer files in Git commits.
+- DJB2 Hash: A fast, deterministic string hashing algorithm used to generate unique cache keys for AI page translation requests.
+- Turbopack: Next.js's high-speed Rust-based incremental bundler and build system.
+
+================================================================================
+                      END OF INTERVIEW ENGINEERING DOSSIER
+================================================================================
