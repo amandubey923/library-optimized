@@ -196,8 +196,10 @@ export default function Navbar() {
               }
             `}</style>
 
-            {/* MANDATORY THEME SWITCHER CONTROL IN TOP-RIGHT NAVBAR */}
-            <NavbarThemeControl />
+            {/* Theme Switcher Control (Desktop & Tablet) */}
+            <div className="hidden md:block">
+              <NavbarThemeControl />
+            </div>
 
             {/* Read Catalog Direct CTA */}
             <Link
@@ -232,29 +234,37 @@ export default function Navbar() {
 
         {/* Mobile Dropdown Menu */}
         {isMobileMenuOpen && (
-          <div className="md:hidden border-t border-[var(--border)] bg-[var(--background)]/95 backdrop-blur-xl px-4 pt-3 pb-5 space-y-2 animate-fade-in">
-            {navLinks.map((link) => {
-              const isActive = pathname === link.href;
-              return (
-                <Link
-                  key={link.name}
-                  href={link.href}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className={`flex items-center justify-between px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
-                    isActive
-                      ? "bg-[var(--primary)] text-[var(--primary-foreground)] font-semibold"
-                      : "text-[var(--text-secondary)] hover:bg-[var(--card)] hover:text-[var(--foreground)]"
-                  }`}
-                >
-                  <span>{link.name}</span>
-                  {link.count !== undefined && link.count > 0 && (
-                    <span className="px-2 py-0.5 text-xs rounded-full bg-[var(--accent)]/20 text-[var(--accent)] font-bold">
-                      {link.count}
-                    </span>
-                  )}
-                </Link>
-              );
-            })}
+          <div className="md:hidden border-t border-[var(--border)] bg-[var(--background)]/95 backdrop-blur-xl px-4 pt-3 pb-5 space-y-3 animate-fade-in">
+            <div className="space-y-1.5">
+              {navLinks.map((link) => {
+                const isActive = pathname === link.href;
+                return (
+                  <Link
+                    key={link.name}
+                    href={link.href}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className={`flex items-center justify-between px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                      isActive
+                        ? "bg-[var(--primary)] text-[var(--primary-foreground)] font-semibold"
+                        : "text-[var(--text-secondary)] hover:bg-[var(--card)] hover:text-[var(--foreground)]"
+                    }`}
+                  >
+                    <span>{link.name}</span>
+                    {link.count !== undefined && link.count > 0 && (
+                      <span className="px-2 py-0.5 text-xs rounded-full bg-[var(--accent)]/20 text-[var(--accent)] font-bold">
+                        {link.count}
+                      </span>
+                    )}
+                  </Link>
+                );
+              })}
+            </div>
+
+            {/* Mobile Theme Selector inside Hamburger Menu */}
+            <div className="pt-3 border-t border-[var(--border)] flex items-center justify-between px-2">
+              <span className="text-xs font-semibold text-[var(--text-secondary)]">Theme & Appearance</span>
+              <NavbarThemeControl />
+            </div>
           </div>
         )}
       </header>
