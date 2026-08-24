@@ -11,7 +11,7 @@ export default function ContinueReading() {
   // If no reading history yet, show an inspiring contextual journey CTA
   if (recentBooks.length === 0) {
     return (
-      <section id="continue-reading" className="py-10 border-b border-[var(--border)]/70 bg-[var(--card)]/20">
+      <section id="continue-reading" className="hidden sm:block py-10 border-b border-[var(--border)]/70 bg-[var(--card)]/20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="glass-card rounded-3xl p-6 sm:p-8 border border-[var(--border)] flex flex-col sm:flex-row items-center justify-between gap-6 text-left">
             <div className="space-y-1.5 max-w-xl">
