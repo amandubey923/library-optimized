@@ -110,8 +110,10 @@ export interface BookReadingMemory {
 }
 
 export interface WebsiteActiveTimeData {
-  totalActiveSeconds: number; // Global cumulative active website usage
-  daily: Record<string, number>; // "YYYY-MM-DD" -> active seconds on that day
+  totalActiveSeconds: number; // Global cumulative active website usage (Reading + Exploration)
+  daily: Record<string, number>; // "YYYY-MM-DD" -> total active seconds on that day
+  explorationDaily?: Record<string, number>; // "YYYY-MM-DD" -> exploration / browsing seconds
+  totalExplorationSeconds?: number;
   lastUpdated: number;
 }
 
@@ -327,6 +329,9 @@ export function addActiveReadingTime(secondsToAdd: number): {
     console.warn("[ReaderStorage] Error saving reading activity:", e);
   }
 
+  // Invalidate activeTimeCache so next getWebsiteActiveTimeData() reflects the updated reading seconds
+  activeTimeCache = null;
+
   return {
     todaySeconds: newSeconds,
     qualified: isQualified,
@@ -340,36 +345,76 @@ export function addActiveReadingTime(secondsToAdd: number): {
 // -------------------------------------------------------------
 
 export function getWebsiteActiveTimeData(): WebsiteActiveTimeData {
-  if (activeTimeCache) {
-    return activeTimeCache;
-  }
-
   const defaultData: WebsiteActiveTimeData = {
     totalActiveSeconds: 0,
     daily: {},
+    explorationDaily: {},
+    totalExplorationSeconds: 0,
     lastUpdated: Date.now(),
   };
 
   if (typeof window === "undefined") return defaultData;
 
+  let explorationDaily: Record<string, number> = {};
+  let totalExplorationSeconds = 0;
+  let lastUpdated = Date.now();
+
   try {
     const raw = localStorage.getItem(ACTIVE_TIME_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      const data: WebsiteActiveTimeData = {
-        totalActiveSeconds: Number(parsed.totalActiveSeconds) || 0,
-        daily: parsed.daily && typeof parsed.daily === "object" ? parsed.daily : {},
-        lastUpdated: Number(parsed.lastUpdated) || Date.now(),
-      };
-      activeTimeCache = data;
-      return data;
+      lastUpdated = Number(parsed.lastUpdated) || Date.now();
+      if (parsed.explorationDaily && typeof parsed.explorationDaily === "object") {
+        explorationDaily = { ...parsed.explorationDaily };
+        totalExplorationSeconds = Number(parsed.totalExplorationSeconds) || 0;
+      } else if (parsed.daily && typeof parsed.daily === "object") {
+        // Legacy storage conversion: derive exploration seconds from stored active minus reading
+        const streakData = getReadingActivityData();
+        Object.entries(parsed.daily).forEach(([dKey, activeSecs]) => {
+          const readSecs = streakData.daily[dKey]?.seconds || 0;
+          const expl = Math.max(0, Number(activeSecs) - readSecs);
+          if (expl > 0) explorationDaily[dKey] = expl;
+        });
+        totalExplorationSeconds = Object.values(explorationDaily).reduce((a, b) => a + b, 0);
+      }
     }
   } catch (e) {
     console.warn("[ReaderStorage] Error reading website active time:", e);
   }
 
-  activeTimeCache = defaultData;
-  return defaultData;
+  // Calculate Total & Daily Active Time dynamically:
+  // ACTIVE TIME = READING TIME + WEBSITE EXPLORATION TIME
+  const streakData = getReadingActivityData();
+  let totalReadingSecs = 0;
+  const activeDaily: Record<string, number> = {};
+
+  // Include all days with reading
+  Object.entries(streakData.daily || {}).forEach(([dKey, dVal]) => {
+    const rSecs = dVal?.seconds || 0;
+    totalReadingSecs += rSecs;
+    const explSecs = explorationDaily[dKey] || 0;
+    activeDaily[dKey] = rSecs + explSecs;
+  });
+
+  // Include days with exploration but no reading
+  Object.entries(explorationDaily).forEach(([dKey, explSecs]) => {
+    if (activeDaily[dKey] === undefined) {
+      activeDaily[dKey] = explSecs;
+    }
+  });
+
+  const totalActiveSecs = totalReadingSecs + totalExplorationSeconds;
+
+  const data: WebsiteActiveTimeData = {
+    totalActiveSeconds: totalActiveSecs,
+    daily: activeDaily,
+    explorationDaily,
+    totalExplorationSeconds,
+    lastUpdated,
+  };
+
+  activeTimeCache = data;
+  return data;
 }
 
 export function addWebsiteActiveSeconds(secondsToAdd: number): {
@@ -385,28 +430,48 @@ export function addWebsiteActiveSeconds(secondsToAdd: number): {
     };
   }
 
-  const data = getWebsiteActiveTimeData();
+  const current = getWebsiteActiveTimeData();
   const todayKey = getLocalDateKey();
 
-  const currentToday = data.daily[todayKey] || 0;
-  const newToday = currentToday + secondsToAdd;
-  const newTotal = (data.totalActiveSeconds || 0) + secondsToAdd;
+  const explorationDaily = { ...(current.explorationDaily || {}) };
+  const currentTodayExpl = explorationDaily[todayKey] || 0;
+  const newTodayExpl = currentTodayExpl + secondsToAdd;
+  explorationDaily[todayKey] = newTodayExpl;
 
-  data.totalActiveSeconds = newTotal;
-  data.daily[todayKey] = newToday;
-  data.lastUpdated = Date.now();
+  const newTotalExpl = (current.totalExplorationSeconds || 0) + secondsToAdd;
 
-  activeTimeCache = data;
+  const streakData = getReadingActivityData();
+  const todayReading = streakData.daily[todayKey]?.seconds || 0;
+  let totalReading = 0;
+  Object.values(streakData.daily || {}).forEach((d) => {
+    totalReading += d.seconds || 0;
+  });
+
+  const newTodayActive = todayReading + newTodayExpl;
+  const newTotalActive = totalReading + newTotalExpl;
+
+  const activeDaily = { ...(current.daily || {}) };
+  activeDaily[todayKey] = newTodayActive;
+
+  const updatedData: WebsiteActiveTimeData = {
+    totalActiveSeconds: newTotalActive,
+    daily: activeDaily,
+    explorationDaily,
+    totalExplorationSeconds: newTotalExpl,
+    lastUpdated: Date.now(),
+  };
+
+  activeTimeCache = updatedData;
 
   try {
-    localStorage.setItem(ACTIVE_TIME_KEY, JSON.stringify(data));
+    localStorage.setItem(ACTIVE_TIME_KEY, JSON.stringify(updatedData));
   } catch (e) {
     console.warn("[ReaderStorage] Error saving website active time:", e);
   }
 
   return {
-    totalActiveSeconds: newTotal,
-    todayActiveSeconds: newToday,
+    totalActiveSeconds: newTotalActive,
+    todayActiveSeconds: newTodayActive,
   };
 }
 
@@ -826,15 +891,15 @@ export function calculateReadingStats(): ReadingStats {
   const todaySeconds = streakData.daily[todayKey]?.seconds || 0;
   const isTodayQualified = Boolean(streakData.daily[todayKey]?.qualified || todaySeconds >= DAILY_READING_GOAL_SECONDS);
 
-  const activeTimeData = getWebsiteActiveTimeData();
-  const todayActiveSeconds = activeTimeData.daily[todayKey] || 0;
-  const totalActiveSeconds = activeTimeData.totalActiveSeconds || 0;
-
   // Compute total reading seconds across all recorded daily history
   let totalReadingSeconds = 0;
   Object.values(streakData.daily || {}).forEach((d) => {
     totalReadingSeconds += d.seconds || 0;
   });
+
+  const activeTimeData = getWebsiteActiveTimeData();
+  const todayActiveSeconds = Math.max(activeTimeData.daily[todayKey] || 0, todaySeconds);
+  const totalActiveSeconds = Math.max(activeTimeData.totalActiveSeconds || 0, totalReadingSeconds);
 
   if (typeof window === "undefined") {
     return {

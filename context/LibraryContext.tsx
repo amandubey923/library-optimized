@@ -1,6 +1,7 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback, useMemo } from "react";
+import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback, useMemo, useRef } from "react";
+import { usePathname } from "next/navigation";
 import { Book, BOOKS } from "@/data/books";
 import {
   BookmarkItem,
@@ -121,6 +122,10 @@ const FAVORITES_KEY = "readers_hub_favorites_v2";
 const HISTORY_KEY = "readers_hub_reading_progress_v2";
 
 export function LibraryProvider({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const pathnameRef = useRef(pathname);
+  pathnameRef.current = pathname;
+
   const [favorites, setFavorites] = useState<string[]>([]);
   const [readingHistory, setReadingHistory] = useState<ReadingProgressItem[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -166,7 +171,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  // Global Website Engagement & Active Time Tracker (Meaningful Site Interaction)
+  // Global Website Engagement & Active Time Tracker (Meaningful Site Interaction outside PDF Reader)
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -182,9 +187,11 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     events.forEach((ev) => window.addEventListener(ev, registerSiteActivity, { passive: true }));
 
     const interval = setInterval(() => {
+      const isReadingPdf = pathnameRef.current?.startsWith("/book/");
       if (
         typeof document !== "undefined" &&
         document.visibilityState === "visible" &&
+        !isReadingPdf &&
         Date.now() - lastSiteActivity < SITE_IDLE_TIMEOUT_MS
       ) {
         accumulatedSiteSecs += 1;
@@ -257,17 +264,18 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const toggleFavorite = useCallback((bookId: string) => {
+    let wasAdded = false;
+    let bookTitle = "Book";
     setFavorites((prev) => {
-      let updated: string[];
       const book = BOOKS.find((b) => b.id === bookId);
-      const title = book ? book.title : "Book";
+      if (book) bookTitle = book.title;
 
+      let updated: string[];
       if (prev.includes(bookId)) {
         updated = prev.filter((id) => id !== bookId);
-        showToast(`Removed "${title}" from shelf`);
       } else {
+        wasAdded = true;
         updated = [...prev, bookId];
-        showToast(`Saved "${title}" to favorites ❤️`);
       }
 
       try {
@@ -275,9 +283,15 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       } catch (e) {
         console.warn("Could not save favorites", e);
       }
-      refreshStats();
       return updated;
     });
+
+    if (wasAdded) {
+      showToast(`Saved "${bookTitle}" to favorites ❤️`);
+    } else {
+      showToast(`Removed "${bookTitle}" from shelf`);
+    }
+    refreshStats();
   }, [refreshStats, showToast]);
 
   const removeFavorite = useCallback((bookId: string) => {
@@ -288,14 +302,15 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       } catch (e) {
         console.warn("Could not remove favorite", e);
       }
-      refreshStats();
       return updated;
     });
+    refreshStats();
   }, [refreshStats]);
 
   const isFavorite = useCallback((bookId: string) => favorites.includes(bookId), [favorites]);
 
   const recordReading = useCallback((bookId: string, page = 1, totalPages = 100) => {
+    let hasChanged = false;
     setReadingHistory((prev) => {
       const existing = prev.find((item) => item.bookId === bookId);
       const curPage = page > 1 ? page : (existing ? existing.page : 1);
@@ -307,12 +322,12 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
         existing &&
         existing.page === curPage &&
         existing.totalPages === curTotal &&
-        existing.progress === progress &&
-        Date.now() - existing.lastReadAt < 3000
+        existing.progress === progress
       ) {
         return prev;
       }
 
+      hasChanged = true;
       const filtered = prev.filter((item) => item.bookId !== bookId);
       const newItem: ReadingProgressItem = {
         bookId,
@@ -328,9 +343,12 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       } catch (e) {
         console.warn("Could not save reading progress", e);
       }
-      refreshStats();
       return updated;
     });
+
+    if (hasChanged) {
+      refreshStats();
+    }
   }, [refreshStats]);
 
   const updateReadingProgress = useCallback((bookId: string, page: number, totalPages?: number) => {
@@ -349,9 +367,9 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       } catch (e) {
         console.warn("Could not save reading history", e);
       }
-      refreshStats();
       return updated;
     });
+    refreshStats();
   }, [refreshStats]);
 
   const clearHistory = useCallback(() => {
@@ -386,13 +404,17 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   // Active Reading Time Tracker (Diwali Diya)
   const recordActiveReading = useCallback((seconds: number) => {
     const res = addActiveReadingTime(seconds);
-    setStreakData(getReadingActivityData());
-    setStats((prev) => ({
-      ...prev,
-      todayReadingSeconds: res.todaySeconds,
-      isTodayQualified: res.qualified,
-      readingStreakDays: res.currentStreak,
-    }));
+    const act = getReadingActivityData();
+    const actTime = getWebsiteActiveTimeData();
+    const todayKey = getLocalDateKey();
+    const calculatedStats = calculateReadingStats();
+
+    setStreakData(act);
+    setActiveTimeState({
+      totalActiveSeconds: Math.max(actTime.totalActiveSeconds || 0, calculatedStats.totalReadingSeconds),
+      todayActiveSeconds: Math.max(actTime.daily[todayKey] || 0, res.todaySeconds),
+    });
+    setStats(calculatedStats);
 
     // Update active session if running
     setActiveSession((prev) => {
@@ -519,9 +541,8 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
 
   const addBookReadingTime = useCallback((bookId: string, seconds: number) => {
     const mem = addBookReadingSeconds(bookId, seconds);
-    refreshStats();
     return mem;
-  }, [refreshStats]);
+  }, []);
 
   // Derive actual book objects
   const favoriteBooks = mounted
@@ -580,8 +601,8 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       refreshStats,
       exportData,
       importData: handleImportData,
-      globalActiveSeconds: activeTimeState.totalActiveSeconds,
-      todayActiveSeconds: activeTimeState.todayActiveSeconds,
+      globalActiveSeconds: Math.max(activeTimeState.totalActiveSeconds || 0, globalReadingSeconds),
+      todayActiveSeconds: Math.max(activeTimeState.todayActiveSeconds || 0, todaySeconds),
       globalReadingSeconds,
       recordWebsiteActiveTime,
       addBookReadingTime,

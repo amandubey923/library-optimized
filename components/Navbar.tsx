@@ -45,6 +45,7 @@ export default function Navbar() {
     { name: "Home", href: "/" },
     { name: "Library", href: "/library" },
     { name: "My Shelf", href: "/favorites", count: favorites.length },
+    { name: "Profile", href: "/profile" },
     { name: "About", href: "/about" },
     { name: "Contact", href: "/contact" },
   ];
@@ -93,8 +94,8 @@ export default function Navbar() {
             })}
           </nav>
 
-          {/* Right Action Group: Quick Search + Theme Switcher + CTA + Mobile Toggle */}
-          <div className="flex items-center gap-2.5">
+          {/* Right Action Group: Quick Search + Diya + Profile + Theme Switcher + CTA + Mobile Toggle */}
+          <div className="flex items-center gap-2 sm:gap-2.5">
             {/* Quick Search Button */}
             <button
               onClick={() => setIsSearchOpen(true)}
@@ -122,6 +123,78 @@ export default function Navbar() {
 
             {/* Daily Reading Streak (Diwali Diya) */}
             <DiwaliDiya />
+
+            {/* Local User Reading Profile / Analytics Link */}
+            <Link
+              href="/profile"
+              className={`group relative flex items-center justify-center w-9 h-9 sm:w-[38px] sm:h-[38px] rounded-xl p-[1.5px] overflow-hidden transition-all duration-300 cursor-pointer ${
+                pathname === "/profile"
+                  ? "shadow-[0_0_16px_var(--theme-glow)] ring-2 ring-[var(--accent)]/40 scale-105"
+                  : "shadow-xs hover:shadow-[0_0_15px_var(--theme-glow)]/40 hover:scale-[1.04]"
+              }`}
+              aria-label="Reading Profile & Analytics"
+              title="Your Local Reading Profile & Analytics"
+            >
+              {/* Traveling Luminous Border Accent (Conic Beam) */}
+              <span
+                className="profile-border-beam absolute inset-[-150%] rounded-full bg-[conic-gradient(from_0deg,transparent_0_280deg,var(--accent)_330deg,var(--primary)_360deg)] opacity-85 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none"
+              />
+
+              {/* Inner Interactive Button Body */}
+              <span
+                className={`relative z-10 w-full h-full rounded-[10.5px] flex items-center justify-center transition-all duration-200 ${
+                  pathname === "/profile"
+                    ? "bg-gradient-to-tr from-[var(--primary)] via-[var(--primary)] to-[var(--accent)] text-[var(--primary-foreground)]"
+                    : "bg-[var(--card)] group-hover:bg-[var(--secondary)] text-[var(--text-secondary)] group-hover:text-[var(--foreground)]"
+                }`}
+              >
+                <svg
+                  className="w-4 h-4 sm:w-[18px] sm:h-[18px] transition-all duration-300 group-hover:scale-110 group-hover:drop-shadow-[0_0_8px_var(--theme-glow)]"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <circle
+                    cx="12"
+                    cy="7.5"
+                    r="4"
+                    stroke="currentColor"
+                    strokeWidth="1.85"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <path
+                    d="M4.5 19.25C4.5 15.9363 7.85786 13.25 12 13.25C16.1421 13.25 19.5 15.9363 19.5 19.25"
+                    stroke="currentColor"
+                    strokeWidth="1.85"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </span>
+            </Link>
+
+            <style jsx>{`
+              @keyframes profileBeamSpin {
+                0% {
+                  transform: rotate(0deg);
+                }
+                100% {
+                  transform: rotate(360deg);
+                }
+              }
+              .profile-border-beam {
+                animation: profileBeamSpin 4s linear infinite;
+              }
+              :global(.group:hover) .profile-border-beam {
+                animation-duration: 2s;
+              }
+              @media (prefers-reduced-motion: reduce) {
+                .profile-border-beam {
+                  animation: none !important;
+                }
+              }
+            `}</style>
 
             {/* MANDATORY THEME SWITCHER CONTROL IN TOP-RIGHT NAVBAR */}
             <NavbarThemeControl />

@@ -66,6 +66,10 @@ interface SearchMatch {
   matchSnippet: string;
 }
 
+type FocusSessionStatus = "IDLE" | "ACTIVE" | "EXIT_CONFIRM" | "COMPLETED";
+
+const SESSION_DURATION_SECONDS = 15 * 60; // 900 seconds (15 minutes)
+
 const DEFAULT_PREFS: ReaderPrefs = {
   brightness: 100,
   warmth: 0,
@@ -76,6 +80,7 @@ const DEFAULT_PREFS: ReaderPrefs = {
 };
 
 const PREFS_KEY = "readers_hub_reader_prefs_v3";
+const TIMER_PREFS_KEY = "readers_hub_focus_timer_prefs_v1";
 const EMPTY_DRAWINGS: DrawingStroke[] = [];
 
 export default function BookReader({ book }: BookReaderProps) {
@@ -134,12 +139,54 @@ export default function BookReader({ book }: BookReaderProps) {
   const [isSearchingBook, setIsSearchingBook] = useState<boolean>(false);
   const pdfTextCacheRef = useRef<Record<number, string>>({});
 
-  // Structured Reading Session State
-  const [isSessionModalOpen, setIsSessionModalOpen] = useState<boolean>(false);
+  // Dedicated Focus Session State (configurable countdown, lifecycle & exit protection)
+  const [sessionStatus, setSessionStatus] = useState<FocusSessionStatus>("IDLE");
   const [sessionTargetMinutes, setSessionTargetMinutes] = useState<number>(15);
+  const sessionDurationRef = useRef<number>(SESSION_DURATION_SECONDS);
+  const [sessionRemainingSeconds, setSessionRemainingSeconds] = useState<number>(SESSION_DURATION_SECONDS);
+  const sessionEndTimeRef = useRef<number | null>(null);
+  const sessionStatusRef = useRef<FocusSessionStatus>("IDLE");
+  const [isSessionModalOpen, setIsSessionModalOpen] = useState<boolean>(false);
   const [isSessionCompleteOpen, setIsSessionCompleteOpen] = useState<boolean>(false);
   const sessionStartPageRef = useRef<number>(initialPage);
   const sessionMarksCountRef = useRef<number>(0);
+
+  // Focus Mode Floating Timer Draggable & Visibility State
+  const timerOverlayRef = useRef<HTMLDivElement>(null);
+  const [timerPosition, setTimerPosition] = useState<{ x: number; y: number } | null>(null);
+  const [isTimerVisible, setIsTimerVisible] = useState<boolean>(true);
+  const isDraggingTimerRef = useRef<boolean>(false);
+  const dragOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  useEffect(() => {
+    sessionStatusRef.current = sessionStatus;
+  }, [sessionStatus]);
+
+  // Load timer preferences on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(TIMER_PREFS_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (typeof parsed.x === "number" && typeof parsed.y === "number") {
+          const clampedX = Math.min(Math.max(12, parsed.x), window.innerWidth - 180);
+          const clampedY = Math.min(Math.max(12, parsed.y), window.innerHeight - 70);
+          setTimerPosition({ x: clampedX, y: clampedY });
+        }
+        if (typeof parsed.isVisible === "boolean") {
+          setIsTimerVisible(parsed.isVisible);
+        }
+      }
+    } catch {}
+  }, []);
+
+  const saveTimerPrefs = useCallback((updates: { x?: number; y?: number; isVisible?: boolean }) => {
+    try {
+      const saved = localStorage.getItem(TIMER_PREFS_KEY);
+      const parsed = saved ? JSON.parse(saved) : {};
+      localStorage.setItem(TIMER_PREFS_KEY, JSON.stringify({ ...parsed, ...updates }));
+    } catch {}
+  }, []);
 
   // Table of Contents State
   const [isTocOpen, setIsTocOpen] = useState<boolean>(false);
@@ -767,6 +814,168 @@ export default function BookReader({ book }: BookReaderProps) {
     [isFocusMode, showToast]
   );
 
+  // 7c. Focus Session Countdown & Lifecycle Helpers
+  const formatSessionTime = useCallback((seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+  }, []);
+
+  const handleStartFocusSession = useCallback((chosenMinutes?: number) => {
+    const mins = chosenMinutes || sessionTargetMinutes || 15;
+    const targetSecs = mins * 60;
+    sessionDurationRef.current = targetSecs;
+    const endTime = Date.now() + targetSecs * 1000;
+    sessionEndTimeRef.current = endTime;
+    sessionStartPageRef.current = currentPage;
+    sessionMarksCountRef.current = 0;
+    setSessionRemainingSeconds(targetSecs);
+    setSessionStatus("ACTIVE");
+    setIsSessionModalOpen(false);
+
+    // 1. Activate Focus Mode
+    setIsFocusMode(true);
+
+    // 2. Request native browser Fullscreen
+    if (!document.fullscreenElement && containerRef.current) {
+      containerRef.current.requestFullscreen().catch(() => {});
+      setIsFullscreen(true);
+    }
+
+    // 3. Sync structured session with context
+    startReadingSession(book.id, currentPage, mins);
+    showToast(`Focus Session Started: ${mins}:00 countdown active ⏱️✨`);
+  }, [currentPage, sessionTargetMinutes, startReadingSession, book.id, showToast]);
+
+  const requestExitFocusMode = useCallback(() => {
+    if (sessionStatusRef.current === "ACTIVE") {
+      setSessionStatus("EXIT_CONFIRM");
+    } else {
+      toggleFocusMode(false);
+    }
+  }, [toggleFocusMode]);
+
+  const handleContinueSession = useCallback(() => {
+    setSessionStatus("ACTIVE");
+    setIsFocusMode(true);
+    if (!document.fullscreenElement && containerRef.current) {
+      containerRef.current.requestFullscreen().catch(() => {});
+      setIsFullscreen(true);
+    }
+  }, []);
+
+  const handleAbandonSession = useCallback(() => {
+    setSessionStatus("IDLE");
+    sessionEndTimeRef.current = null;
+    const resetSecs = sessionDurationRef.current || SESSION_DURATION_SECONDS;
+    setSessionRemainingSeconds(resetSecs);
+    endReadingSession();
+    toggleFocusMode(false);
+    showToast("Session cancelled. Reading progress was preserved.");
+  }, [endReadingSession, toggleFocusMode, showToast]);
+
+  // Floating Focus Timer Drag Handlers
+  const handleTimerDragStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    if (!timerOverlayRef.current) return;
+    const rect = timerOverlayRef.current.getBoundingClientRect();
+    dragOffsetRef.current = {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
+    };
+    isDraggingTimerRef.current = true;
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      if (!isDraggingTimerRef.current) return;
+      const newX = Math.min(Math.max(12, moveEvent.clientX - dragOffsetRef.current.x), window.innerWidth - 190);
+      const newY = Math.min(Math.max(12, moveEvent.clientY - dragOffsetRef.current.y), window.innerHeight - 70);
+      setTimerPosition({ x: newX, y: newY });
+    };
+
+    const handleMouseUp = (upEvent: MouseEvent) => {
+      isDraggingTimerRef.current = false;
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+      const finalX = Math.min(Math.max(12, upEvent.clientX - dragOffsetRef.current.x), window.innerWidth - 190);
+      const finalY = Math.min(Math.max(12, upEvent.clientY - dragOffsetRef.current.y), window.innerHeight - 70);
+      saveTimerPrefs({ x: finalX, y: finalY });
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+  };
+
+  const handleTimerTouchStart = (e: React.TouchEvent) => {
+    if (!timerOverlayRef.current || e.touches.length === 0) return;
+    const touch = e.touches[0];
+    const rect = timerOverlayRef.current.getBoundingClientRect();
+    dragOffsetRef.current = {
+      x: touch.clientX - rect.left,
+      y: touch.clientY - rect.top,
+    };
+    isDraggingTimerRef.current = true;
+
+    const handleTouchMove = (moveEvent: TouchEvent) => {
+      if (!isDraggingTimerRef.current || moveEvent.touches.length === 0) return;
+      const t = moveEvent.touches[0];
+      const newX = Math.min(Math.max(12, t.clientX - dragOffsetRef.current.x), window.innerWidth - 190);
+      const newY = Math.min(Math.max(12, t.clientY - dragOffsetRef.current.y), window.innerHeight - 70);
+      setTimerPosition({ x: newX, y: newY });
+    };
+
+    const handleTouchEnd = () => {
+      isDraggingTimerRef.current = false;
+      window.removeEventListener("touchmove", handleTouchMove);
+      window.removeEventListener("touchend", handleTouchEnd);
+      if (timerPosition) {
+        saveTimerPrefs({ x: timerPosition.x, y: timerPosition.y });
+      }
+    };
+
+    window.addEventListener("touchmove", handleTouchMove, { passive: true });
+    window.addEventListener("touchend", handleTouchEnd);
+  };
+
+  // Dedicated Session Countdown Timer Effect
+  useEffect(() => {
+    if (sessionStatus !== "ACTIVE" || !sessionEndTimeRef.current) return;
+
+    const updateCountdown = () => {
+      if (!sessionEndTimeRef.current) return;
+      const now = Date.now();
+      const remaining = Math.max(0, Math.ceil((sessionEndTimeRef.current - now) / 1000));
+      setSessionRemainingSeconds(remaining);
+
+      if (remaining === 0) {
+        // 00:00 -> SUCCESSFUL COMPLETION
+        setSessionStatus("COMPLETED");
+        sessionEndTimeRef.current = null;
+        setIsSessionCompleteOpen(true);
+
+        const completedDuration = sessionDurationRef.current || SESSION_DURATION_SECONDS;
+
+        // Record completed session event in reading memory
+        recordSessionEventRef.current({
+          bookId: book.id,
+          timestamp: Date.now(),
+          startPage: sessionStartPageRef.current,
+          endPage: currentPageRef.current,
+          durationSeconds: completedDuration,
+          highlightsAdded: sessionMarksCountRef.current,
+          notesAdded: 0,
+          bookmarksAdded: 0,
+        });
+
+        endReadingSessionRef.current();
+        showToastRef.current(`🎉 ${Math.round(completedDuration / 60)}-minute Focus Session Successfully Completed!`);
+      }
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 500);
+    return () => clearInterval(interval);
+  }, [sessionStatus, book.id]);
+
   // 7c. Contextual Page Spread Text Extractor (Current Spread Only)
   const extractSpreadText = useCallback(async () => {
     if (!pdfDocRef.current || numPages === 0) return [];
@@ -1062,10 +1271,6 @@ export default function BookReader({ book }: BookReaderProps) {
 
   // 13. Keyboard Listeners (Ctrl+F for in-book search, Z for Focus Mode)
   useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
-    };
-
     const handleKeyDown = (e: KeyboardEvent) => {
       const isInput = ["INPUT", "TEXTAREA"].includes((e.target as HTMLElement)?.tagName);
 
@@ -1191,22 +1396,42 @@ export default function BookReader({ book }: BookReaderProps) {
           e.preventDefault();
           if (numPages > 0) setCurrentPage(numPages);
           break;
-        case "escape":
-          if (isTranslateOpen) setIsTranslateOpen(false);
-          if (isSearchInBookOpen) setIsSearchInBookOpen(false);
-          if (showSettings) setShowSettings(false);
-          if (showJumpModal) setShowJumpModal(false);
-          if (isAnnotationDrawerOpen) setIsAnnotationDrawerOpen(false);
-          if (isTocOpen) setIsTocOpen(false);
-          if (isMemoryOpen) setIsMemoryOpen(false);
-          if (isSessionModalOpen) setIsSessionModalOpen(false);
-          if (isSessionCompleteOpen) setIsSessionCompleteOpen(false);
-          if (selectionPopover) setSelectionPopover(null);
-          if (noteModal.isOpen) setNoteModal((prev) => ({ ...prev, isOpen: false }));
-          if (textBoxDialog.isOpen) setTextBoxDialog((prev) => ({ ...prev, isOpen: false }));
-          if (isStudyMode) setIsStudyMode(false);
-          if (isFocusMode) toggleFocusMode(false);
+        case "z":
+          e.preventDefault();
+          if (isFocusMode) {
+            requestExitFocusMode();
+          } else {
+            toggleFocusMode(true);
+          }
           break;
+        case "escape":
+          if (sessionStatusRef.current === "EXIT_CONFIRM") {
+            handleContinueSession();
+            break;
+          }
+          if (isTranslateOpen) { setIsTranslateOpen(false); break; }
+          if (isSearchInBookOpen) { setIsSearchInBookOpen(false); break; }
+          if (showSettings) { setShowSettings(false); break; }
+          if (showJumpModal) { setShowJumpModal(false); break; }
+          if (isAnnotationDrawerOpen) { setIsAnnotationDrawerOpen(false); break; }
+          if (isTocOpen) { setIsTocOpen(false); break; }
+          if (isMemoryOpen) { setIsMemoryOpen(false); break; }
+          if (isSessionModalOpen) { setIsSessionModalOpen(false); break; }
+          if (isSessionCompleteOpen) { setIsSessionCompleteOpen(false); break; }
+          if (selectionPopover) { setSelectionPopover(null); break; }
+          if (noteModal.isOpen) { setNoteModal((prev) => ({ ...prev, isOpen: false })); break; }
+          if (textBoxDialog.isOpen) { setTextBoxDialog((prev) => ({ ...prev, isOpen: false })); break; }
+          if (isStudyMode) { setIsStudyMode(false); break; }
+          if (isFocusMode) { requestExitFocusMode(); break; }
+          break;
+      }
+    };
+
+    const handleFullscreenChange = () => {
+      const isFull = Boolean(document.fullscreenElement);
+      setIsFullscreen(isFull);
+      if (!isFull && sessionStatusRef.current === "ACTIVE") {
+        setSessionStatus("EXIT_CONFIRM");
       }
     };
 
@@ -1234,6 +1459,8 @@ export default function BookReader({ book }: BookReaderProps) {
     isSearchInBookOpen,
     isFocusMode,
     toggleFocusMode,
+    requestExitFocusMode,
+    handleContinueSession,
     selectionPopover,
     noteModal.isOpen,
     textBoxDialog.isOpen,
@@ -1474,10 +1701,27 @@ export default function BookReader({ book }: BookReaderProps) {
       )}
 
       {/* -------------------------------------------------------------
-       * Focus Mode Floating Banner / Controls
+       * Focus Mode Floating Banner / Controls (Active Session Enforced)
        * ------------------------------------------------------------- */}
       {isFocusMode && (
         <div className="absolute top-4 right-4 z-40 flex items-center gap-2 animate-fade-in">
+          {/* Active Session Show Timer Toggle (when hidden) */}
+          {sessionStatus === "ACTIVE" && !isTimerVisible && (
+            <button
+              onClick={() => {
+                setIsTimerVisible(true);
+                saveTimerPrefs({ isVisible: true });
+              }}
+              aria-label="Show Floating Focus Timer"
+              className="px-3 py-1.5 rounded-2xl bg-[var(--card)]/90 backdrop-blur-xl border border-[var(--border)] text-xs font-mono font-bold text-[var(--foreground)] hover:border-[var(--accent)] shadow-xl flex items-center gap-1.5 cursor-pointer animate-fade-in"
+              title="Show Floating Focus Timer"
+            >
+              <span className="w-2 h-2 rounded-full bg-[var(--accent)] animate-pulse" />
+              <span>⏱️ {formatSessionTime(sessionRemainingSeconds)}</span>
+              <span className="text-[10px] text-[var(--text-secondary)] font-sans hidden sm:inline">Show</span>
+            </button>
+          )}
+
           <button
             onClick={() => {
               if (isTranslateOpen) {
@@ -1499,13 +1743,69 @@ export default function BookReader({ book }: BookReaderProps) {
           </button>
 
           <button
-            onClick={() => toggleFocusMode(false)}
+            onClick={requestExitFocusMode}
             className="px-3.5 py-1.5 rounded-2xl bg-[var(--card)]/90 backdrop-blur-xl border border-[var(--border)] text-xs font-bold text-[var(--foreground)] hover:border-[var(--accent)] shadow-xl flex items-center gap-1.5 cursor-pointer"
-            title="Exit Focus Mode (Z)"
+            title={sessionStatus === "ACTIVE" ? "End Active Focus Session" : "Exit Focus Mode (Z)"}
           >
             <span>✕</span>
-            <span>Exit Focus Mode</span>
+            <span>{sessionStatus === "ACTIVE" ? "End Session" : "Exit Focus Mode"}</span>
           </button>
+        </div>
+      )}
+
+      {/* -------------------------------------------------------------
+       * Focus Mode Floating Draggable Timer Overlay (Theme Adaptive & Viewport Fixed)
+       * ------------------------------------------------------------- */}
+      {isFocusMode && sessionStatus === "ACTIVE" && isTimerVisible && (
+        <div
+          ref={timerOverlayRef}
+          style={{
+            position: "fixed",
+            left: timerPosition ? `${timerPosition.x}px` : "auto",
+            top: timerPosition ? `${timerPosition.y}px` : "5rem",
+            right: timerPosition ? "auto" : "1.5rem",
+            zIndex: 50,
+            touchAction: "none",
+          }}
+          className="select-none animate-fade-in"
+        >
+          <div className="flex items-center gap-2.5 px-3.5 py-2 rounded-2xl bg-[var(--card)]/90 backdrop-blur-2xl border border-[var(--border)] shadow-2xl hover:border-[var(--accent)]/50 transition-colors">
+            {/* Drag Handle */}
+            <div
+              onMouseDown={handleTimerDragStart}
+              onTouchStart={handleTimerTouchStart}
+              className="cursor-grab active:cursor-grabbing text-[var(--text-secondary)] hover:text-[var(--foreground)] flex items-center pr-1 border-r border-[var(--border)]/60 select-none py-0.5"
+              title="Drag to reposition timer"
+              aria-label="Drag Timer"
+            >
+              <span className="text-xs font-mono tracking-tighter opacity-70">⋮⋮</span>
+            </div>
+
+            {/* Pulsing Theme Accent Dot & Live Countdown */}
+            <div className="flex items-center gap-2">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[var(--accent)] opacity-75" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[var(--accent)]" />
+              </span>
+
+              <span className="font-mono text-sm sm:text-base font-extrabold text-[var(--foreground)] tracking-wider tabular-nums">
+                {formatSessionTime(sessionRemainingSeconds)}
+              </span>
+            </div>
+
+            {/* Hide / Minimize Button */}
+            <button
+              onClick={() => {
+                setIsTimerVisible(false);
+                saveTimerPrefs({ isVisible: false });
+              }}
+              className="ml-0.5 p-1 rounded-lg text-[var(--text-secondary)] hover:text-[var(--foreground)] hover:bg-[var(--secondary)] transition-colors cursor-pointer"
+              title="Hide Floating Timer"
+              aria-label="Hide Timer"
+            >
+              <span className="text-[11px] block font-bold leading-none">✕</span>
+            </button>
+          </div>
         </div>
       )}
 
@@ -1544,12 +1844,8 @@ export default function BookReader({ book }: BookReaderProps) {
             {/* Page Thumbnail Navigator */}
             <button
               onClick={() => setIsThumbnailDrawerOpen(true)}
-              className={`p-1.5 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1 cursor-pointer ${
-                isThumbnailDrawerOpen
-                  ? "bg-[var(--accent)] text-[var(--primary-foreground)] border-[var(--accent)]"
-                  : "bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] border-[var(--border)]"
-              }`}
-              title="Page Thumbnail Navigator (▦)"
+              className="p-1.5 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] border border-[var(--border)] transition-all cursor-pointer flex items-center gap-1 text-xs"
+              title="Page Grid Navigator"
             >
               <span>▦</span>
               <span className="hidden sm:inline font-semibold">Pages</span>
@@ -1569,20 +1865,30 @@ export default function BookReader({ book }: BookReaderProps) {
           <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
             {/* Structured Reading Session */}
             <button
-              onClick={() => setIsSessionModalOpen(true)}
+              onClick={() => {
+                if (sessionStatus === "ACTIVE") {
+                  setIsFocusMode(true);
+                  if (!document.fullscreenElement && containerRef.current) {
+                    containerRef.current.requestFullscreen().catch(() => {});
+                    setIsFullscreen(true);
+                  }
+                } else {
+                  setIsSessionModalOpen(true);
+                }
+              }}
               aria-label="Start Structured Reading Session"
               className={`p-2 sm:px-3 sm:py-1.5 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1.5 cursor-pointer ${
-                activeSession && activeSession.isActive
-                  ? "bg-[var(--accent)] text-[var(--primary-foreground)] border-[var(--accent)] shadow-md animate-pulse"
+                sessionStatus === "ACTIVE"
+                  ? "bg-amber-500/20 text-amber-400 border-amber-500/40 shadow-xs animate-pulse"
                   : "bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] border-[var(--border)]"
               }`}
-              title="Start Structured Reading Session"
+              title="Start 15-minute Dedicated Focus Session"
             >
               <span>⏱️</span>
               <span className="hidden sm:inline">
-                {activeSession && activeSession.isActive
-                  ? `${Math.max(0, activeSession.targetMinutes - Math.floor(activeSession.elapsedSeconds / 60))}m left`
-                  : "Session"}
+                {sessionStatus === "ACTIVE"
+                  ? `${formatSessionTime(sessionRemainingSeconds)} left`
+                  : "15m Session"}
               </span>
             </button>
 
@@ -1784,33 +2090,62 @@ export default function BookReader({ book }: BookReaderProps) {
       )}
 
       {/* -------------------------------------------------------------
-       * Structured Reading Session Launcher Modal
+       * Structured Focus Reading Session Setup Modal
        * ------------------------------------------------------------- */}
       {isSessionModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in text-left">
           <div className="glass-card rounded-3xl p-6 border border-[var(--border)] bg-[var(--card)] max-w-sm w-full shadow-2xl space-y-4">
-            <h4 className="font-serif font-bold text-sm text-[var(--foreground)] flex items-center gap-2">
-              <span>⏱️</span>
-              <span>Start Structured Reading Session</span>
-            </h4>
-            <p className="text-xs text-[var(--text-secondary)]">
-              Choose a dedicated reading goal for &ldquo;{book.title}&rdquo;. Time accumulates only while actively reading.
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">⏱️</span>
+                <h4 className="font-serif font-bold text-base text-[var(--foreground)]">
+                  Focus Reading Session
+                </h4>
+              </div>
+              <button
+                onClick={() => setIsSessionModalOpen(false)}
+                className="w-7 h-7 rounded-xl bg-[var(--secondary)] text-xs hover:text-[var(--foreground)] flex items-center justify-center cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+              Enter a dedicated distraction-free reading session with full immersion, countdown tracking, and reading memory logging.
             </p>
 
-            <div className="grid grid-cols-3 gap-2">
-              {[15, 30, 45].map((m) => (
-                <button
-                  key={m}
-                  onClick={() => setSessionTargetMinutes(m)}
-                  className={`py-2 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                    sessionTargetMinutes === m
-                      ? "bg-[var(--primary)] text-[var(--primary-foreground)] border-transparent shadow-md"
-                      : "bg-[var(--secondary)] text-[var(--text-secondary)] border-[var(--border)]"
-                  }`}
-                >
-                  {m} Minutes
-                </button>
-              ))}
+            {/* Duration Selector: 15 min / 30 min / 45 min */}
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-[var(--foreground)] block">
+                Select Session Duration
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {[15, 30, 45].map((mins) => (
+                  <button
+                    key={mins}
+                    type="button"
+                    onClick={() => setSessionTargetMinutes(mins)}
+                    className={`py-2.5 px-3 rounded-2xl text-xs font-bold font-mono transition-all border cursor-pointer flex flex-col items-center gap-0.5 ${
+                      sessionTargetMinutes === mins
+                        ? "bg-[var(--accent)] text-[var(--primary-foreground)] border-[var(--accent)] shadow-md scale-[1.02]"
+                        : "bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] border-[var(--border)]"
+                    }`}
+                  >
+                    <span>{mins}m</span>
+                    <span className="text-[10px] font-sans font-normal opacity-80">goal</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="p-3 rounded-2xl bg-[var(--secondary)]/50 border border-[var(--border)] flex items-center justify-between">
+              <div className="space-y-0.5">
+                <span className="text-xs font-bold text-[var(--foreground)]">Environment</span>
+                <p className="text-[11px] text-[var(--text-secondary)]">Fullscreen &amp; Focus Mode</p>
+              </div>
+              <span className="px-3 py-1 rounded-xl bg-[var(--primary)]/15 border border-[var(--primary)]/30 text-[var(--primary)] text-xs font-mono font-bold">
+                {sessionTargetMinutes} Minutes
+              </span>
             </div>
 
             <div className="flex justify-end gap-2 text-xs pt-2">
@@ -1821,15 +2156,45 @@ export default function BookReader({ book }: BookReaderProps) {
                 Cancel
               </button>
               <button
-                onClick={() => {
-                  sessionStartPageRef.current = currentPage;
-                  sessionMarksCountRef.current = 0;
-                  startReadingSession(book.id, currentPage, sessionTargetMinutes);
-                  setIsSessionModalOpen(false);
-                }}
-                className="px-4 py-1.5 rounded-xl bg-[var(--primary)] text-[var(--primary-foreground)] font-bold shadow-md hover:scale-105 transition-transform cursor-pointer"
+                onClick={() => handleStartFocusSession(sessionTargetMinutes)}
+                className="px-4 py-2 rounded-xl bg-[var(--primary)] text-[var(--primary-foreground)] font-bold shadow-md hover:scale-105 transition-transform cursor-pointer flex items-center gap-1.5"
               >
-                Begin Session →
+                <span>Start Session</span>
+                <span>→</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* -------------------------------------------------------------
+       * Force Exit Warning Confirmation Modal
+       * ------------------------------------------------------------- */}
+      {sessionStatus === "EXIT_CONFIRM" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in text-left">
+          <div className="glass-card rounded-3xl p-6 border border-amber-500/40 bg-[var(--card)] max-w-sm w-full shadow-2xl space-y-4 text-center">
+            <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30 text-2xl flex items-center justify-center mx-auto shadow-inner">
+              ⚠️
+            </div>
+            <h4 className="font-serif font-bold text-lg text-[var(--foreground)]">
+              End Session?
+            </h4>
+            <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
+              Leaving Focus Mode will end your current session. This session will not be counted toward your completed sessions.
+            </p>
+
+            <div className="flex gap-2.5 pt-2">
+              <button
+                onClick={handleContinueSession}
+                className="flex-1 py-2.5 rounded-xl bg-[var(--primary)] text-[var(--primary-foreground)] text-xs font-bold shadow-md hover:scale-[1.02] transition-transform cursor-pointer"
+              >
+                Continue Session
+              </button>
+              <button
+                onClick={handleAbandonSession}
+                className="flex-1 py-2.5 rounded-xl bg-[var(--secondary)] hover:bg-rose-500/20 text-[var(--text-secondary)] hover:text-rose-400 border border-[var(--border)] hover:border-rose-500/30 text-xs font-bold transition-all cursor-pointer"
+              >
+                End Session
               </button>
             </div>
           </div>
@@ -1849,7 +2214,7 @@ export default function BookReader({ book }: BookReaderProps) {
               Reading Session Complete!
             </h4>
             <p className="text-xs text-[var(--text-secondary)]">
-              You completed your target session on &ldquo;{book.title}&rdquo;.
+              You completed your {sessionTargetMinutes}-minute focus session on &ldquo;{book.title}&rdquo;.
             </p>
 
             <div className="grid grid-cols-2 gap-2 bg-[var(--secondary)]/40 p-3 rounded-2xl border border-[var(--border)] text-xs">
@@ -1860,15 +2225,19 @@ export default function BookReader({ book }: BookReaderProps) {
                 </strong>
               </div>
               <div>
-                <span className="text-[10px] text-[var(--text-secondary)] block">Study Markings</span>
-                <strong className="text-sm font-bold text-amber-400 font-mono">
-                  {sessionMarksCountRef.current} added
+                <span className="text-[10px] text-[var(--text-secondary)] block">Session Duration</span>
+                <strong className="text-sm font-bold text-emerald-400 font-mono">
+                  {sessionTargetMinutes}:00 Completed
                 </strong>
               </div>
             </div>
 
             <button
-              onClick={() => setIsSessionCompleteOpen(false)}
+              onClick={() => {
+                setIsSessionCompleteOpen(false);
+                setSessionStatus("IDLE");
+                setSessionRemainingSeconds(sessionTargetMinutes * 60);
+              }}
               className="w-full py-2.5 rounded-xl bg-[var(--primary)] text-[var(--primary-foreground)] text-xs font-bold shadow-md hover:scale-105 transition-transform cursor-pointer"
             >
               Continue Reading →
@@ -2118,6 +2487,7 @@ export default function BookReader({ book }: BookReaderProps) {
         <div className="absolute top-14 inset-x-0 z-30 flex flex-wrap items-center justify-between p-2 sm:px-6 bg-[var(--card)]/95 backdrop-blur-xl border-b border-[var(--border)] gap-2 animate-fade-in text-xs shadow-lg">
           <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0">
             {[
+              { id: "select", label: "Select", icon: "↖️", shortcut: "V" },
               { id: "pen", label: "Pen", icon: "✏️", shortcut: "P" },
               { id: "highlighter", label: "Highlighter", icon: "🖍️", shortcut: "H" },
               { id: "line", label: "Line", icon: "📏", shortcut: "L" },
