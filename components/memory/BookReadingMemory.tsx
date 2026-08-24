@@ -25,7 +25,6 @@ export default function BookReadingMemory({
   const { getReadingProgress, getReadingMemory, globalActiveSeconds } = useLibrary();
   const [activeTab, setActiveTab] = useState<MemoryTab>("overview");
   const [selectedHighlightColor, setSelectedHighlightColor] = useState<string>("all");
-  const [showPrintReport, setShowPrintReport] = useState<boolean>(false);
 
   const progress = getReadingProgress(book.id);
   const memory = getReadingMemory(book.id);
@@ -109,10 +108,6 @@ export default function BookReadingMemory({
 
   const timelineEvents: ReadingTimelineEvent[] = memory.timeline || [];
 
-  const handlePrint = () => {
-    window.print();
-  };
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md animate-fade-in text-left">
       <div className="fixed inset-0" onClick={onClose} aria-hidden="true" />
@@ -155,9 +150,9 @@ export default function BookReadingMemory({
 
         <div className="flex items-center gap-1.5 px-5 sm:px-6 py-2 border-b border-[var(--border)] bg-[var(--secondary)]/30 overflow-x-auto text-xs font-semibold">
           <button
-            onClick={() => { setActiveTab("overview"); setShowPrintReport(false); }}
+            onClick={() => setActiveTab("overview")}
             className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer whitespace-nowrap ${
-              activeTab === "overview" && !showPrintReport
+              activeTab === "overview"
                 ? "bg-[var(--card)] text-[var(--accent)] shadow-sm border border-[var(--border)]"
                 : "text-[var(--text-secondary)] hover:text-[var(--foreground)]"
             }`}
@@ -165,9 +160,9 @@ export default function BookReadingMemory({
             📊 Overview &amp; Density
           </button>
           <button
-            onClick={() => { setActiveTab("replay"); setShowPrintReport(false); }}
+            onClick={() => setActiveTab("replay")}
             className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer whitespace-nowrap ${
-              activeTab === "replay" && !showPrintReport
+              activeTab === "replay"
                 ? "bg-[var(--card)] text-[var(--accent)] shadow-sm border border-[var(--border)]"
                 : "text-[var(--text-secondary)] hover:text-[var(--foreground)]"
             }`}
@@ -175,9 +170,9 @@ export default function BookReadingMemory({
             ⏪ Reading Replay ({timelineEvents.length})
           </button>
           <button
-            onClick={() => { setActiveTab("highlights"); setShowPrintReport(false); }}
+            onClick={() => setActiveTab("highlights")}
             className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer whitespace-nowrap ${
-              activeTab === "highlights" && !showPrintReport
+              activeTab === "highlights"
                 ? "bg-[var(--card)] text-[var(--accent)] shadow-sm border border-[var(--border)]"
                 : "text-[var(--text-secondary)] hover:text-[var(--foreground)]"
             }`}
@@ -185,9 +180,9 @@ export default function BookReadingMemory({
             🌟 Highlights ({highlights.length})
           </button>
           <button
-            onClick={() => { setActiveTab("notes"); setShowPrintReport(false); }}
+            onClick={() => setActiveTab("notes")}
             className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer whitespace-nowrap ${
-              activeTab === "notes" && !showPrintReport
+              activeTab === "notes"
                 ? "bg-[var(--card)] text-[var(--accent)] shadow-sm border border-[var(--border)]"
                 : "text-[var(--text-secondary)] hover:text-[var(--foreground)]"
             }`}
@@ -195,9 +190,9 @@ export default function BookReadingMemory({
             📝 Notes ({notes.length})
           </button>
           <button
-            onClick={() => { setActiveTab("drawings"); setShowPrintReport(false); }}
+            onClick={() => setActiveTab("drawings")}
             className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer whitespace-nowrap ${
-              activeTab === "drawings" && !showPrintReport
+              activeTab === "drawings"
                 ? "bg-[var(--card)] text-[var(--accent)] shadow-sm border border-[var(--border)]"
                 : "text-[var(--text-secondary)] hover:text-[var(--foreground)]"
             }`}
@@ -207,44 +202,7 @@ export default function BookReadingMemory({
         </div>
 
         <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-6">
-          {showPrintReport ? (
-            <div className="space-y-6 print:m-0 print:p-0">
-              <div className="flex items-center justify-between pb-3 border-b border-[var(--border)]">
-                <div>
-                  <h4 className="font-serif font-bold text-lg text-[var(--foreground)]">Study Dossier &amp; Synthesis</h4>
-                  <p className="text-xs text-[var(--text-secondary)]">Complete export of your thoughts and annotations</p>
-                </div>
-                <button
-                  onClick={handlePrint}
-                  className="px-4 py-2 bg-[var(--accent)] text-black rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-md hover:opacity-90 cursor-pointer"
-                >
-                  <span>🖨️</span>
-                  <span>Print Document</span>
-                </button>
-              </div>
-
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-                <div className="p-3 bg-[var(--secondary)]/40 rounded-xl border border-[var(--border)]">
-                  <span className="text-[10px] text-[var(--text-secondary)]">Progress</span>
-                  <p className="font-bold text-[var(--foreground)]">{progress?.progress || 0}% Complete</p>
-                </div>
-                <div className="p-3 bg-[var(--secondary)]/40 rounded-xl border border-[var(--border)]">
-                  <span className="text-[10px] text-[var(--text-secondary)]">Current Position</span>
-                  <p className="font-bold text-[var(--foreground)]">Page {progress?.page || 1} of {totalPages}</p>
-                </div>
-                <div className="p-3 bg-[var(--secondary)]/40 rounded-xl border border-[var(--border)]">
-                  <span className="text-[10px] text-[var(--text-secondary)]">Reading Time</span>
-                  <p className="font-bold text-[var(--accent)]">{readingTimeFormatted} (Book Reading)</p>
-                </div>
-                <div className="p-3 bg-[var(--secondary)]/40 rounded-xl border border-[var(--border)]">
-                  <span className="text-[10px] text-[var(--text-secondary)]">Active Site Time</span>
-                  <p className="font-bold text-[var(--foreground)]">{siteActiveFormatted} (Engagement)</p>
-                </div>
-              </div>
-            </div>
-          ) : null}
-
-          {activeTab === "overview" && !showPrintReport && (
+          {activeTab === "overview" && (
             <div className="space-y-6">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
                 <div className="p-3.5 rounded-2xl bg-[var(--secondary)]/40 border border-[var(--border)]">

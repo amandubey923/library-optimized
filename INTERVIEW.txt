@@ -88,15 +88,15 @@ clouds.
 
 What Makes It Different from a Simple PDF Viewer?
 -------------------------------------------------
-| Feature | Simple PDF Viewer | Reader's HUB |
-| :--- | :--- | :--- |
-| Rendering Engine | Native browser embed/iframe | Dedicated PDF.js worker on HTML5 Canvas |
-| State Persistence | Lost on tab close | Local-first namespaced storage with in-memory caching |
-| Drawing & Notes | Flat bitmap / none | Vector-based object model with selection, drag & resize |
-| Reading Habits | No habit tracking | Diwali Diya streak (15m goal) + 53-week reading heatmap |
-| Focus System | Standard full-screen | Fullscreen + reversible countdown + exit warning guard |
-| Translation | External copy-paste | Contextual in-reader translation into Hindi & Hinglish |
-| User Privacy | Often tracks telemetries | Zero logins, zero trackers, 100% on-device calculations |
+| Feature                | Simple PDF Viewer            | Reader's HUB |
+| :---                   | :---                         | :---              |
+| Rendering Engine       | Native browser embed/iframe  | Dedicated PDF.js worker on HTML5 Canvas |
+| State Persistence      | Lost on tab close            | Local-first namespaced storage with in-memory caching |
+| Drawing & Notes        | Flat bitmap / none           | Vector-based object model with selection, drag & resize |
+| Reading Habits         | No habit tracking            | Diwali Diya streak (15m goal) + 53-week reading heatmap |
+| Focus System           | Standard full-screen         | Fullscreen + reversible countdown + exit warning guard |
+| Translation            | External copy-paste          | Contextual in-reader translation into Hindi & Hinglish |
+| User Privacy           | Often tracks telemetries     | Zero logins, zero trackers, 100% on-device calculations |
 
 Main Product Philosophy:
 ------------------------
@@ -161,19 +161,19 @@ Intentionally NOT Included:
 2. TECH STACK & VERIFIED INVENTORY
 ================================================================================
 
-| Technology | Version | Purpose in Codebase | Architectural Justification |
-| :--- | :--- | :--- | :--- |
-| Next.js | 16.2.1 | Core Framework, App Router, SSG & API routes | 377 static routes generated at build time; fast serverless API routes for AI translation and contact |
-| React & React-DOM | 19.2.4 | UI Component Engine, Context & Hooks | React 19 concurrent features, optimized reconciliation, fine-grained state management |
-| TypeScript | 5.x | Strict Type Checking & Interface Contracts | Comprehensive interfaces for Storage, Annotations, Timing, and Catalog; 0 build errors |
-| Tailwind CSS | 4.x | Utility-first Theme Styling & Animations | PostCSS v4 engine; CSS variable-driven theme system with custom keyframes |
-| @google/genai | 2.18.0 | Server-side AI Translation & Assistant | Gemini 2.5 / 3.5 multi-model fallback in API route for literary page translation |
-| pdfjs-dist | 6.2.108 | Client-side PDF Parsing & Canvas Renderer | Dedicated web worker execution; off-main-thread binary PDF decoding and canvas rasterization |
-| sharp | 0.35.3 | High-Performance Cover Image Generation | Fast C++ libvips binding used in delta ingestion scripts to generate WebP covers |
+| Technology          | Version  | Purpose in Codebase                                 | Architectural Justification |
+| :---                | :---     | :---                                                | :---                         |
+| Next.js             | 16.2.1   | Core Framework, App Router, SSG & API routes        | 377 static routes generated at build time; fast serverless API routes for AI translation and contact |
+| React & React-DOM   | 19.2.4   | UI Component Engine, Context & Hooks                | React 19 concurrent features, optimized reconciliation, fine-grained state management |
+| TypeScript          | 5.x      | Strict Type Checking & Interface Contracts          | Comprehensive interfaces for Storage, Annotations, Timing, and Catalog; 0 build errors |
+| Tailwind CSS        | 4.x      | Utility-first Theme Styling & Animations            | PostCSS v4 engine; CSS variable-driven theme system with custom keyframes |
+| @google/genai       | 2.18.0   | Server-side AI Translation & Assistant              | Gemini 2.5 / 3.5 multi-model fallback in API route for literary page translation |
+| pdfjs-dist          | 6.2.108  | Client-side PDF Parsing & Canvas Renderer | Dedicated web worker execution; off-main-thread binary PDF decoding and canvas rasterization |
+| sharp               | 0.35.3   | High-Performance Cover Image Generation | Fast C++ libvips binding used in delta ingestion scripts to generate WebP covers |
 | pdf-lib & pdf-parse | 1.17.1 / 2.4.5 | Server-side PDF Metadata & Page Extraction | Inspects unindexed PDF byte streams, extracts page counts, titles, and text layers |
-| chokidar | 5.0.0 | File Watchdog for Ingestion | Watches public/pdfs/ for hot addition of new books in development mode |
-| tsx | 4.23.12 | TypeScript Script Execution Runner | Executes standalone automation scripts (ingest-batch.ts, QA test suites) |
-| LocalStorage & Cache API | Browser Native | Client-side Persistence & Offline PDF Storage | Zero-latency reads with in-memory caching Map layer; CacheStorage for offline PDFs |
+| chokidar            | 5.0.0    | File Watchdog for Ingestion | Watches public/pdfs/ for hot addition of new books in development mode |
+| tsx                 | 4.23.12  | TypeScript Script Execution Runner | Executes standalone automation scripts (ingest-batch.ts, QA test suites) |
+| LocalStorage & Cache API       | Browser Native | Client-side Persistence & Offline PDF Storage | Zero-latency reads with in-memory caching Map layer; CacheStorage for offline PDFs |
 
 ================================================================================
 3. COMPLETE REPOSITORY FOLDER STRUCTURE

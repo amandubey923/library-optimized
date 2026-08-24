@@ -376,3 +376,72 @@
     cursor: none !important;
   }
 }
+
+/* -------------------------------------------------------------
+ * Print Stylesheet for Official Reading Report Card & Dossiers
+ * ------------------------------------------------------------- */
+@media print {
+  @page {
+    size: A4;
+    margin: 1.2cm;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #111827 !important;
+    font-size: 11pt;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Hide background elements, navigation, audio, and cursors */
+  header,
+  nav,
+  footer,
+  aside,
+  .print\:hidden,
+  #ambient-canvas,
+  .cursor-diamond-tracker {
+    display: none !important;
+  }
+
+  /* Reset modal overlays for direct document printing */
+  [role="dialog"] {
+    position: static !important;
+    inset: auto !important;
+    background: transparent !important;
+    backdrop-filter: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  [role="dialog"] > div {
+    position: static !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    max-width: 100% !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  #reading-report-card-document {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 auto !important;
+    padding: 1.5rem !important;
+    background: #ffffff !important;
+    color: #111827 !important;
+    border: 2px solid #e5e7eb !important;
+    box-shadow: none !important;
+    page-break-inside: avoid;
+  }
+}

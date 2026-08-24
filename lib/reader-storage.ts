@@ -804,6 +804,25 @@ export function saveBookAnnotations(bookId: string, annotations: BookAnnotations
   }
 }
 
+export function getAllBookAnnotations(): Record<string, BookAnnotations> {
+  const result: Record<string, BookAnnotations> = {};
+  if (typeof window === "undefined") return result;
+
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key && key.startsWith(ANNOTATIONS_KEY_PREFIX)) {
+        const bookId = key.replace(`${ANNOTATIONS_KEY_PREFIX}:`, "");
+        result[bookId] = getBookAnnotations(bookId);
+      }
+    }
+  } catch (e) {
+    console.warn("[ReaderStorage] Error retrieving all annotations:", e);
+  }
+
+  return result;
+}
+
 // -------------------------------------------------------------
 // Highlight Helpers
 // -------------------------------------------------------------

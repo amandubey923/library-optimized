@@ -10,12 +10,14 @@ import {
   AnalyticsTimeFilter,
   HeatmapCell,
 } from "@/lib/reading-analytics";
+import ReadingReportCardModal from "@/components/profile/ReadingReportCardModal";
 
 export default function ProfilePage() {
   const { streakData, stats, globalActiveSeconds, todayReadingSeconds, todayActiveSeconds } = useLibrary();
   const [timeFilter, setTimeFilter] = useState<AnalyticsTimeFilter>("all");
   const [hoveredCell, setHoveredCell] = useState<HeatmapCell | null>(null);
   const [selectedCell, setSelectedCell] = useState<HeatmapCell | null>(null);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -238,7 +240,48 @@ export default function ProfilePage() {
         </div>
 
         {/* =========================================================================
-            3. TIME FILTER & CORE STATISTICS
+            3. PROMINENT READING REPORT CARD ENTRY
+           ========================================================================= */}
+        <section 
+          className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[var(--card)] via-[var(--secondary)]/40 to-[var(--card)] border-2 border-[var(--accent)]/30 p-6 sm:p-7 shadow-xl"
+          aria-label="Reading Report Card"
+        >
+          <div className="absolute top-0 right-0 -mt-10 -mr-10 w-48 h-48 bg-[var(--accent)]/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-[var(--accent)]/15 border border-[var(--accent)]/30 flex items-center justify-center text-2xl flex-shrink-0 text-[var(--accent)] shadow-inner">
+                📊
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-[var(--accent)]">
+                    Official Document
+                  </span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 font-semibold border border-emerald-500/30">
+                    Print-Ready PDF
+                  </span>
+                </div>
+                <h2 className="text-lg sm:text-xl font-serif font-bold text-[var(--foreground)] mt-0.5">
+                  Reading Report Card
+                </h2>
+                <p className="text-xs sm:text-sm text-[var(--text-secondary)] mt-0.5">
+                  Your reading journey, beautifully summarized. Create a printable PDF of your reading habits and milestones.
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setIsReportModalOpen(true)}
+              className="px-6 py-3.5 rounded-2xl bg-[var(--accent)] hover:opacity-90 text-[var(--primary-foreground)] font-bold text-xs sm:text-sm flex items-center gap-2.5 shadow-lg shadow-[var(--theme-glow)] transition-all transform hover:scale-[1.02] cursor-pointer whitespace-nowrap self-stretch md:self-auto justify-center"
+            >
+              <span>📄</span>
+              <span>Generate Report Card</span>
+            </button>
+          </div>
+        </section>
+
+        {/* =========================================================================
+            4. TIME FILTER & CORE STATISTICS
            ========================================================================= */}
         <section aria-label="Core Statistics">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4">
@@ -813,6 +856,15 @@ export default function ProfilePage() {
         </footer>
 
       </div>
+
+      {/* =========================================================================
+          9. OFFICIAL READING REPORT CARD MODAL
+         ========================================================================= */}
+      <ReadingReportCardModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        initialFilter="month"
+      />
     </div>
   );
 }

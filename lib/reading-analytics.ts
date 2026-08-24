@@ -9,15 +9,17 @@ import {
   getReadingActivityData,
   getWebsiteActiveTimeData,
   getAllReadingMemories,
+  getAllBookAnnotations,
   getLocalDateKey,
   DAILY_READING_GOAL_SECONDS,
   ReadingStreakData,
   WebsiteActiveTimeData,
   BookReadingMemory,
+  BookAnnotations,
   ReadingProgressItem,
 } from "./reader-storage";
 
-export type AnalyticsTimeFilter = "all" | "year" | "month" | "30d" | "7d";
+export type AnalyticsTimeFilter = "all" | "year" | "month" | "30d" | "7d" | "today";
 
 export interface ProfileHeaderData {
   userTitle: string;
@@ -40,6 +42,16 @@ export interface TodaySummaryData {
   readingMinutesRemaining: number;
 }
 
+export interface DailyActivityPoint {
+  dateKey: string;
+  dayLabel: string;
+  readingSeconds: number;
+  activeSeconds: number;
+  readingMinutes: number;
+  activeMinutes: number;
+  isQualified: boolean;
+}
+
 export interface CoreStatsData {
   totalReadingSeconds: number;
   totalActiveSeconds: number;
@@ -58,6 +70,12 @@ export interface CoreStatsData {
   thisMonthReadingDays: number;
   thisMonthReadingSeconds: number;
   thisMonthActiveSeconds: number;
+  totalHighlights: number;
+  totalNotes: number;
+  totalSketches: number;
+  totalBookmarks: number;
+  totalAnnotations: number;
+  totalPagesRead: number;
 }
 
 export interface HeatmapCell {
@@ -139,6 +157,7 @@ export interface ComprehensiveAnalytics {
   mostReadBooks: RankedBookItem[];
   recentlyReadBooks: RankedBookItem[];
   readingHabits: ReadingHabitsData;
+  dailyBreakdown: DailyActivityPoint[];
   filter: AnalyticsTimeFilter;
   filterLabel: string;
 }
@@ -285,6 +304,9 @@ export function getComprehensiveAnalytics(
   const sevenDaysAgoKey = getLocalDateKey(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000));
 
   const isDateInFilter = (dateKey: string): boolean => {
+    if (filter === "today") {
+      return dateKey === todayKey;
+    }
     if (filter === "all") return true;
     if (filter === "year") {
       return dateKey.startsWith(String(currentYear) + "-");
@@ -364,7 +386,115 @@ export function getComprehensiveAnalytics(
   const avgReadingSecsPerDay = totalReadingDays > 0 ? Math.round(totalReadingSecs / totalReadingDays) : 0;
   const avgActiveSecsPerDay = totalActiveDays > 0 ? Math.round(totalActiveSecs / totalActiveDays) : 0;
 
-  // 5. Today's Summary
+  // 5. Annotations & Study Markings Totals
+  const allAnnotations = getAllBookAnnotations();
+  let totalHighlights = 0;
+  let totalNotes = 0;
+  let totalSketches = 0;
+  let totalBookmarks = 0;
+
+  Object.values(allAnnotations).forEach((ann) => {
+    totalHighlights += (ann.highlights || []).length;
+    totalNotes += (ann.notes || []).length;
+    totalBookmarks += (ann.bookmarks || []).length;
+    const dw = ann.drawings || {};
+    totalSketches += Object.keys(dw).filter((p) => (dw[Number(p)] || []).length > 0).length;
+  });
+  const totalAnnotations = totalHighlights + totalNotes + totalSketches + totalBookmarks;
+
+  let totalPagesRead = 0;
+  readingHistory.forEach((h) => {
+    totalPagesRead += h.page || 0;
+  });
+
+  // 6. Build Daily Activity Points for the Selected Filter
+  const dailyBreakdown: DailyActivityPoint[] = [];
+  const dayNamesShort = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+  if (filter === "today") {
+    const rSecs = streakData.daily[todayKey]?.seconds || 0;
+    const aSecs = Math.max(activeTimeData.daily[todayKey] || 0, rSecs);
+    dailyBreakdown.push({
+      dateKey: todayKey,
+      dayLabel: "Today",
+      readingSeconds: rSecs,
+      activeSeconds: aSecs,
+      readingMinutes: Math.round(rSecs / 60),
+      activeMinutes: Math.round(aSecs / 60),
+      isQualified: rSecs >= DAILY_READING_GOAL_SECONDS,
+    });
+  } else if (filter === "7d") {
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+      const dKey = getLocalDateKey(d);
+      const rSecs = streakData.daily[dKey]?.seconds || 0;
+      const aSecs = Math.max(activeTimeData.daily[dKey] || 0, rSecs);
+      dailyBreakdown.push({
+        dateKey: dKey,
+        dayLabel: dayNamesShort[d.getDay()],
+        readingSeconds: rSecs,
+        activeSeconds: aSecs,
+        readingMinutes: Math.round(rSecs / 60),
+        activeMinutes: Math.round(aSecs / 60),
+        isQualified: rSecs >= DAILY_READING_GOAL_SECONDS,
+      });
+    }
+  } else if (filter === "30d") {
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+      const dKey = getLocalDateKey(d);
+      const rSecs = streakData.daily[dKey]?.seconds || 0;
+      const aSecs = Math.max(activeTimeData.daily[dKey] || 0, rSecs);
+      dailyBreakdown.push({
+        dateKey: dKey,
+        dayLabel: `${d.getDate()} ${d.toLocaleString("en-US", { month: "short" })}`,
+        readingSeconds: rSecs,
+        activeSeconds: aSecs,
+        readingMinutes: Math.round(rSecs / 60),
+        activeMinutes: Math.round(aSecs / 60),
+        isQualified: rSecs >= DAILY_READING_GOAL_SECONDS,
+      });
+    }
+  } else if (filter === "month") {
+    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+    for (let day = 1; day <= daysInMonth; day++) {
+      const d = new Date(currentYear, currentMonth, day);
+      const dKey = getLocalDateKey(d);
+      const rSecs = streakData.daily[dKey]?.seconds || 0;
+      const aSecs = Math.max(activeTimeData.daily[dKey] || 0, rSecs);
+      dailyBreakdown.push({
+        dateKey: dKey,
+        dayLabel: `${day}`,
+        readingSeconds: rSecs,
+        activeSeconds: aSecs,
+        readingMinutes: Math.round(rSecs / 60),
+        activeMinutes: Math.round(aSecs / 60),
+        isQualified: rSecs >= DAILY_READING_GOAL_SECONDS,
+      });
+    }
+  } else {
+    // Year or All Time: Sorted chronological list of active days
+    const sortedKeys = Array.from(allDateKeys)
+      .filter((k) => isDateInFilter(k))
+      .sort();
+    sortedKeys.forEach((dKey) => {
+      const rSecs = streakData.daily[dKey]?.seconds || 0;
+      const aSecs = Math.max(activeTimeData.daily[dKey] || 0, rSecs);
+      const parts = dKey.split("-").map(Number);
+      const d = new Date(parts[0], parts[1] - 1, parts[2]);
+      dailyBreakdown.push({
+        dateKey: dKey,
+        dayLabel: `${d.getDate()} ${d.toLocaleString("en-US", { month: "short" })}`,
+        readingSeconds: rSecs,
+        activeSeconds: aSecs,
+        readingMinutes: Math.round(rSecs / 60),
+        activeMinutes: Math.round(aSecs / 60),
+        isQualified: rSecs >= DAILY_READING_GOAL_SECONDS,
+      });
+    });
+  }
+
+  // 7. Today's Summary
   const todayReadingSecs = streakData.daily[todayKey]?.seconds || 0;
   const todayActiveSecs = Math.max(activeTimeData.daily[todayKey] || 0, todayReadingSecs);
   const isTodayQualified = Boolean(
@@ -382,7 +512,7 @@ export function getComprehensiveAnalytics(
   });
   if (todayReadingSecs > 0 && todayBooksCount === 0) todayBooksCount = 1;
 
-  // 6. Build Heatmap (Full 52/53 Weeks Grid for Calendar Year)
+  // 8. Build Heatmap (Full 52/53 Weeks Grid for Calendar Year)
   const heatmapYear = currentYear;
   const startDate = new Date(heatmapYear, 0, 1);
   const endDate = new Date(heatmapYear, 11, 31);
@@ -405,13 +535,6 @@ export function getComprehensiveAnalytics(
     const aSecs = Math.max(activeTimeData.daily[dateKey] || 0, rSecs);
     if (rSecs > maxDailyReading) maxDailyReading = rSecs;
 
-    // Intensity scale strictly by READING TIME:
-    // 0: 0m
-    // 1: 1–14m
-    // 2: 15–29m (Diya qualified threshold!)
-    // 3: 30–59m
-    // 4: 60–119m
-    // 5: 120m+
     let intensity: 0 | 1 | 2 | 3 | 4 | 5 = 0;
     if (rSecs >= 120 * 60) intensity = 5;
     else if (rSecs >= 60 * 60) intensity = 4;
@@ -448,7 +571,7 @@ export function getComprehensiveAnalytics(
     if (currentGridDate > endDate && currentWeek.length === 0) break;
   }
 
-  // 7. Monthly Journey Breakdown
+  // 9. Monthly Journey Breakdown
   const monthlyMap = new Map<string, {
     readingDays: number;
     readingSecs: number;
@@ -503,11 +626,10 @@ export function getComprehensiveAnalytics(
     })
     .sort((a, b) => b.monthKey.localeCompare(a.monthKey)); // Newest month first
 
-  // 8. Favorite Genre & Category Breakdown
+  // 10. Favorite Genre & Category Breakdown
   const categorySecondsMap = new Map<string, { seconds: number; booksSet: Set<string> }>();
   let totalGenreReadingSecs = 0;
 
-  // Attribute reading memories to book categories
   Object.entries(readingMemories).forEach(([bId, mem]) => {
     const book = BOOKS.find((b) => b.id === bId);
     if (book && mem.totalSeconds > 0) {
@@ -522,7 +644,6 @@ export function getComprehensiveAnalytics(
     }
   });
 
-  // Fallback: If memories don't have reading seconds, check reading history
   if (categorySecondsMap.size === 0 && readingHistory.length > 0) {
     readingHistory.forEach((item) => {
       const book = BOOKS.find((b) => b.id === item.bookId);
@@ -547,7 +668,7 @@ export function getComprehensiveAnalytics(
 
   const favoriteGenre: FavoriteGenreItem | null = genreBreakdown.length > 0 ? genreBreakdown[0] : null;
 
-  // 9. Ranked Most Read Books
+  // 11. Ranked Most Read Books
   const rankedBooksMap = new Map<string, RankedBookItem>();
 
   BOOKS.forEach((book) => {
@@ -584,7 +705,7 @@ export function getComprehensiveAnalytics(
     .sort((a, b) => b.lastReadAt - a.lastReadAt)
     .slice(0, 6);
 
-  // 10. Reading Habits (Day of Week & Sessions)
+  // 12. Reading Habits (Day of Week & Sessions)
   const dayOfWeekReadingSecs = [0, 0, 0, 0, 0, 0, 0]; // Sun..Sat
   const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   let totalHabitReadingSecs = 0;
@@ -644,11 +765,12 @@ export function getComprehensiveAnalytics(
   };
 
   const filterLabels: Record<AnalyticsTimeFilter, string> = {
-    all: "All Time",
-    year: "This Year",
-    month: "This Month",
-    "30d": "Last 30 Days",
+    today: "Today",
     "7d": "Last 7 Days",
+    "30d": "Last 30 Days",
+    month: "This Month",
+    year: "This Year",
+    all: "All Time",
   };
 
   return {
@@ -683,6 +805,12 @@ export function getComprehensiveAnalytics(
       thisMonthReadingDays,
       thisMonthReadingSeconds: thisMonthReadingSecs,
       thisMonthActiveSeconds: thisMonthActiveSecs,
+      totalHighlights,
+      totalNotes,
+      totalSketches,
+      totalBookmarks,
+      totalAnnotations,
+      totalPagesRead,
     },
     heatmap: {
       weeks,
@@ -697,6 +825,7 @@ export function getComprehensiveAnalytics(
     mostReadBooks,
     recentlyReadBooks,
     readingHabits,
+    dailyBreakdown,
     filter,
     filterLabel: filterLabels[filter],
   };
