@@ -35,6 +35,14 @@ import {
   clearAllOfflineBooks as purgeAllOfflineBooks,
   factoryResetAllData as purgeFactoryResetAll,
 } from "@/lib/reader-storage";
+import { useAuth } from "@/context/AuthContext";
+import {
+  syncUserProfile,
+  fetchCloudUserData,
+  syncReadingProgressToCloud,
+  syncFavoriteToCloud,
+  migrateLocalStateToCloud,
+} from "@/lib/firestore-sync";
 
 export interface ReadingProgressItem {
   bookId: string;
@@ -256,6 +264,81 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     setMounted(true);
   }, [refreshStats]);
 
+  const { user } = useAuth();
+
+  // Synchronize with Firebase Firestore on authentication state changes
+  useEffect(() => {
+    if (!user) return;
+
+    // 1. Sync User Profile document
+    syncUserProfile(user);
+
+    // 2. Fetch and merge Cloud Data with local cache
+    const syncCloudData = async () => {
+      const cloudData = await fetchCloudUserData(user.uid);
+
+      // Merge Cloud Favorites into Local State
+      if (cloudData.favorites.length > 0) {
+        setFavorites((prev) => {
+          const union = Array.from(new Set([...prev, ...cloudData.favorites]));
+          try {
+            localStorage.setItem(FAVORITES_KEY, JSON.stringify(union));
+          } catch (e) {}
+          return union;
+        });
+      }
+
+      // Merge Cloud Reading Progress into Local State
+      if (Object.keys(cloudData.progress).length > 0) {
+        setReadingHistory((prev) => {
+          const progressMap = new Map(prev.map((item) => [item.bookId, item]));
+          for (const [bookId, cloudPage] of Object.entries(cloudData.progress)) {
+            const numPage: number = typeof cloudPage === "number" ? cloudPage : 1;
+            const existing = progressMap.get(bookId);
+            if (existing) {
+              const maxPage = Math.max(existing.page, numPage);
+              progressMap.set(bookId, {
+                ...existing,
+                page: maxPage,
+                progress: existing.totalPages ? Math.round((maxPage / existing.totalPages) * 100) : existing.progress,
+              });
+            } else {
+              const book = BOOKS.find((b) => b.id === bookId);
+              const totalPages: number = typeof book?.pages === "number" ? book.pages : Number(book?.pages) || 100;
+              progressMap.set(bookId, {
+                bookId,
+                page: numPage,
+                totalPages,
+                progress: Math.round((numPage / totalPages) * 100),
+                lastReadAt: Date.now(),
+              });
+            }
+          }
+          const mergedList = Array.from(progressMap.values());
+          try {
+            localStorage.setItem(HISTORY_KEY, JSON.stringify(mergedList));
+          } catch (e) {}
+          return mergedList;
+        });
+      }
+
+      // Migrate existing local guest data to cloud on login
+      try {
+        const currentFavs = JSON.parse(localStorage.getItem(FAVORITES_KEY) || "[]");
+        const currentProgRaw: ReadingProgressItem[] = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+        const progMap: Record<string, number> = {};
+        currentProgRaw.forEach((i) => {
+          if (i && i.bookId && typeof i.page === "number") {
+            progMap[i.bookId] = i.page;
+          }
+        });
+        await migrateLocalStateToCloud(user.uid, currentFavs, progMap);
+      } catch (e) {}
+    };
+
+    syncCloudData();
+  }, [user]);
+
   const showToast = useCallback((msg: string) => {
     setToastMessage(msg);
     setTimeout(() => {
@@ -286,13 +369,17 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       return updated;
     });
 
+    if (user) {
+      syncFavoriteToCloud(user.uid, bookId, wasAdded);
+    }
+
     if (wasAdded) {
       showToast(`Saved "${bookTitle}" to favorites ❤️`);
     } else {
       showToast(`Removed "${bookTitle}" from shelf`);
     }
     refreshStats();
-  }, [refreshStats, showToast]);
+  }, [refreshStats, showToast, user]);
 
   const removeFavorite = useCallback((bookId: string) => {
     setFavorites((prev) => {
@@ -304,17 +391,25 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       }
       return updated;
     });
+    if (user) {
+      syncFavoriteToCloud(user.uid, bookId, false);
+    }
     refreshStats();
-  }, [refreshStats]);
+  }, [refreshStats, user]);
 
   const isFavorite = useCallback((bookId: string) => favorites.includes(bookId), [favorites]);
 
   const recordReading = useCallback((bookId: string, page = 1, totalPages = 100) => {
     let hasChanged = false;
+    let finalPage = page;
+    let finalTotal = totalPages;
+
     setReadingHistory((prev) => {
       const existing = prev.find((item) => item.bookId === bookId);
       const curPage = page > 1 ? page : (existing ? existing.page : 1);
       const curTotal = totalPages || (existing ? existing.totalPages : 100);
+      finalPage = curPage;
+      finalTotal = curTotal;
       const progress = Math.min(100, Math.max(5, Math.round((curPage / curTotal) * 100)));
 
       // Avoid unnecessary state update if progress, page, and totalPages are identical
@@ -346,10 +441,14 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       return updated;
     });
 
+    if (user) {
+      syncReadingProgressToCloud(user.uid, bookId, finalPage, finalTotal);
+    }
+
     if (hasChanged) {
       refreshStats();
     }
-  }, [refreshStats]);
+  }, [refreshStats, user]);
 
   const updateReadingProgress = useCallback((bookId: string, page: number, totalPages?: number) => {
     recordReading(bookId, page, totalPages);
