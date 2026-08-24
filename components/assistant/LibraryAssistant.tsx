@@ -133,8 +133,10 @@ export default function LibraryAssistant() {
 
   return (
     <>
-      {/* Floating Library Assistant Trigger Button */}
-      <div className="fixed bottom-6 right-6 z-40">
+      {/* -------------------------------------------------------------
+       * Desktop Floating Library Assistant Trigger Button
+       * ------------------------------------------------------------- */}
+      <div className="hidden sm:block fixed bottom-6 right-6 z-40">
         <button
           onClick={() => setIsOpen(!isOpen)}
           className={`group relative flex items-center gap-2.5 px-4 py-3 rounded-full glass-card border border-[var(--border)] hover:border-[var(--accent)] text-[var(--foreground)] shadow-2xl transition-all duration-300 hover:scale-105 cursor-pointer backdrop-blur-xl ${
@@ -159,7 +161,7 @@ export default function LibraryAssistant() {
             </svg>
           </div>
 
-          <div className="text-left hidden sm:block">
+          <div className="text-left">
             <div className="text-xs font-bold leading-tight tracking-wide flex items-center gap-1.5">
               <span>Library Assistant</span>
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -176,39 +178,82 @@ export default function LibraryAssistant() {
         </button>
       </div>
 
-      {/* Floating Chat Modal Panel */}
+      {/* -------------------------------------------------------------
+       * Mobile Phone Floating AI Assistant Trigger Button (sm:hidden)
+       * Clear "AI" label, recognizable sparkle icon, compact & fitted
+       * ------------------------------------------------------------- */}
+      <div className="block sm:hidden fixed bottom-4 right-4 z-40">
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className={`group relative flex items-center gap-2 px-3 py-2 rounded-full glass-card border border-[var(--accent)]/40 bg-[var(--card)]/95 shadow-xl text-[var(--foreground)] transition-transform active:scale-95 cursor-pointer backdrop-blur-xl ${
+            isOpen ? "border-[var(--accent)] shadow-[0_0_15px_var(--theme-glow)] ring-1 ring-[var(--accent)]" : ""
+          }`}
+          aria-label="Open Reader's HUB AI Assistant"
+          aria-expanded={isOpen}
+        >
+          {/* Subtle Ambient Pulse */}
+          <span
+            className="absolute -inset-0.5 rounded-full opacity-35 transition-opacity blur-xs pointer-events-none"
+            style={{
+              background: "radial-gradient(circle, var(--accent) 0%, transparent 70%)",
+            }}
+          />
+
+          {/* Bold AI Badge */}
+          <span className="relative px-1.5 py-0.5 rounded-md bg-gradient-to-r from-[var(--primary)] to-[var(--accent)] text-[var(--primary-foreground)] text-[10px] font-black tracking-wider uppercase shadow-xs">
+            AI
+          </span>
+
+          {/* Sparkle Icon + Label */}
+          <div className="relative flex items-center gap-1 text-[11px] font-bold text-[var(--foreground)] pr-0.5">
+            <span>Assistant</span>
+            <span className="text-xs text-[var(--accent)]">✨</span>
+          </div>
+
+          {/* Unread notification pip */}
+          {hasUnread && !isOpen && (
+            <span className="absolute -top-1 -right-1 w-3 h-3 bg-[var(--accent)] border-2 border-[var(--background)] rounded-full shadow-xs" />
+          )}
+        </button>
+      </div>
+
+      {/* -------------------------------------------------------------
+       * Floating Chat Modal Panel
+       * Desktop: Fixed right-6 bottom-20 (410px width)
+       * Mobile: inset-x-3 bottom-16, perfectly fitted, zero overflow
+       * ------------------------------------------------------------- */}
       {isOpen && (
-        <div className="fixed bottom-20 right-4 sm:right-6 w-[calc(100vw-2rem)] sm:w-[410px] max-h-[82vh] h-[580px] rounded-3xl glass-panel shadow-2xl z-50 flex flex-col overflow-hidden animate-scale-up border border-[var(--border)]">
+        <div className="fixed inset-x-3 bottom-16 sm:inset-auto sm:bottom-20 sm:right-6 w-auto sm:w-[410px] max-h-[75dvh] sm:max-h-[82vh] h-[480px] sm:h-[580px] rounded-2xl sm:rounded-3xl glass-panel shadow-2xl z-50 flex flex-col overflow-hidden animate-scale-up border border-[var(--border)] max-w-full">
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3.5 border-b border-[var(--border)] bg-[var(--card)]/90 backdrop-blur-xl">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-[var(--primary)] to-[var(--accent-secondary)] flex items-center justify-center text-[var(--primary-foreground)] shadow-md">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="flex items-center justify-between px-3.5 sm:px-4 py-2.5 sm:py-3.5 border-b border-[var(--border)] bg-[var(--card)]/90 backdrop-blur-xl flex-shrink-0">
+            <div className="flex items-center gap-2.5 sm:gap-3">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl sm:rounded-2xl bg-gradient-to-tr from-[var(--primary)] to-[var(--accent-secondary)] flex items-center justify-center text-[var(--primary-foreground)] shadow-md flex-shrink-0">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                 </svg>
               </div>
-              <div className="text-left">
-                <h3 className="text-xs font-bold text-[var(--foreground)] tracking-wide">
+              <div className="text-left min-w-0">
+                <h3 className="text-xs font-bold text-[var(--foreground)] tracking-wide truncate">
                   Reader&#39;s HUB Assistant
                 </h3>
                 <p className="text-[10px] text-[var(--text-secondary)] flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                  <span>Library Grounded AI</span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 flex-shrink-0" />
+                  <span className="truncate">Library Grounded AI</span>
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 flex-shrink-0">
               <button
                 onClick={() => setMessages(INITIAL_MESSAGES)}
-                className="p-1.5 rounded-lg text-[var(--text-secondary)] hover:text-[var(--foreground)] hover:bg-[var(--secondary)] transition-colors text-xs"
+                className="p-1.5 rounded-lg text-[var(--text-secondary)] hover:text-[var(--foreground)] hover:bg-[var(--secondary)] transition-colors text-xs cursor-pointer"
                 title="Reset conversation"
               >
                 ↺
               </button>
               <button
                 onClick={() => setIsOpen(false)}
-                className="p-1.5 rounded-lg text-[var(--text-secondary)] hover:text-[var(--foreground)] hover:bg-[var(--secondary)] transition-colors"
+                className="p-1.5 rounded-lg text-[var(--text-secondary)] hover:text-[var(--foreground)] hover:bg-[var(--secondary)] transition-colors cursor-pointer"
                 aria-label="Close Assistant"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -219,7 +264,7 @@ export default function LibraryAssistant() {
           </div>
 
           {/* Messages Feed */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs">
+          <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-3 sm:space-y-4 text-xs min-h-0">
             {messages.map((msg) => {
               const isUser = msg.sender === "user";
               return (
@@ -229,7 +274,7 @@ export default function LibraryAssistant() {
                 >
                   {/* Bubble */}
                   <div
-                    className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 leading-relaxed shadow-sm ${
+                    className={`max-w-[88%] sm:max-w-[85%] rounded-2xl px-3 sm:px-3.5 py-2 sm:py-2.5 leading-relaxed shadow-sm ${
                       isUser
                         ? "bg-[var(--primary)] text-[var(--primary-foreground)] rounded-br-xs font-medium text-left"
                         : "bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] rounded-bl-xs text-left"
@@ -250,15 +295,15 @@ export default function LibraryAssistant() {
                           return (
                             <div
                               key={b.id}
-                              className="flex items-center gap-3 p-2.5 rounded-2xl bg-[var(--card)]/90 border border-[var(--border)] hover:border-[var(--accent)]/40 transition-all shadow-sm"
+                              className="flex items-center gap-2.5 sm:gap-3 p-2 sm:p-2.5 rounded-xl sm:rounded-2xl bg-[var(--card)]/90 border border-[var(--border)] hover:border-[var(--accent)]/40 transition-all shadow-sm w-full min-w-0"
                             >
-                              <div className="relative w-11 h-16 rounded-lg overflow-hidden flex-shrink-0 bg-[var(--muted)] shadow-inner">
+                              <div className="relative w-9 h-14 sm:w-11 sm:h-16 rounded-lg overflow-hidden flex-shrink-0 bg-[var(--muted)] shadow-inner">
                                 <Image
                                   src={b.cover}
                                   alt={b.title}
                                   fill
                                   className="object-cover"
-                                  sizes="50px"
+                                  sizes="44px"
                                 />
                               </div>
                               <div className="min-w-0 flex-1 text-left">
@@ -268,23 +313,23 @@ export default function LibraryAssistant() {
                                 <p className="text-[10px] text-[var(--text-secondary)] truncate">
                                   by {b.author}
                                 </p>
-                                <div className="flex items-center gap-2 mt-1">
-                                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-[var(--secondary)] text-[var(--accent)] font-bold">
+                                <div className="flex items-center gap-1.5 mt-0.5 sm:mt-1">
+                                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-[var(--secondary)] text-[var(--accent)] font-bold truncate max-w-[90px]">
                                     {b.category}
                                   </span>
-                                  <span className="text-[9px] text-[var(--text-secondary)]">
+                                  <span className="text-[9px] text-[var(--text-secondary)] flex-shrink-0">
                                     ★ {b.rating}
                                   </span>
                                 </div>
                               </div>
 
-                              <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+                              <div className="flex flex-col items-end gap-1 flex-shrink-0">
                                 <Link
                                   href={`/book/${b.id}`}
                                   onClick={() => setIsOpen(false)}
-                                  className="px-2.5 py-1 rounded-lg bg-[var(--primary)] hover:opacity-90 text-[var(--primary-foreground)] font-bold text-[10px] transition-transform hover:scale-105 shadow-xs"
+                                  className="px-2 sm:px-2.5 py-1 rounded-lg bg-[var(--primary)] hover:opacity-90 text-[var(--primary-foreground)] font-bold text-[10px] transition-transform hover:scale-105 shadow-xs"
                                 >
-                                  Read Now ↗
+                                  Read ↗
                                 </Link>
                                 <button
                                   onClick={() => toggleFavorite(b.id)}
@@ -338,7 +383,7 @@ export default function LibraryAssistant() {
           </div>
 
           {/* Input Footer */}
-          <div className="p-3 border-t border-[var(--border)] bg-[var(--card)]/90 backdrop-blur-xl">
+          <div className="p-2.5 sm:p-3 border-t border-[var(--border)] bg-[var(--card)]/90 backdrop-blur-xl flex-shrink-0">
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -354,12 +399,12 @@ export default function LibraryAssistant() {
                 rows={1}
                 placeholder="Ask about books, authors, or categories..."
                 disabled={isLoading}
-                className="w-full bg-transparent px-2.5 py-1.5 text-xs text-[var(--foreground)] placeholder-[var(--text-secondary)] focus:outline-hidden resize-none max-h-24 min-h-[32px]"
+                className="w-full bg-transparent px-2 sm:px-2.5 py-1.5 text-xs text-[var(--foreground)] placeholder-[var(--text-secondary)] focus:outline-hidden resize-none max-h-20 sm:max-h-24 min-h-[32px]"
               />
               <button
                 type="submit"
                 disabled={!input.trim() || isLoading}
-                className={`p-2 rounded-xl text-xs font-semibold flex items-center justify-center transition-all cursor-pointer ${
+                className={`p-2 rounded-xl text-xs font-semibold flex items-center justify-center transition-all cursor-pointer flex-shrink-0 ${
                   input.trim() && !isLoading
                     ? "bg-[var(--primary)] text-[var(--primary-foreground)] shadow-sm hover:scale-105"
                     : "bg-[var(--muted)] text-[var(--text-secondary)] opacity-50 cursor-not-allowed"

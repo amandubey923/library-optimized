@@ -88,6 +88,13 @@ export default function SearchModal({ isOpen, onClose }: SearchModalProps) {
         icon: "🪔",
         href: "/favorites?tab=stats",
       },
+      {
+        id: "action-contact",
+        title: "Contact & Reader Feedback",
+        subtitle: "Send recommendations or feedback to Aman",
+        icon: "✉️",
+        href: "/contact",
+      },
     ];
     return actions;
   }, [lastReadBook, readingHistory, favorites]);

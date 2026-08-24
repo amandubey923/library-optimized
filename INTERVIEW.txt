@@ -666,10 +666,10 @@ kar sakta hai.
 
 Complete Storage Inventory:
 ---------------------------
-| Storage Key | Data Structure | Purpose | Cache Layer |
-| :--- | :--- | :--- | :--- |
-| readershub:reading-activity:v1 | ReadingStreakData (daily record map of seconds & qualified boolean) | Daily reading time T, current streak, longest streak | Memory Map |
-| readershub:active-time:v1 | WebsiteActiveTimeData (totalActive, daily active & exploration maps) | Total composite active website usage telemetry | Memory Map |
+| Storage Key                         | Data Structure | Purpose | Cache Layer |
+| :---                                | :--- | :--- | :--- |
+| readershub:reading-activity:v1      | ReadingStreakData (daily record map of seconds & qualified boolean) | Daily reading time T, current streak, longest streak | Memory Map |
+| readershub:active-time:v1       | WebsiteActiveTimeData (totalActive, daily active & exploration maps) | Total composite active website usage telemetry | Memory Map |
 | readershub:progress:v1:<bookId> | ReadingProgressData ({ page, totalPages, progress, lastReadAt }) | Last read page position and progress percentage | progressCache |
 | readershub:annotations:v1:<bookId> | BookAnnotations ({ highlights, notes, drawings, bookmarks }) | All vector strokes, highlights and margin notes | annotationsCache |
 | readershub:bookmarks:v1:<bookId> | BookmarkItem[] | Dedicated bookmark list for fast drawer retrieval | bookmarksCache |
