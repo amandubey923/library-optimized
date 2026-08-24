@@ -286,6 +286,10 @@ export default function BookReader({ book }: BookReaderProps) {
   const lastTapTimeRef = useRef<number>(0);
   const isPinchingRef = useRef<boolean>(false);
   const isPanningRef = useRef<boolean>(false);
+  const panRafRef = useRef<number | null>(null);
+  const pendingPanRef = useRef<{ x: number; y: number } | null>(null);
+  const pendingScaleRef = useRef<number | null>(null);
+  const targetZoomRef = useRef<number>(100);
 
   // Fullscreen Integrated Cursor Position
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number; visible: boolean }>({
@@ -1559,6 +1563,7 @@ export default function BookReader({ book }: BookReaderProps) {
       const t2 = e.touches[1];
       touchStartDistRef.current = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
       touchStartZoomRef.current = prefs.zoom;
+      targetZoomRef.current = prefs.zoom;
       touchStartPanRef.current = { ...panOffset };
     } else if (e.touches.length === 1) {
       const touch = e.touches[0];
@@ -1580,9 +1585,17 @@ export default function BookReader({ book }: BookReaderProps) {
       const t2 = e.touches[1];
       const dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
       const ratio = dist / touchStartDistRef.current;
-      setInteractiveScale(ratio);
-      const targetZoom = Math.min(250, Math.max(70, Math.round(touchStartZoomRef.current * ratio)));
-      updatePref("zoom", targetZoom);
+      pendingScaleRef.current = ratio;
+      targetZoomRef.current = Math.min(250, Math.max(70, Math.round(touchStartZoomRef.current * ratio)));
+
+      if (!panRafRef.current) {
+        panRafRef.current = requestAnimationFrame(() => {
+          if (pendingScaleRef.current !== null) {
+            setInteractiveScale(pendingScaleRef.current);
+          }
+          panRafRef.current = null;
+        });
+      }
     } else if (e.touches.length === 1 && isPanningRef.current && touchStartPosRef.current && prefs.zoom > 100) {
       const touch = e.touches[0];
       const dx = touch.clientX - touchStartPosRef.current.x;
@@ -1590,10 +1603,19 @@ export default function BookReader({ book }: BookReaderProps) {
       const zoomFactor = prefs.zoom / 100;
       const maxPanX = Math.max(60, (pageCanvasSize.width * zoomFactor - pageCanvasSize.width) / 2 + 60);
       const maxPanY = Math.max(60, (pageCanvasSize.height * zoomFactor - pageCanvasSize.height) / 2 + 60);
-      setPanOffset({
-        x: Math.max(-maxPanX, Math.min(maxPanX, touchStartPanRef.current.x + dx)),
-        y: Math.max(-maxPanY, Math.min(maxPanY, touchStartPanRef.current.y + dy)),
-      });
+
+      const newX = Math.max(-maxPanX, Math.min(maxPanX, touchStartPanRef.current.x + dx));
+      const newY = Math.max(-maxPanY, Math.min(maxPanY, touchStartPanRef.current.y + dy));
+      pendingPanRef.current = { x: newX, y: newY };
+
+      if (!panRafRef.current) {
+        panRafRef.current = requestAnimationFrame(() => {
+          if (pendingPanRef.current) {
+            setPanOffset(pendingPanRef.current);
+          }
+          panRafRef.current = null;
+        });
+      }
     }
   };
 
@@ -1601,8 +1623,18 @@ export default function BookReader({ book }: BookReaderProps) {
     if (isStudyMode) return;
 
     if (e.touches.length === 0) {
+      if (panRafRef.current) {
+        cancelAnimationFrame(panRafRef.current);
+        panRafRef.current = null;
+      }
       setIsPinching(false);
       setInteractiveScale(1);
+
+      // Commit final zoom once after gesture finishes so PDF.js re-renders crisp canvas only on lift
+      if (isPinchingRef.current && targetZoomRef.current !== prefs.zoom) {
+        updatePref("zoom", targetZoomRef.current);
+      }
+
       const now = Date.now();
       if (now - lastTapTimeRef.current < 320) {
         if (prefs.zoom > 100) {
@@ -3198,7 +3230,7 @@ export default function BookReader({ book }: BookReaderProps) {
                   className="relative origin-center will-change-transform flex items-center justify-center"
                   style={{
                     transform: `scale(${interactiveScale}) translate3d(${panOffset.x}px, ${panOffset.y}px, 0)`,
-                    transition: isPinching ? "none" : "transform 0.08s ease-out",
+                    transition: (isPinching || isPanningRef.current) ? "none" : "transform 0.12s cubic-bezier(0.2, 0, 0, 1)",
                   }}
                 >
                   <canvas ref={canvasSingleRef} className="block max-w-none h-auto object-contain rounded-sm" />

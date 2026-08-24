@@ -32,7 +32,7 @@ console.log("  ✅ [PASS] Mobile PDF rendering uses full width-fit for large, re
 // Test 6: Pinch-to-zoom support on touch phones
 assert(readerContent.includes("isPinchingRef.current = true"), "Must detect 2-finger touch for pinch-to-zoom");
 assert(readerContent.includes("Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY)"), "Must calculate Euclidean distance between touch points");
-assert(readerContent.includes("targetZoom = Math.min(250, Math.max(70"), "Must clamp zoom range comfortably between 70% and 250%");
+assert(readerContent.includes("targetZoomRef.current = Math.min(250, Math.max(70"), "Must clamp zoom range comfortably between 70% and 250%");
 console.log("  ✅ [PASS] Natural two-finger pinch-to-zoom gesture verified");
 
 // Test 7: Double tap zoom reset / quick zoom
