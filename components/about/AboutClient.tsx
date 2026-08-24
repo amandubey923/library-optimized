@@ -309,36 +309,38 @@ export default function AboutClient({ totalBooks, totalCategories }: AboutClient
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-5 w-full">
+        <div className="grid grid-cols-2 md:grid-cols-2 gap-2.5 sm:gap-5 w-full">
           {platformPillars.map((pillar) => (
             <div
               key={pillar.step}
-              className="p-5 sm:p-7 rounded-2xl glass-panel border border-[var(--border)] hover:border-[var(--accent)]/60 transition-all duration-300 space-y-2.5 sm:space-y-3 relative group bg-[var(--card)]/75 hover:-translate-y-1 hover:shadow-[0_12px_30px_-10px_var(--theme-glow)] overflow-hidden"
+              className="p-3 sm:p-7 rounded-xl sm:rounded-2xl glass-panel border border-[var(--border)] hover:border-[var(--accent)]/60 transition-all duration-300 space-y-1.5 sm:space-y-3 relative group bg-[var(--card)]/75 hover:-translate-y-1 hover:shadow-[0_12px_30px_-10px_var(--theme-glow)] overflow-hidden flex flex-col justify-between"
             >
               <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[var(--accent)]/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <span className="text-xl sm:text-2xl group-hover:scale-110 transition-transform duration-300">{pillar.icon}</span>
-                  <span className="text-[10px] font-extrabold uppercase tracking-widest text-[var(--accent)]">
-                    {pillar.step} — {pillar.tag}
-                  </span>
+              <div className="space-y-1 sm:space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
+                    <span className="text-base sm:text-2xl group-hover:scale-110 transition-transform duration-300 flex-shrink-0">{pillar.icon}</span>
+                    <span className="text-[8px] sm:text-[10px] font-extrabold uppercase tracking-wider sm:tracking-widest text-[var(--accent)] truncate">
+                      {pillar.step} — {pillar.tag}
+                    </span>
+                  </div>
                 </div>
+
+                <h3 className="text-xs sm:text-lg font-bold font-serif text-[var(--foreground)] group-hover:text-[var(--accent)] transition-colors leading-tight">
+                  {pillar.title}
+                </h3>
+
+                <p className="text-[10px] sm:text-xs text-[var(--text-secondary)] leading-snug sm:leading-relaxed font-normal line-clamp-3 sm:line-clamp-none">
+                  {pillar.description}
+                </p>
               </div>
 
-              <h3 className="text-base sm:text-lg font-bold font-serif text-[var(--foreground)] group-hover:text-[var(--accent)] transition-colors">
-                {pillar.title}
-              </h3>
-
-              <p className="text-xs text-[var(--text-secondary)] leading-relaxed font-normal">
-                {pillar.description}
-              </p>
-
-              <div className="pt-1 flex flex-wrap gap-1.5">
+              <div className="pt-1 flex flex-wrap gap-1 sm:gap-1.5">
                 {pillar.highlights.map((h, i) => (
                   <span
                     key={i}
-                    className="px-2.5 py-1 rounded-lg bg-[var(--secondary)] text-[var(--foreground)] text-[10px] font-medium border border-[var(--border)] group-hover:border-[var(--accent)]/30 transition-colors"
+                    className="px-1.5 sm:px-2.5 py-0.5 sm:py-1 rounded sm:rounded-lg bg-[var(--secondary)] text-[var(--foreground)] text-[8px] sm:text-[10px] font-medium border border-[var(--border)] group-hover:border-[var(--accent)]/30 transition-colors truncate max-w-full"
                   >
                     ✓ {h}
                   </span>
@@ -366,35 +368,35 @@ export default function AboutClient({ totalBooks, totalCategories }: AboutClient
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4 w-full">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 w-full">
           {technologies.map((tech) => (
             <div
               key={tech.name}
-              className="p-4 sm:p-5 rounded-2xl glass-card border border-[var(--border)] hover:border-[var(--accent)]/60 transition-all duration-300 space-y-3 bg-[var(--card)]/80 hover:scale-[1.02] hover:shadow-[0_10px_25px_-8px_var(--theme-glow)] flex flex-col justify-between group"
+              className="p-2.5 sm:p-5 rounded-xl sm:rounded-2xl glass-card border border-[var(--border)] hover:border-[var(--accent)]/60 transition-all duration-300 space-y-2 sm:space-y-3 bg-[var(--card)]/80 hover:scale-[1.02] hover:shadow-[0_10px_25px_-8px_var(--theme-glow)] flex flex-col justify-between group"
             >
-              <div className="space-y-2.5">
-                <div className="flex items-center justify-between">
-                  <div className="w-10 h-10 rounded-xl bg-[var(--secondary)] flex items-center justify-center font-bold text-xs group-hover:scale-110 transition-transform shadow-sm border border-[var(--border)] group-hover:border-[var(--accent)]/40 flex-shrink-0">
+              <div className="space-y-1.5 sm:space-y-2.5">
+                <div className="flex items-center justify-between gap-1">
+                  <div className="w-7 h-7 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-[var(--secondary)] flex items-center justify-center font-bold text-xs group-hover:scale-110 transition-transform shadow-sm border border-[var(--border)] group-hover:border-[var(--accent)]/40 flex-shrink-0 [&>svg]:w-3.5 [&>svg]:h-3.5 sm:[&>svg]:w-6 sm:[&>svg]:h-6">
                     {tech.iconSvg}
                   </div>
-                  <span className="text-[9px] uppercase font-bold text-[var(--text-secondary)] tracking-wider px-2 py-0.5 rounded bg-[var(--background)] border border-[var(--border)]">
+                  <span className="text-[7.5px] sm:text-[9px] uppercase font-bold text-[var(--text-secondary)] tracking-tight sm:tracking-wider px-1.5 sm:px-2 py-0.5 rounded bg-[var(--background)] border border-[var(--border)] truncate max-w-[60%] text-right">
                     {tech.category}
                   </span>
                 </div>
 
-                <h3 className="text-sm font-bold text-[var(--foreground)] group-hover:text-[var(--accent)] transition-colors">
+                <h3 className="text-xs sm:text-sm font-bold text-[var(--foreground)] group-hover:text-[var(--accent)] transition-colors leading-tight">
                   {tech.name}
                 </h3>
 
-                <div className="space-y-1 text-[11px] leading-relaxed">
-                  <p className="text-[var(--text-secondary)]">
+                <div className="space-y-0.5 sm:space-y-1 text-[9.5px] sm:text-[11px] leading-snug sm:leading-relaxed">
+                  <p className="text-[var(--text-secondary)] line-clamp-3 sm:line-clamp-none">
                     <strong className="text-[var(--foreground)] font-semibold">Why: </strong>
                     {tech.why}
                   </p>
                 </div>
               </div>
 
-              <div className="pt-2 border-t border-[var(--border)] text-[10.5px] text-[var(--accent)] font-medium leading-normal">
+              <div className="pt-1.5 sm:pt-2 border-t border-[var(--border)] text-[9px] sm:text-[10.5px] text-[var(--accent)] font-medium leading-snug sm:leading-normal line-clamp-3 sm:line-clamp-none">
                 <strong className="text-[var(--foreground)] font-semibold">Benefit: </strong>
                 {tech.benefit}
               </div>
