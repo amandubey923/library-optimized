@@ -259,9 +259,9 @@ export default function FavoritesPage() {
   };
 
   return (
-    <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-20 sm:pt-24 pb-16 text-left overflow-x-clip">
+    <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 sm:pt-24 pb-16 text-left min-w-0 overflow-x-hidden">
       {/* Header */}
-      <div className="mb-6 sm:mb-8 space-y-1 sm:space-y-1.5">
+      <div className="w-full mb-6 sm:mb-8 space-y-1 sm:space-y-1.5 min-w-0">
         <div className="flex items-center gap-2 text-[11px] sm:text-xs font-bold text-[var(--accent)] uppercase tracking-wider sm:tracking-widest">
           <span>📚</span>
           <span>Personal Shelf &amp; Study Dashboard</span>
@@ -276,7 +276,7 @@ export default function FavoritesPage() {
 
       {/* Smart Continue Reading Hero Card */}
       {spotlightBook && (
-        <div className="mb-6 sm:mb-8 p-4 sm:p-7 rounded-2xl sm:rounded-3xl glass-card border border-[var(--accent)]/30 bg-gradient-to-r from-[var(--card)] via-[var(--card)] to-[var(--accent)]/10 shadow-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-6 animate-fade-in">
+        <div className="w-full mb-6 sm:mb-8 p-4 sm:p-7 rounded-2xl sm:rounded-3xl glass-card border border-[var(--accent)]/30 bg-gradient-to-r from-[var(--card)] via-[var(--card)] to-[var(--accent)]/10 shadow-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-6 animate-fade-in min-w-0">
           <div className="flex items-start sm:items-center gap-3.5 sm:gap-5 min-w-0 w-full sm:w-auto">
             <div className="relative w-14 h-20 sm:w-20 sm:h-28 rounded-xl sm:rounded-2xl overflow-hidden book-shadow flex-shrink-0 border border-[var(--border)]">
               <Image src={spotlightBook.cover} alt={spotlightBook.title} fill className="object-cover" sizes="(max-width: 640px) 56px, 80px" />
@@ -324,100 +324,102 @@ export default function FavoritesPage() {
         </div>
       )}
 
-      {/* Navigation Tabs (Edge-to-edge swipeable container on mobile) */}
-      <div className="-mx-3 px-3 sm:mx-0 sm:px-0 flex items-center gap-1.5 sm:gap-2 border-b border-[var(--border)] pb-2.5 sm:pb-3 mb-6 sm:mb-8 overflow-x-auto scrollbar-none">
-        <button
-          onClick={() => setActiveTab("favorites")}
-          className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 sm:gap-2 whitespace-nowrap flex-shrink-0 ${
-            activeTab === "favorites"
-              ? "bg-[var(--primary)] text-[var(--primary-foreground)] shadow-md"
-              : "bg-[var(--card)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)]"
-          }`}
-        >
-          <span>❤️ Favorites</span>
-          <span className="px-1.5 py-0.2 rounded-full bg-black/20 text-[10px]">
-            {favoriteBooks.length}
-          </span>
-        </button>
+      {/* Navigation Tabs (Properly Constrained Scrollable Container) */}
+      <div className="w-full max-w-full min-w-0 overflow-x-auto scrollbar-none border-b border-[var(--border)] pb-2.5 sm:pb-3 mb-6 sm:mb-8">
+        <div className="flex items-center gap-1.5 sm:gap-2 min-w-max">
+          <button
+            onClick={() => setActiveTab("favorites")}
+            className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 sm:gap-2 whitespace-nowrap flex-shrink-0 ${
+              activeTab === "favorites"
+                ? "bg-[var(--primary)] text-[var(--primary-foreground)] shadow-md"
+                : "bg-[var(--card)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)]"
+            }`}
+          >
+            <span>❤️ Favorites</span>
+            <span className="px-1.5 py-0.2 rounded-full bg-black/20 text-[10px]">
+              {favoriteBooks.length}
+            </span>
+          </button>
 
-        <button
-          onClick={() => setActiveTab("reading")}
-          className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 sm:gap-2 whitespace-nowrap flex-shrink-0 ${
-            activeTab === "reading"
-              ? "bg-[var(--primary)] text-[var(--primary-foreground)] shadow-md"
-              : "bg-[var(--card)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)]"
-          }`}
-        >
-          <span>📖 In Progress</span>
-          <span className="px-1.5 py-0.2 rounded-full bg-black/20 text-[10px]">
-            {currentlyReadingBooks.length}
-          </span>
-        </button>
+          <button
+            onClick={() => setActiveTab("reading")}
+            className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 sm:gap-2 whitespace-nowrap flex-shrink-0 ${
+              activeTab === "reading"
+                ? "bg-[var(--primary)] text-[var(--primary-foreground)] shadow-md"
+                : "bg-[var(--card)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)]"
+            }`}
+          >
+            <span>📖 In Progress</span>
+            <span className="px-1.5 py-0.2 rounded-full bg-black/20 text-[10px]">
+              {currentlyReadingBooks.length}
+            </span>
+          </button>
 
-        <button
-          onClick={() => setActiveTab("completed")}
-          className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 sm:gap-2 whitespace-nowrap flex-shrink-0 ${
-            activeTab === "completed"
-              ? "bg-[var(--primary)] text-[var(--primary-foreground)] shadow-md"
-              : "bg-[var(--card)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)]"
-          }`}
-        >
-          <span>✅ Completed</span>
-          <span className="px-1.5 py-0.2 rounded-full bg-black/20 text-[10px]">
-            {completedBooks.length}
-          </span>
-        </button>
+          <button
+            onClick={() => setActiveTab("completed")}
+            className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 sm:gap-2 whitespace-nowrap flex-shrink-0 ${
+              activeTab === "completed"
+                ? "bg-[var(--primary)] text-[var(--primary-foreground)] shadow-md"
+                : "bg-[var(--card)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)]"
+            }`}
+          >
+            <span>✅ Completed</span>
+            <span className="px-1.5 py-0.2 rounded-full bg-black/20 text-[10px]">
+              {completedBooks.length}
+            </span>
+          </button>
 
-        <button
-          onClick={() => {
-            setActiveTab("offline");
-            refreshOfflineBooks();
-          }}
-          className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 sm:gap-2 whitespace-nowrap flex-shrink-0 ${
-            activeTab === "offline"
-              ? "bg-[var(--primary)] text-[var(--primary-foreground)] shadow-md"
-              : "bg-[var(--card)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)]"
-          }`}
-        >
-          <span>📦 Offline Books</span>
-          <span className="px-1.5 py-0.2 rounded-full bg-black/20 text-[10px]">
-            {offlineBooksList.length}
-          </span>
-        </button>
+          <button
+            onClick={() => {
+              setActiveTab("offline");
+              refreshOfflineBooks();
+            }}
+            className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 sm:gap-2 whitespace-nowrap flex-shrink-0 ${
+              activeTab === "offline"
+                ? "bg-[var(--primary)] text-[var(--primary-foreground)] shadow-md"
+                : "bg-[var(--card)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)]"
+            }`}
+          >
+            <span>📦 Offline Books</span>
+            <span className="px-1.5 py-0.2 rounded-full bg-black/20 text-[10px]">
+              {offlineBooksList.length}
+            </span>
+          </button>
 
-        <button
-          onClick={() => setActiveTab("memory")}
-          className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 sm:gap-2 whitespace-nowrap flex-shrink-0 ${
-            activeTab === "memory"
-              ? "bg-[var(--primary)] text-[var(--primary-foreground)] shadow-md"
-              : "bg-[var(--card)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)]"
-          }`}
-        >
-          <span>🧠 Reading Memory</span>
-          <span className="px-1.5 py-0.2 rounded-full bg-black/20 text-[10px]">
-            {memoryBooks.length}
-          </span>
-        </button>
+          <button
+            onClick={() => setActiveTab("memory")}
+            className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 sm:gap-2 whitespace-nowrap flex-shrink-0 ${
+              activeTab === "memory"
+                ? "bg-[var(--primary)] text-[var(--primary-foreground)] shadow-md"
+                : "bg-[var(--card)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)]"
+            }`}
+          >
+            <span>🧠 Reading Memory</span>
+            <span className="px-1.5 py-0.2 rounded-full bg-black/20 text-[10px]">
+              {memoryBooks.length}
+            </span>
+          </button>
 
-        <button
-          onClick={() => setActiveTab("stats")}
-          className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 sm:gap-2 whitespace-nowrap flex-shrink-0 ${
-            activeTab === "stats"
-              ? "bg-[var(--primary)] text-[var(--primary-foreground)] shadow-md"
-              : "bg-[var(--card)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)]"
-          }`}
-        >
-          <span>📊 Stats &amp; Goals</span>
-        </button>
+          <button
+            onClick={() => setActiveTab("stats")}
+            className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 sm:gap-2 whitespace-nowrap flex-shrink-0 ${
+              activeTab === "stats"
+                ? "bg-[var(--primary)] text-[var(--primary-foreground)] shadow-md"
+                : "bg-[var(--card)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)]"
+            }`}
+          >
+            <span>📊 Stats &amp; Goals</span>
+          </button>
+        </div>
       </div>
 
       {/* -------------------------------------------------------------
        * Tab 1: Favorites
        * ------------------------------------------------------------- */}
       {activeTab === "favorites" && (
-        <>
+        <div className="w-full min-w-0">
           {favoriteBooks.length === 0 ? (
-            <div className="text-center py-16 sm:py-20 px-4 sm:px-6 glass-card rounded-2xl sm:rounded-3xl border border-[var(--border)] max-w-2xl mx-auto bg-[var(--card)] shadow-2xl">
+            <div className="w-full max-w-2xl mx-auto text-center py-12 sm:py-20 px-4 sm:px-6 glass-card rounded-2xl sm:rounded-3xl border border-[var(--border)] bg-[var(--card)] shadow-2xl">
               <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-rose-500/10 border border-rose-500/25 text-2xl sm:text-3xl flex items-center justify-center mx-auto mb-3 sm:mb-4 text-rose-400 shadow-inner">
                 ♥
               </div>
@@ -436,7 +438,7 @@ export default function FavoritesPage() {
               </Link>
             </div>
           ) : (
-            <div className="space-y-4 sm:space-y-6">
+            <div className="w-full space-y-4 sm:space-y-6 min-w-0">
               {savedCategories.length > 2 && (
                 <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 pb-2">
                   <span className="text-[11px] sm:text-xs text-[var(--text-secondary)] font-medium mr-1">Filter Shelf:</span>
@@ -456,23 +458,23 @@ export default function FavoritesPage() {
                 </div>
               )}
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-6">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-6 w-full min-w-0">
                 {filteredFavorites.map((book) => (
                   <BookCard key={book.id} book={book} />
                 ))}
               </div>
             </div>
           )}
-        </>
+        </div>
       )}
 
       {/* -------------------------------------------------------------
        * Tab 2: In Progress
        * ------------------------------------------------------------- */}
       {activeTab === "reading" && (
-        <div className="space-y-4 sm:space-y-6">
+        <div className="w-full space-y-4 sm:space-y-6 min-w-0">
           {currentlyReadingBooks.length === 0 ? (
-            <div className="text-center py-16 sm:py-20 px-4 sm:px-6 glass-card rounded-2xl sm:rounded-3xl border border-[var(--border)] max-w-2xl mx-auto bg-[var(--card)] shadow-2xl">
+            <div className="w-full max-w-2xl mx-auto text-center py-12 sm:py-20 px-4 sm:px-6 glass-card rounded-2xl sm:rounded-3xl border border-[var(--border)] bg-[var(--card)] shadow-2xl">
               <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-[var(--accent)]/10 border border-[var(--accent)]/25 text-2xl sm:text-3xl flex items-center justify-center mx-auto mb-3 sm:mb-4 text-[var(--accent)] shadow-inner">
                 📖
               </div>
@@ -491,7 +493,7 @@ export default function FavoritesPage() {
               </Link>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-6 w-full min-w-0">
               {currentlyReadingBooks.map((book) => (
                 <div
                   key={book.id}
@@ -541,9 +543,9 @@ export default function FavoritesPage() {
        * Tab 3: Completed Books
        * ------------------------------------------------------------- */}
       {activeTab === "completed" && (
-        <div className="space-y-4 sm:space-y-6">
+        <div className="w-full space-y-4 sm:space-y-6 min-w-0">
           {completedBooks.length === 0 ? (
-            <div className="text-center py-16 sm:py-20 px-4 sm:px-6 glass-card rounded-2xl sm:rounded-3xl border border-[var(--border)] max-w-2xl mx-auto bg-[var(--card)] shadow-2xl">
+            <div className="w-full max-w-2xl mx-auto text-center py-12 sm:py-20 px-4 sm:px-6 glass-card rounded-2xl sm:rounded-3xl border border-[var(--border)] bg-[var(--card)] shadow-2xl">
               <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 text-2xl sm:text-3xl flex items-center justify-center mx-auto mb-3 sm:mb-4 text-emerald-400 shadow-inner">
                 🏆
               </div>
@@ -562,7 +564,7 @@ export default function FavoritesPage() {
               </Link>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-6 w-full min-w-0">
               {completedBooks.map((book) => (
                 <div
                   key={book.id}
@@ -605,8 +607,8 @@ export default function FavoritesPage() {
        * Tab 4: Offline Books Manager
        * ------------------------------------------------------------- */}
       {activeTab === "offline" && (
-        <div className="space-y-4 sm:space-y-6">
-          <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl glass-card border border-[var(--border)] bg-[var(--card)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xl">
+        <div className="w-full space-y-4 sm:space-y-6 min-w-0">
+          <div className="w-full p-4 sm:p-6 rounded-2xl sm:rounded-3xl glass-card border border-[var(--border)] bg-[var(--card)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xl min-w-0">
             <div className="flex items-center gap-3.5 sm:gap-4 text-left w-full sm:w-auto">
               <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xl sm:text-2xl flex items-center justify-center flex-shrink-0">
                 📦
@@ -631,7 +633,7 @@ export default function FavoritesPage() {
           </div>
 
           {offlineBooksList.length === 0 ? (
-            <div className="text-center py-16 sm:py-20 px-4 sm:px-6 glass-card rounded-2xl sm:rounded-3xl border border-[var(--border)] max-w-2xl mx-auto bg-[var(--card)] shadow-2xl">
+            <div className="w-full max-w-2xl mx-auto text-center py-12 sm:py-20 px-4 sm:px-6 glass-card rounded-2xl sm:rounded-3xl border border-[var(--border)] bg-[var(--card)] shadow-2xl">
               <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-[var(--secondary)] border border-[var(--border)] text-2xl sm:text-3xl flex items-center justify-center mx-auto mb-3 sm:mb-4 text-[var(--text-secondary)] shadow-inner">
                 📦
               </div>
@@ -650,7 +652,7 @@ export default function FavoritesPage() {
               </Link>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-6 w-full min-w-0">
               {offlineBooksList.map((book) => (
                 <div
                   key={book.id}
@@ -702,9 +704,9 @@ export default function FavoritesPage() {
        * Tab 5: Books with Reading Memory
        * ------------------------------------------------------------- */}
       {activeTab === "memory" && (
-        <div className="space-y-4 sm:space-y-6">
+        <div className="w-full space-y-4 sm:space-y-6 min-w-0">
           {memoryBooks.length === 0 ? (
-            <div className="text-center py-16 sm:py-20 px-4 sm:px-6 glass-card rounded-2xl sm:rounded-3xl border border-[var(--border)] max-w-2xl mx-auto bg-[var(--card)] shadow-2xl">
+            <div className="w-full max-w-2xl mx-auto text-center py-12 sm:py-20 px-4 sm:px-6 glass-card rounded-2xl sm:rounded-3xl border border-[var(--border)] bg-[var(--card)] shadow-2xl">
               <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-[var(--accent)]/10 border border-[var(--accent)]/25 text-2xl sm:text-3xl flex items-center justify-center mx-auto mb-3 sm:mb-4 text-[var(--accent)] shadow-inner">
                 🧠
               </div>
@@ -723,7 +725,7 @@ export default function FavoritesPage() {
               </Link>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5 sm:gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5 sm:gap-6 w-full min-w-0">
               {memoryBooks.map((book) => (
                 <div
                   key={book.id}
@@ -769,9 +771,9 @@ export default function FavoritesPage() {
        * Tab 6: Reading Stats, Goals & Local Data Backup
        * ------------------------------------------------------------- */}
       {activeTab === "stats" && (
-        <div className="space-y-6 sm:space-y-8">
+        <div className="w-full space-y-6 sm:space-y-8 min-w-0">
           {/* Daily Reading Streak & Habit Banner */}
-          <div className="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-7 border border-[var(--border)] bg-gradient-to-r from-[var(--card)] via-[var(--card)] to-amber-500/5 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-6">
+          <div className="w-full glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-7 border border-[var(--border)] bg-gradient-to-r from-[var(--card)] via-[var(--card)] to-amber-500/5 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-6 min-w-0">
             <div className="flex items-center gap-3.5 sm:gap-4 text-left w-full sm:w-auto">
               <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center text-2xl sm:text-3xl border flex-shrink-0 ${
                 stats.isTodayQualified
@@ -810,7 +812,7 @@ export default function FavoritesPage() {
           </div>
 
           {/* Personal Reading Goals Selector Widget */}
-          <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl glass-card border border-[var(--border)] bg-[var(--card)] space-y-3.5 sm:space-y-4 shadow-xl">
+          <div className="w-full p-4 sm:p-6 rounded-2xl sm:rounded-3xl glass-card border border-[var(--border)] bg-[var(--card)] space-y-3.5 sm:space-y-4 shadow-xl min-w-0">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--border)] pb-3">
               <div>
                 <h4 className="font-serif font-bold text-xs sm:text-sm text-[var(--foreground)] flex items-center gap-1.5 sm:gap-2">
@@ -858,7 +860,7 @@ export default function FavoritesPage() {
           </div>
 
           {/* Real Local Statistics Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4 w-full min-w-0">
             <div
               className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-[var(--card)] border border-[var(--border)] shadow-xl flex items-center justify-between gap-4"
               title="Time you actively spent exploring, searching, and studying on Reader's HUB."
@@ -906,7 +908,7 @@ export default function FavoritesPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4 w-full min-w-0">
             <div className="p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl bg-[var(--card)] border border-[var(--border)] shadow-xl text-center space-y-1">
               <span className="text-xl sm:text-2xl">📖</span>
               <h4 className="text-xl sm:text-2xl font-bold font-serif text-[var(--foreground)]">
@@ -941,7 +943,7 @@ export default function FavoritesPage() {
           </div>
 
           {/* Annual 12-Week Reading Activity Contribution Heatmap */}
-          <div className="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-7 border border-[var(--border)] bg-[var(--card)] shadow-xl space-y-3.5 sm:space-y-4">
+          <div className="w-full glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-7 border border-[var(--border)] bg-[var(--card)] shadow-xl space-y-3.5 sm:space-y-4 min-w-0 overflow-hidden">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
                 <h4 className="font-serif font-bold text-xs sm:text-sm text-[var(--foreground)] flex items-center gap-1.5">
@@ -962,7 +964,7 @@ export default function FavoritesPage() {
             </div>
 
             {/* Heatmap Grid */}
-            <div className="overflow-x-auto pb-2 scrollbar-none">
+            <div className="w-full max-w-full min-w-0 overflow-x-auto pb-2 scrollbar-none">
               <div className="inline-flex gap-1.5 min-w-max">
                 {heatmapWeeks.map((week, wIdx) => (
                   <div key={wIdx} className="flex flex-col gap-1.5">
@@ -986,7 +988,7 @@ export default function FavoritesPage() {
           </div>
 
           {/* Backup & Data Sovereignty Center */}
-          <div className="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-8 border border-[var(--border)] bg-[var(--card)] shadow-2xl space-y-4 sm:space-y-6">
+          <div className="w-full glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-8 border border-[var(--border)] bg-[var(--card)] shadow-2xl space-y-4 sm:space-y-6 min-w-0">
             <div className="border-b border-[var(--border)] pb-3 sm:pb-4">
               <div className="flex items-center gap-2">
                 <span className="text-lg sm:text-xl">🔒</span>
@@ -1035,7 +1037,7 @@ export default function FavoritesPage() {
           </div>
 
           {/* Granular Reset & Recovery Zone */}
-          <div className="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-8 border border-rose-500/25 bg-[var(--card)] shadow-xl space-y-4 sm:space-y-5 text-left">
+          <div className="w-full glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-8 border border-rose-500/25 bg-[var(--card)] shadow-xl space-y-4 sm:space-y-5 text-left min-w-0">
             <div className="border-b border-[var(--border)] pb-3">
               <div className="flex items-center gap-2">
                 <span className="text-lg sm:text-xl">⚠️</span>
