@@ -277,6 +277,8 @@ export default function BookReader({ book }: BookReaderProps) {
     height: 600,
   });
   const [panOffset, setPanOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [interactiveScale, setInteractiveScale] = useState<number>(1);
+  const [isPinching, setIsPinching] = useState<boolean>(false);
   const touchStartDistRef = useRef<number | null>(null);
   const touchStartZoomRef = useRef<number>(100);
   const touchStartPanRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -669,15 +671,15 @@ export default function BookReader({ book }: BookReaderProps) {
         const containerHeight = container ? container.clientHeight : 700;
 
         const isDouble = prefs.layoutMode === "double" && !isMobile;
-        const availableWidth = isDouble ? (containerWidth - 90) / 2 : containerWidth - (isMobile ? 12 : 40);
+        const availableWidth = isDouble ? (containerWidth - 90) / 2 : containerWidth - (isMobile ? 0 : 40);
         const availableHeight = (isFocusMode || isFullscreen)
           ? containerHeight - (isMobile ? 48 : 70)
-          : containerHeight - (isMobile ? 80 : 120);
+          : containerHeight - (isMobile ? 60 : 120);
 
         const baseViewport = page.getViewport({ scale: 1.0 });
         const scaleX = availableWidth / baseViewport.width;
         const scaleY = availableHeight / baseViewport.height;
-        const fitScale = Math.min(scaleX, scaleY);
+        const fitScale = isMobile ? scaleX : Math.min(scaleX, scaleY);
 
         const userScale = (prefs.zoom / 100) * (isMobile ? 1.0 : 0.96);
         const finalScale = Math.max(0.4, fitScale * userScale);
@@ -1550,6 +1552,7 @@ export default function BookReader({ book }: BookReaderProps) {
     if (isStudyMode) return;
 
     if (e.touches.length === 2) {
+      setIsPinching(true);
       isPinchingRef.current = true;
       isPanningRef.current = false;
       const t1 = e.touches[0];
@@ -1577,14 +1580,16 @@ export default function BookReader({ book }: BookReaderProps) {
       const t2 = e.touches[1];
       const dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
       const ratio = dist / touchStartDistRef.current;
-      const targetZoom = Math.min(220, Math.max(70, Math.round(touchStartZoomRef.current * ratio)));
+      setInteractiveScale(ratio);
+      const targetZoom = Math.min(250, Math.max(70, Math.round(touchStartZoomRef.current * ratio)));
       updatePref("zoom", targetZoom);
     } else if (e.touches.length === 1 && isPanningRef.current && touchStartPosRef.current && prefs.zoom > 100) {
       const touch = e.touches[0];
       const dx = touch.clientX - touchStartPosRef.current.x;
       const dy = touch.clientY - touchStartPosRef.current.y;
-      const maxPanX = Math.max(40, (pageCanvasSize.width * (prefs.zoom / 100) - pageCanvasSize.width) / 2);
-      const maxPanY = Math.max(40, (pageCanvasSize.height * (prefs.zoom / 100) - pageCanvasSize.height) / 2);
+      const zoomFactor = prefs.zoom / 100;
+      const maxPanX = Math.max(60, (pageCanvasSize.width * zoomFactor - pageCanvasSize.width) / 2 + 60);
+      const maxPanY = Math.max(60, (pageCanvasSize.height * zoomFactor - pageCanvasSize.height) / 2 + 60);
       setPanOffset({
         x: Math.max(-maxPanX, Math.min(maxPanX, touchStartPanRef.current.x + dx)),
         y: Math.max(-maxPanY, Math.min(maxPanY, touchStartPanRef.current.y + dy)),
@@ -1596,13 +1601,15 @@ export default function BookReader({ book }: BookReaderProps) {
     if (isStudyMode) return;
 
     if (e.touches.length === 0) {
+      setIsPinching(false);
+      setInteractiveScale(1);
       const now = Date.now();
       if (now - lastTapTimeRef.current < 320) {
         if (prefs.zoom > 100) {
           updatePref("zoom", 100);
           setPanOffset({ x: 0, y: 0 });
         } else {
-          updatePref("zoom", 140);
+          updatePref("zoom", 150);
         }
       }
       lastTapTimeRef.current = now;
@@ -1761,12 +1768,13 @@ export default function BookReader({ book }: BookReaderProps) {
         isFullscreen ? "fixed inset-0 z-50 rounded-none h-screen w-screen" : "w-full min-h-[540px] sm:min-h-[640px] h-[700px] sm:h-[830px]"
       }`}
       style={{
-        background:
-          prefs.readingMode === "sepia"
-            ? "radial-gradient(ellipse at center, #261f18 0%, #100d09 100%)"
-            : prefs.readingMode === "dark"
-            ? "radial-gradient(ellipse at center, #0e111a 0%, #040508 100%)"
-            : "radial-gradient(ellipse at center, #151924 0%, #06080c 100%)",
+        background: isMobile
+          ? getPageBgColor()
+          : prefs.readingMode === "sepia"
+          ? "radial-gradient(ellipse at center, #261f18 0%, #100d09 100%)"
+          : prefs.readingMode === "dark"
+          ? "radial-gradient(ellipse at center, #0e111a 0%, #040508 100%)"
+          : "radial-gradient(ellipse at center, #151924 0%, #06080c 100%)",
       }}
     >
       {/* -------------------------------------------------------------
@@ -1947,8 +1955,8 @@ export default function BookReader({ book }: BookReaderProps) {
             showControls ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0 pointer-events-none"
           }`}
         >
-          {/* Chapter Outline & Search inside Book */}
-          <div className="flex items-center gap-1 sm:gap-2.5 min-w-0 flex-shrink-0">
+          {/* Chapter Outline & Search inside Book (Hidden on mobile phones, visible on tablet/desktop) */}
+          <div className="hidden sm:flex items-center gap-1 sm:gap-2.5 min-w-0 flex-shrink-0">
             <button
               onClick={() => setIsTocOpen(true)}
               className="p-1.5 sm:p-2 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] border border-[var(--border)] transition-all cursor-pointer flex items-center gap-1 text-xs"
@@ -3056,17 +3064,16 @@ export default function BookReader({ book }: BookReaderProps) {
           </div>
         ) : (
           <div
-            className="relative flex items-center justify-center transition-transform duration-75"
+            className="relative flex items-center justify-center transition-all duration-300 w-full h-full"
             style={{
               perspective: "2000px",
               transformStyle: "preserve-3d",
-              transform: prefs.zoom > 100 ? `translate3d(${panOffset.x}px, ${panOffset.y}px, 0)` : undefined,
               ...getFilterStyle(),
             }}
           >
             {isDouble ? (
               <div
-                className="relative flex items-center rounded-2xl shadow-[0_25px_70px_rgba(0,0,0,0.75)] border border-[#2b221a]/40 transition-transform duration-300"
+                className="relative flex items-center rounded-2xl shadow-[0_25px_70px_rgba(0,0,0,0.75)] border border-[#2b221a]/40 transition-transform duration-300 overflow-hidden"
                 style={{ backgroundColor: getPageBgColor(), transformStyle: "preserve-3d" }}
               >
                 {/* Left Page */}
@@ -3087,7 +3094,12 @@ export default function BookReader({ book }: BookReaderProps) {
                       <p className="text-xs text-[#6b5840]">by {book.author}</p>
                     </div>
                   ) : (
-                    <div className="relative">
+                    <div
+                      className="relative transition-transform duration-75 origin-center will-change-transform"
+                      style={{
+                        transform: prefs.zoom > 100 ? `translate3d(${panOffset.x}px, ${panOffset.y}px, 0)` : undefined,
+                      }}
+                    >
                       <canvas ref={canvasLeftRef} className="block max-w-full h-auto object-contain rounded-sm" />
                       <DrawingCanvas
                         pageNumber={activeLeftPage}
@@ -3134,7 +3146,12 @@ export default function BookReader({ book }: BookReaderProps) {
                     isFlipping && flipDirection === "next" ? "animate-page-flip-next z-20" : "z-10"
                   }`}
                 >
-                  <div className="relative">
+                  <div
+                    className="relative transition-transform duration-75 origin-center will-change-transform"
+                    style={{
+                      transform: prefs.zoom > 100 ? `translate3d(${panOffset.x}px, ${panOffset.y}px, 0)` : undefined,
+                    }}
+                  >
                     <canvas ref={canvasRightRef} className="block max-w-full h-auto object-contain rounded-sm" />
                     <DrawingCanvas
                       pageNumber={activeRightPage}
@@ -3168,13 +3185,23 @@ export default function BookReader({ book }: BookReaderProps) {
               /* Single Page Mode */
               <div
                 onMouseUp={(e) => handlePageMouseUp(e, currentPage)}
-                className={`relative rounded-xl sm:rounded-2xl shadow-[0_20px_55px_rgba(0,0,0,0.7)] border border-[#2b221a]/30 p-1 sm:p-4 transition-transform duration-300 max-w-full ${
+                className={`relative w-full h-full overflow-hidden flex items-center justify-center ${
+                  isMobile
+                    ? "rounded-none border-0 shadow-none p-0"
+                    : "rounded-xl sm:rounded-2xl shadow-[0_20px_55px_rgba(0,0,0,0.7)] border border-[#2b221a]/30 p-1 sm:p-4"
+                } ${
                   isFlipping ? (flipDirection === "next" ? "animate-page-flip-next" : "animate-page-flip-prev") : ""
                 }`}
                 style={{ backgroundColor: getPageBgColor() }}
               >
-                <div className="relative">
-                  <canvas ref={canvasSingleRef} className="block max-w-full h-auto object-contain rounded-sm" />
+                <div
+                  className="relative origin-center will-change-transform flex items-center justify-center"
+                  style={{
+                    transform: `scale(${interactiveScale}) translate3d(${panOffset.x}px, ${panOffset.y}px, 0)`,
+                    transition: isPinching ? "none" : "transform 0.08s ease-out",
+                  }}
+                >
+                  <canvas ref={canvasSingleRef} className="block max-w-none h-auto object-contain rounded-sm" />
                   <DrawingCanvas
                     pageNumber={currentPage}
                     initialStrokes={annotations.drawings[currentPage] || EMPTY_DRAWINGS}
