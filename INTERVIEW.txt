@@ -669,12 +669,12 @@ Complete Storage Inventory:
 | Storage Key                         | Data Structure | Purpose | Cache Layer |
 | :---                                | :--- | :--- | :--- |
 | readershub:reading-activity:v1      | ReadingStreakData (daily record map of seconds & qualified boolean) | Daily reading time T, current streak, longest streak | Memory Map |
-| readershub:active-time:v1       | WebsiteActiveTimeData (totalActive, daily active & exploration maps) | Total composite active website usage telemetry | Memory Map |
-| readershub:progress:v1:<bookId> | ReadingProgressData ({ page, totalPages, progress, lastReadAt }) | Last read page position and progress percentage | progressCache |
-| readershub:annotations:v1:<bookId> | BookAnnotations ({ highlights, notes, drawings, bookmarks }) | All vector strokes, highlights and margin notes | annotationsCache |
-| readershub:bookmarks:v1:<bookId> | BookmarkItem[] | Dedicated bookmark list for fast drawer retrieval | bookmarksCache |
-| readershub:memory:v1:<bookId> | BookReadingMemory ({ totalSeconds, sessionsCount, timeline }) | Per-book lifetime reading memory & session timeline | memoryCache |
-| readers_hub_favorites_v2 | string[] (Array of book IDs) | Favorited books saved to "My Shelf" | Context state |
+| readershub:active-time:v1           | WebsiteActiveTimeData (totalActive, daily active & exploration maps) | Total composite active website usage telemetry | Memory Map |
+| readershub:progress:v1:<bookId>     | ReadingProgressData ({ page, totalPages, progress, lastReadAt }) | Last read page position and progress percentage | progressCache |
+| readershub:annotations:v1:<bookId>  | BookAnnotations ({ highlights, notes, drawings, bookmarks }) | All vector strokes, highlights and margin notes | annotationsCache |
+| readershub:bookmarks:v1:<bookId>    | BookmarkItem[] | Dedicated bookmark list for fast drawer retrieval | bookmarksCache |
+| readershub:memory:v1:<bookId>       | BookReadingMemory ({ totalSeconds, sessionsCount, timeline }) | Per-book lifetime reading memory & session timeline | memoryCache |
+| readers_hub_favorites_v2            | string[] (Array of book IDs) | Favorited books saved to "My Shelf" | Context state |
 | readers_hub_reading_progress_v2 | ReadingProgressItem[] (Max 16 recent items) | "Continue Reading" shelf on homepage and My Shelf | Context state |
 | readershub_reader_prefs_v1 | ReaderPrefs ({ zoom, spreadMode, singlePageMode }) | User reading layout preferences | Component state |
 | readershub_focus_timer_prefs_v1 | { x: number, y: number } | Floating focus timer window coordinates | Component state |

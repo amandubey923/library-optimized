@@ -97,9 +97,9 @@ export default function BookDetailClient({
   const hasPriorInteractions = Boolean((progress && progress.page > 1) || highlightsCount > 0 || notesCount > 0 || bookmarksCount > 0);
 
   return (
-    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 text-left">
+    <main className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-12 text-left min-w-0 overflow-x-hidden">
       {/* Breadcrumb Bar */}
-      <nav className="flex items-center gap-2 text-xs text-[var(--text-secondary)] mb-8 overflow-x-auto whitespace-nowrap">
+      <nav className="w-full max-w-full min-w-0 flex items-center gap-2 text-xs text-[var(--text-secondary)] mb-6 sm:mb-8 overflow-x-auto whitespace-nowrap scrollbar-none">
         <Link href="/" className="hover:text-[var(--accent)] transition-colors">
           Home
         </Link>
@@ -119,32 +119,32 @@ export default function BookDetailClient({
       </nav>
 
       {/* Book Hero / Overview Card */}
-      <div className="glass-card rounded-3xl p-6 sm:p-10 border border-[var(--border)] bg-[var(--card)] mb-12 shadow-2xl relative overflow-hidden">
+      <div className="w-full glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-10 border border-[var(--border)] bg-[var(--card)] mb-8 sm:mb-12 shadow-2xl relative overflow-hidden min-w-0">
         {/* Soft Ambient Background Glow */}
         <div
           className="absolute -top-24 -right-24 w-80 h-80 rounded-full blur-[100px] opacity-20 pointer-events-none"
           style={{ background: "var(--accent)" }}
         />
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start relative z-10">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 lg:gap-12 items-start relative z-10">
           {/* Left Column: Book Cover with 3D Depth & Actions */}
           <div className="lg:col-span-4 flex flex-col items-center">
-            <div className="relative w-56 sm:w-64 aspect-[2/3] rounded-2xl overflow-hidden book-shadow-lg border border-[var(--border)] bg-[var(--background)] mb-6 group">
+            <div className="relative w-48 sm:w-64 aspect-[2/3] rounded-2xl overflow-hidden book-shadow-lg border border-[var(--border)] bg-[var(--background)] mb-4 sm:mb-6 group">
               <Image
                 src={book.cover}
                 alt={book.title}
                 fill
                 priority
-                sizes="(max-width: 768px) 240px, 300px"
+                sizes="(max-width: 768px) 200px, 300px"
                 className="object-cover group-hover:scale-105 transition-transform duration-500"
               />
             </div>
 
             {/* Quick Action Buttons Under Cover */}
-            <div className="w-full max-w-xs flex flex-col gap-2.5">
+            <div className="w-full max-w-sm flex flex-col gap-2 sm:gap-2.5">
               <button
                 onClick={handleScrollToReader}
-                className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-[var(--primary)] to-[var(--accent-secondary)] hover:opacity-95 text-[var(--primary-foreground)] font-bold text-sm shadow-xl hover:shadow-[0_0_20px_var(--theme-glow)] hover:scale-[1.02] transition-all cursor-pointer flex items-center justify-center gap-2"
+                className="w-full py-3 sm:py-3.5 px-4 rounded-xl bg-gradient-to-r from-[var(--primary)] to-[var(--accent-secondary)] hover:opacity-95 text-[var(--primary-foreground)] font-bold text-xs sm:text-sm shadow-xl hover:shadow-[0_0_20px_var(--theme-glow)] hover:scale-[1.02] transition-all cursor-pointer flex items-center justify-center gap-2"
               >
                 <span>Read in Embedded Viewer</span>
                 <span>↓</span>
@@ -153,19 +153,19 @@ export default function BookDetailClient({
               <div className="flex gap-2">
                 <button
                   onClick={handleToggleOffline}
-                  className={`flex-1 py-2.5 px-3 rounded-xl border text-xs font-semibold text-center transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer ${
+                  className={`flex-1 py-2 sm:py-2.5 px-2.5 sm:px-3 rounded-xl border text-[11px] sm:text-xs font-semibold text-center transition-all flex items-center justify-center gap-1 sm:gap-1.5 shadow-xs cursor-pointer truncate ${
                     isOfflineSaved
                       ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
                       : "bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] border-[var(--border)]"
                   }`}
                 >
                   <span>{isOfflineSaved ? "✓" : "📦"}</span>
-                  <span>{isOfflineSaved ? "Offline Ready" : "Save Offline"}</span>
+                  <span className="truncate">{isOfflineSaved ? "Offline Ready" : "Save Offline"}</span>
                 </button>
 
                 <button
                   onClick={() => setIsMemoryOpen(true)}
-                  className="flex-1 py-2.5 px-3 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] border border-[var(--border)] text-xs font-semibold text-center transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
+                  className="flex-1 py-2 sm:py-2.5 px-2.5 sm:px-3 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] border border-[var(--border)] text-[11px] sm:text-xs font-semibold text-center transition-all flex items-center justify-center gap-1 sm:gap-1.5 shadow-xs cursor-pointer"
                 >
                   <span>🧠</span>
                   <span>Memory</span>
@@ -177,7 +177,7 @@ export default function BookDetailClient({
                   href={book.pdf}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex-1 py-2 px-3 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)] text-xs font-medium text-center transition-all flex items-center justify-center gap-1"
+                  className="flex-1 py-2 px-2.5 sm:px-3 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)] text-[11px] sm:text-xs font-medium text-center transition-all flex items-center justify-center gap-1"
                 >
                   <span>Open PDF</span>
                   <span>↗</span>
@@ -186,7 +186,7 @@ export default function BookDetailClient({
                 <a
                   href={book.pdf}
                   download={`${book.title.replace(/\s+/g, "_")}.pdf`}
-                  className="flex-1 py-2 px-3 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)] text-xs font-medium text-center transition-all flex items-center justify-center gap-1"
+                  className="flex-1 py-2 px-2.5 sm:px-3 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)] text-[11px] sm:text-xs font-medium text-center transition-all flex items-center justify-center gap-1"
                 >
                   <span>Download</span>
                   <span>↓</span>
@@ -196,23 +196,23 @@ export default function BookDetailClient({
           </div>
 
           {/* Right Column: Title, Metadata, Synopsis, Excerpt */}
-          <div className="lg:col-span-8 flex flex-col justify-between">
+          <div className="lg:col-span-8 flex flex-col justify-between min-w-0">
             <div>
               {/* Category & Badge Header */}
-              <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-xs font-bold px-3 py-1 rounded-full bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/30">
+              <div className="flex flex-wrap items-center justify-between gap-2.5 sm:gap-3 mb-3">
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                  <span className="text-[11px] sm:text-xs font-bold px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/30">
                     {book.category}
                   </span>
-                  <span className="text-xs text-[var(--text-secondary)] font-medium">
+                  <span className="text-[11px] sm:text-xs text-[var(--text-secondary)] font-medium">
                     {book.language} Edition
                   </span>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5 sm:gap-2">
                   <button
                     onClick={() => toggleFavorite(book.id)}
-                    className={`px-3.5 py-1.5 rounded-xl border text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
+                    className={`px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-xl border text-[11px] sm:text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
                       favorited
                         ? "bg-rose-500/20 text-rose-400 border-rose-500/40 shadow-[0_0_10px_rgba(244,63,94,0.25)]"
                         : "bg-[var(--card)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border-[var(--border)]"
@@ -236,7 +236,7 @@ export default function BookDetailClient({
 
                   <button
                     onClick={handleShare}
-                    className="p-1.5 px-3 rounded-xl bg-[var(--card)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)] text-xs font-medium transition-all cursor-pointer flex items-center gap-1"
+                    className="p-1 px-2.5 sm:px-3 rounded-xl bg-[var(--card)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)] text-[11px] sm:text-xs font-medium transition-all cursor-pointer flex items-center gap-1"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
@@ -247,23 +247,23 @@ export default function BookDetailClient({
               </div>
 
               {/* Title & Author */}
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold font-serif text-[var(--foreground)] tracking-tight">
+              <h1 className="text-2xl sm:text-4xl lg:text-5xl font-bold font-serif text-[var(--foreground)] tracking-tight">
                 {book.title}
               </h1>
-              <p className="text-lg text-[var(--accent)] font-medium mt-1">
+              <p className="text-base sm:text-lg text-[var(--accent)] font-medium mt-0.5 sm:mt-1">
                 by <span className="text-[var(--foreground)]">{book.author}</span>
               </p>
 
               {/* Smart Continue Reading Banner (when user has prior interactions) */}
               {hasPriorInteractions && (
-                <div className="my-5 p-4 rounded-2xl bg-gradient-to-r from-[var(--secondary)] to-[var(--accent)]/10 border border-[var(--accent)]/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in">
+                <div className="my-4 sm:my-5 p-3.5 sm:p-4 rounded-2xl bg-gradient-to-r from-[var(--secondary)] to-[var(--accent)]/10 border border-[var(--accent)]/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in">
                   <div className="flex items-center gap-3">
-                    <span className="text-2xl">🔖</span>
-                    <div>
+                    <span className="text-xl sm:text-2xl">🔖</span>
+                    <div className="min-w-0">
                       <h4 className="text-xs font-bold text-[var(--foreground)]">
                         Continue from Page {progress?.page || 1}
                       </h4>
-                      <p className="text-[11px] text-[var(--text-secondary)]">
+                      <p className="text-[10px] sm:text-[11px] text-[var(--text-secondary)] truncate">
                         {progress?.progress || 0}% completed
                         {highlightsCount > 0 && ` • ${highlightsCount} highlights`}
                         {notesCount > 0 && ` • ${notesCount} notes`}
@@ -273,7 +273,7 @@ export default function BookDetailClient({
                   </div>
                   <button
                     onClick={handleScrollToReader}
-                    className="px-4 py-1.5 rounded-xl bg-[var(--primary)] text-[var(--primary-foreground)] text-xs font-bold hover:scale-105 transition-transform cursor-pointer whitespace-nowrap self-start sm:self-auto"
+                    className="px-3.5 sm:px-4 py-1.5 rounded-xl bg-[var(--primary)] text-[var(--primary-foreground)] text-xs font-bold hover:scale-105 transition-transform cursor-pointer whitespace-nowrap self-start sm:self-auto"
                   >
                     Resume Reading →
                   </button>
@@ -281,38 +281,38 @@ export default function BookDetailClient({
               )}
 
               {/* Quick Specs Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 my-6 p-4 rounded-2xl bg-[var(--secondary)] border border-[var(--border)] text-xs">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 my-4 sm:my-6 p-3.5 sm:p-4 rounded-2xl bg-[var(--secondary)] border border-[var(--border)] text-xs">
                 <div>
-                  <span className="text-[var(--text-secondary)] block font-medium">Rating</span>
-                  <span className="text-[var(--accent)] font-bold text-sm">★ {book.rating.toFixed(1)} / 5.0</span>
+                  <span className="text-[var(--text-secondary)] block font-medium text-[10px] sm:text-xs">Rating</span>
+                  <span className="text-[var(--accent)] font-bold text-xs sm:text-sm">★ {book.rating.toFixed(1)} / 5.0</span>
                 </div>
                 <div>
-                  <span className="text-[var(--text-secondary)] block font-medium">Published</span>
-                  <span className="text-[var(--foreground)] font-semibold text-sm">{book.year}</span>
+                  <span className="text-[var(--text-secondary)] block font-medium text-[10px] sm:text-xs">Published</span>
+                  <span className="text-[var(--foreground)] font-semibold text-xs sm:text-sm">{book.year}</span>
                 </div>
                 <div>
-                  <span className="text-[var(--text-secondary)] block font-medium">Pages</span>
-                  <span className="text-[var(--foreground)] font-semibold text-sm">{book.pages}</span>
+                  <span className="text-[var(--text-secondary)] block font-medium text-[10px] sm:text-xs">Pages</span>
+                  <span className="text-[var(--foreground)] font-semibold text-xs sm:text-sm">{book.pages}</span>
                 </div>
                 <div>
-                  <span className="text-[var(--text-secondary)] block font-medium">Access</span>
-                  <span className="text-emerald-400 font-bold text-sm">100% Free</span>
+                  <span className="text-[var(--text-secondary)] block font-medium text-[10px] sm:text-xs">Access</span>
+                  <span className="text-emerald-400 font-bold text-xs sm:text-sm">100% Free</span>
                 </div>
               </div>
 
               {/* Synopsis */}
-              <div className="space-y-2">
-                <h3 className="text-xs font-bold text-[var(--foreground)] uppercase tracking-wider font-serif">
+              <div className="space-y-1.5 sm:space-y-2">
+                <h3 className="text-[11px] sm:text-xs font-bold text-[var(--foreground)] uppercase tracking-wider font-serif">
                   About this book
                 </h3>
-                <p className="text-sm sm:text-base text-[var(--text-secondary)] leading-relaxed font-normal">
+                <p className="text-xs sm:text-sm md:text-base text-[var(--text-secondary)] leading-relaxed font-normal">
                   {book.description}
                 </p>
               </div>
 
               {/* Excerpt Section */}
               {book.excerpt && (
-                <div className="mt-6 p-4 sm:p-5 rounded-2xl bg-[var(--secondary)]/60 border-l-4 border-[var(--accent)] text-xs sm:text-sm text-[var(--foreground)] italic font-serif leading-relaxed">
+                <div className="mt-4 sm:mt-6 p-3.5 sm:p-5 rounded-2xl bg-[var(--secondary)]/60 border-l-4 border-[var(--accent)] text-xs sm:text-sm text-[var(--foreground)] italic font-serif leading-relaxed">
                   &ldquo;{book.excerpt}&rdquo;
                 </div>
               )}
@@ -322,17 +322,17 @@ export default function BookDetailClient({
       </div>
 
       {/* Embedded 3D PDF Book Reader Section */}
-      <section ref={readerRef} className="mb-16 scroll-mt-20">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+      <section ref={readerRef} className="mb-12 sm:mb-16 scroll-mt-20 w-full min-w-0">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
           <div>
             <div className="flex items-center gap-2 text-xs font-bold text-[var(--accent)] uppercase tracking-wider mb-1">
               <span>📖</span>
               <span>Interactive Reading View</span>
             </div>
-            <h2 className="text-2xl sm:text-3xl font-bold font-serif text-[var(--foreground)]">
+            <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold font-serif text-[var(--foreground)]">
               Read &ldquo;{book.title}&rdquo;
             </h2>
-            <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+            <p className="text-[11px] sm:text-xs text-[var(--text-secondary)] mt-0.5">
               Featuring Focus Mode (Z), Search in Book (Ctrl+F), vector diagrams, notes, and offline availability.
             </p>
           </div>
@@ -343,13 +343,13 @@ export default function BookDetailClient({
 
       {/* Author More Works Section */}
       {authorBooks.length > 0 && (
-        <section className="mb-16">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl sm:text-2xl font-bold font-serif text-[var(--foreground)]">
+        <section className="mb-12 sm:mb-16 w-full min-w-0">
+          <div className="flex items-center justify-between mb-4 sm:mb-6">
+            <h3 className="text-lg sm:text-xl md:text-2xl font-bold font-serif text-[var(--foreground)]">
               More by {book.author}
             </h3>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6 w-full min-w-0">
             {authorBooks.map((b) => (
               <BookCard key={b.id} book={b} />
             ))}
@@ -359,9 +359,9 @@ export default function BookDetailClient({
 
       {/* Related Books Section */}
       {relatedBooks.length > 0 && (
-        <section>
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-xl sm:text-2xl font-bold font-serif text-[var(--foreground)]">
+        <section className="w-full min-w-0">
+          <div className="flex items-center justify-between mb-4 sm:mb-6">
+            <h3 className="text-lg sm:text-xl md:text-2xl font-bold font-serif text-[var(--foreground)]">
               Readers Also Explored
             </h3>
             <Link
@@ -371,7 +371,7 @@ export default function BookDetailClient({
               View all {book.category} →
             </Link>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6 w-full min-w-0">
             {relatedBooks.map((b) => (
               <BookCard key={b.id} book={b} />
             ))}

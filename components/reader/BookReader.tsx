@@ -271,11 +271,19 @@ export default function BookReader({ book }: BookReaderProps) {
     noteText: "",
   });
 
-  // Canvas Dimensions
+  // Canvas Dimensions & Gesture Pan Offset
   const [pageCanvasSize, setPageCanvasSize] = useState<{ width: number; height: number }>({
     width: 450,
     height: 600,
   });
+  const [panOffset, setPanOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const touchStartDistRef = useRef<number | null>(null);
+  const touchStartZoomRef = useRef<number>(100);
+  const touchStartPanRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const touchStartPosRef = useRef<{ x: number; y: number } | null>(null);
+  const lastTapTimeRef = useRef<number>(0);
+  const isPinchingRef = useRef<boolean>(false);
+  const isPanningRef = useRef<boolean>(false);
 
   // Fullscreen Integrated Cursor Position
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number; visible: boolean }>({
@@ -361,6 +369,29 @@ export default function BookReader({ book }: BookReaderProps) {
 
     return () => window.removeEventListener("resize", checkScreen);
   }, [book.id, book.pdf, checkOfflineStatus]);
+
+  // Desktop / Laptop Trackpad Pinch & Ctrl+Wheel Zoom Listener
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) {
+        e.preventDefault();
+        const delta = -e.deltaY * 0.15;
+        setPrefs((prev) => {
+          const newZoom = Math.min(220, Math.max(70, Math.round(prev.zoom + delta)));
+          try {
+            localStorage.setItem(PREFS_KEY, JSON.stringify({ ...prev, zoom: newZoom }));
+          } catch {}
+          return { ...prev, zoom: newZoom };
+        });
+      }
+    };
+
+    container.addEventListener("wheel", handleWheel, { passive: false });
+    return () => container.removeEventListener("wheel", handleWheel);
+  }, []);
 
   const updatePref = <K extends keyof ReaderPrefs>(key: K, val: ReaderPrefs[K]) => {
     setPrefs((prev) => {
@@ -638,8 +669,10 @@ export default function BookReader({ book }: BookReaderProps) {
         const containerHeight = container ? container.clientHeight : 700;
 
         const isDouble = prefs.layoutMode === "double" && !isMobile;
-        const availableWidth = isDouble ? (containerWidth - 90) / 2 : containerWidth - 40;
-        const availableHeight = containerHeight - 120;
+        const availableWidth = isDouble ? (containerWidth - 90) / 2 : containerWidth - (isMobile ? 12 : 40);
+        const availableHeight = (isFocusMode || isFullscreen)
+          ? containerHeight - (isMobile ? 48 : 70)
+          : containerHeight - (isMobile ? 80 : 120);
 
         const baseViewport = page.getViewport({ scale: 1.0 });
         const scaleX = availableWidth / baseViewport.width;
@@ -1514,21 +1547,81 @@ export default function BookReader({ book }: BookReaderProps) {
 
   const handleTouchStart = (e: React.TouchEvent) => {
     registerActivity();
-    if (!isStudyMode) {
-      touchStartXRef.current = e.touches[0].clientX;
+    if (isStudyMode) return;
+
+    if (e.touches.length === 2) {
+      isPinchingRef.current = true;
+      isPanningRef.current = false;
+      const t1 = e.touches[0];
+      const t2 = e.touches[1];
+      touchStartDistRef.current = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+      touchStartZoomRef.current = prefs.zoom;
+      touchStartPanRef.current = { ...panOffset };
+    } else if (e.touches.length === 1) {
+      const touch = e.touches[0];
+      touchStartXRef.current = touch.clientX;
+      touchStartPosRef.current = { x: touch.clientX, y: touch.clientY };
+      touchStartPanRef.current = { ...panOffset };
+      isPinchingRef.current = false;
+      if (prefs.zoom > 100) {
+        isPanningRef.current = true;
+      }
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (isStudyMode) return;
+
+    if (e.touches.length === 2 && touchStartDistRef.current !== null) {
+      const t1 = e.touches[0];
+      const t2 = e.touches[1];
+      const dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+      const ratio = dist / touchStartDistRef.current;
+      const targetZoom = Math.min(220, Math.max(70, Math.round(touchStartZoomRef.current * ratio)));
+      updatePref("zoom", targetZoom);
+    } else if (e.touches.length === 1 && isPanningRef.current && touchStartPosRef.current && prefs.zoom > 100) {
+      const touch = e.touches[0];
+      const dx = touch.clientX - touchStartPosRef.current.x;
+      const dy = touch.clientY - touchStartPosRef.current.y;
+      const maxPanX = Math.max(40, (pageCanvasSize.width * (prefs.zoom / 100) - pageCanvasSize.width) / 2);
+      const maxPanY = Math.max(40, (pageCanvasSize.height * (prefs.zoom / 100) - pageCanvasSize.height) / 2);
+      setPanOffset({
+        x: Math.max(-maxPanX, Math.min(maxPanX, touchStartPanRef.current.x + dx)),
+        y: Math.max(-maxPanY, Math.min(maxPanY, touchStartPanRef.current.y + dy)),
+      });
     }
   };
 
   const handleTouchEnd = (e: React.TouchEvent) => {
-    if (isStudyMode || touchStartXRef.current === null) return;
-    const touchEndX = e.changedTouches[0].clientX;
-    const diff = touchStartXRef.current - touchEndX;
+    if (isStudyMode) return;
 
-    if (Math.abs(diff) > 40) {
-      if (diff > 0) handleNext();
-      else handlePrev();
+    if (e.touches.length === 0) {
+      const now = Date.now();
+      if (now - lastTapTimeRef.current < 320) {
+        if (prefs.zoom > 100) {
+          updatePref("zoom", 100);
+          setPanOffset({ x: 0, y: 0 });
+        } else {
+          updatePref("zoom", 140);
+        }
+      }
+      lastTapTimeRef.current = now;
+
+      if (prefs.zoom <= 100 && touchStartXRef.current !== null && e.changedTouches.length > 0) {
+        const touchEndX = e.changedTouches[0].clientX;
+        const diff = touchStartXRef.current - touchEndX;
+        if (Math.abs(diff) > 45) {
+          if (diff > 0) handleNext();
+          else handlePrev();
+        }
+      }
+
+      touchStartXRef.current = null;
+      touchStartDistRef.current = null;
+      touchStartPosRef.current = null;
+      isPinchingRef.current = false;
+      isPanningRef.current = false;
     }
-    touchStartXRef.current = null;
   };
 
   // 15. Text Selection
@@ -1662,9 +1755,10 @@ export default function BookReader({ book }: BookReaderProps) {
       onMouseEnter={handlePointerMove}
       onMouseLeave={handlePointerLeave}
       onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
       className={`relative select-none overflow-hidden rounded-3xl border border-[var(--border)] bg-[#0a0c10] shadow-2xl flex flex-col justify-between transition-all duration-300 ${
-        isFullscreen ? "fixed inset-0 z-50 rounded-none h-screen w-screen" : "w-full min-h-[640px] h-[830px]"
+        isFullscreen ? "fixed inset-0 z-50 rounded-none h-screen w-screen" : "w-full min-h-[540px] sm:min-h-[640px] h-[700px] sm:h-[830px]"
       }`}
       style={{
         background:
@@ -1701,55 +1795,90 @@ export default function BookReader({ book }: BookReaderProps) {
       )}
 
       {/* -------------------------------------------------------------
-       * Focus Mode Floating Banner / Controls (Active Session Enforced)
+       * Focus Mode Floating Top Status & Controls (Mobile Edge-to-Edge Wireframe Compliant)
        * ------------------------------------------------------------- */}
       {isFocusMode && (
-        <div className="absolute top-4 right-4 z-40 flex items-center gap-2 animate-fade-in">
-          {/* Active Session Show Timer Toggle (when hidden) */}
-          {sessionStatus === "ACTIVE" && !isTimerVisible && (
+        <div className="absolute top-2 sm:top-4 inset-x-2 sm:inset-x-auto sm:right-4 z-40 flex items-center justify-between sm:justify-end gap-1.5 sm:gap-2 animate-fade-in bg-[var(--card)]/95 sm:bg-transparent p-1.5 sm:p-0 rounded-2xl border sm:border-0 border-[var(--border)] backdrop-blur-xl sm:backdrop-blur-none shadow-xl sm:shadow-none">
+          {/* Mobile Left: Study/Drawing Suite Toggle & Bookmark */}
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setIsStudyMode(!isStudyMode)}
+              aria-label="Toggle Drawing and Annotations"
+              className={`p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl border text-xs font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                isStudyMode
+                  ? "bg-[var(--accent)] text-[var(--primary-foreground)] border-[var(--accent)] shadow-md"
+                  : "bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] border-[var(--border)]"
+              }`}
+              title="Toggle Drawing & Annotation Suite (P)"
+            >
+              <span>🎨</span>
+              <span className="hidden sm:inline">Draw</span>
+            </button>
+
+            {/* Quick Bookmark Toggle in Focus Mode */}
+            <button
+              onClick={handleToggleBookmark}
+              aria-label={isCurrentPageBookmarked ? "Remove Bookmark" : "Bookmark this Page"}
+              className={`p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1 cursor-pointer ${
+                isCurrentPageBookmarked
+                  ? "bg-amber-500/20 text-amber-400 border-amber-500/40 shadow-xs"
+                  : "bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] border-[var(--border)]"
+              }`}
+              title="Bookmark this Page (B)"
+            >
+              <span>{isCurrentPageBookmarked ? "🔖" : "📑"}</span>
+              <span className="hidden md:inline">Bookmark</span>
+            </button>
+          </div>
+
+          <div className="flex items-center gap-1 sm:gap-2">
+            {/* Active Session Show Timer Toggle (when hidden) */}
+            {sessionStatus === "ACTIVE" && !isTimerVisible && (
+              <button
+                onClick={() => {
+                  setIsTimerVisible(true);
+                  saveTimerPrefs({ isVisible: true });
+                }}
+                aria-label="Show Floating Focus Timer"
+                className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-[var(--secondary)] border border-[var(--border)] text-[11px] sm:text-xs font-mono font-bold text-[var(--foreground)] hover:border-[var(--accent)] shadow-md flex items-center gap-1 cursor-pointer animate-fade-in"
+                title="Show Floating Focus Timer"
+              >
+                <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse" />
+                <span>⏱️ {formatSessionTime(sessionRemainingSeconds)}</span>
+              </button>
+            )}
+
+            {/* Contextual Translation Button in Focus Mode */}
             <button
               onClick={() => {
-                setIsTimerVisible(true);
-                saveTimerPrefs({ isVisible: true });
+                if (isTranslateOpen) {
+                  setIsTranslateOpen(false);
+                } else {
+                  handleOpenTranslation();
+                }
               }}
-              aria-label="Show Floating Focus Timer"
-              className="px-3 py-1.5 rounded-2xl bg-[var(--card)]/90 backdrop-blur-xl border border-[var(--border)] text-xs font-mono font-bold text-[var(--foreground)] hover:border-[var(--accent)] shadow-xl flex items-center gap-1.5 cursor-pointer animate-fade-in"
-              title="Show Floating Focus Timer"
+              aria-label="Translate Current Spread in Focus Mode"
+              className={`p-1.5 sm:px-3 sm:py-1.5 rounded-xl border text-xs font-bold transition-all shadow-md flex items-center gap-1 cursor-pointer ${
+                isTranslateOpen
+                  ? "bg-[var(--accent)] text-[var(--primary-foreground)] border-[var(--accent)]"
+                  : "bg-[var(--secondary)] border-[var(--border)] text-[var(--foreground)] hover:border-[var(--accent)]"
+              }`}
+              title="Translate Current Spread (T)"
             >
-              <span className="w-2 h-2 rounded-full bg-[var(--accent)] animate-pulse" />
-              <span>⏱️ {formatSessionTime(sessionRemainingSeconds)}</span>
-              <span className="text-[10px] text-[var(--text-secondary)] font-sans hidden sm:inline">Show</span>
+              <span>🌐</span>
+              <span className="hidden sm:inline">Translate</span>
             </button>
-          )}
 
-          <button
-            onClick={() => {
-              if (isTranslateOpen) {
-                setIsTranslateOpen(false);
-              } else {
-                handleOpenTranslation();
-              }
-            }}
-            aria-label="Translate Current Spread in Focus Mode"
-            className={`px-3 py-1.5 rounded-2xl backdrop-blur-xl border text-xs font-bold transition-all shadow-xl flex items-center gap-1.5 cursor-pointer ${
-              isTranslateOpen
-                ? "bg-[var(--accent)] text-[var(--primary-foreground)] border-[var(--accent)]"
-                : "bg-[var(--card)]/90 border-[var(--border)] text-[var(--foreground)] hover:border-[var(--accent)]"
-            }`}
-            title="Translate Current Spread (T)"
-          >
-            <span>🌐</span>
-            <span className="hidden sm:inline">Translate</span>
-          </button>
-
-          <button
-            onClick={requestExitFocusMode}
-            className="px-3.5 py-1.5 rounded-2xl bg-[var(--card)]/90 backdrop-blur-xl border border-[var(--border)] text-xs font-bold text-[var(--foreground)] hover:border-[var(--accent)] shadow-xl flex items-center gap-1.5 cursor-pointer"
-            title={sessionStatus === "ACTIVE" ? "End Active Focus Session" : "Exit Focus Mode (Z)"}
-          >
-            <span>✕</span>
-            <span>{sessionStatus === "ACTIVE" ? "End Session" : "Exit Focus Mode"}</span>
-          </button>
+            {/* Exit Focus Mode Button */}
+            <button
+              onClick={requestExitFocusMode}
+              className="px-2.5 sm:px-3.5 py-1.5 rounded-xl bg-[var(--primary)] text-[var(--primary-foreground)] text-xs font-bold hover:opacity-95 shadow-md flex items-center gap-1 cursor-pointer"
+              title={sessionStatus === "ACTIVE" ? "End Active Focus Session" : "Exit Focus Mode (Z)"}
+            >
+              <span>✕</span>
+              <span>{sessionStatus === "ACTIVE" ? "End" : "Exit"}</span>
+            </button>
+          </div>
         </div>
       )}
 
@@ -1814,15 +1943,15 @@ export default function BookReader({ book }: BookReaderProps) {
        * ------------------------------------------------------------- */}
       {!isFocusMode && (
         <div
-          className={`absolute top-0 inset-x-0 z-30 flex items-center justify-between px-3 sm:px-6 py-2.5 bg-[var(--card)]/90 backdrop-blur-xl border-b border-[var(--border)]/70 transition-all duration-300 ${
+          className={`absolute top-0 inset-x-0 z-30 flex items-center justify-between px-2.5 sm:px-6 py-2 sm:py-2.5 bg-[var(--card)]/90 backdrop-blur-xl border-b border-[var(--border)]/70 transition-all duration-300 gap-2 ${
             showControls ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0 pointer-events-none"
           }`}
         >
           {/* Chapter Outline & Search inside Book */}
-          <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0">
+          <div className="flex items-center gap-1 sm:gap-2.5 min-w-0 flex-shrink-0">
             <button
               onClick={() => setIsTocOpen(true)}
-              className="p-1.5 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] border border-[var(--border)] transition-all cursor-pointer flex items-center gap-1 text-xs"
+              className="p-1.5 sm:p-2 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] border border-[var(--border)] transition-all cursor-pointer flex items-center gap-1 text-xs"
               title="Table of Contents & Chapters"
             >
               <span>📑</span>
@@ -1834,7 +1963,7 @@ export default function BookReader({ book }: BookReaderProps) {
                 setIsSearchInBookOpen(true);
                 setTimeout(() => searchInputRef.current?.focus(), 50);
               }}
-              className="p-1.5 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] border border-[var(--border)] transition-all cursor-pointer flex items-center gap-1 text-xs"
+              className="p-1.5 sm:p-2 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] border border-[var(--border)] transition-all cursor-pointer flex items-center gap-1 text-xs"
               title="Search Inside Book (Ctrl+F)"
             >
               <span>🔍</span>
@@ -1844,14 +1973,14 @@ export default function BookReader({ book }: BookReaderProps) {
             {/* Page Thumbnail Navigator */}
             <button
               onClick={() => setIsThumbnailDrawerOpen(true)}
-              className="p-1.5 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] border border-[var(--border)] transition-all cursor-pointer flex items-center gap-1 text-xs"
+              className="p-1.5 sm:p-2 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] border border-[var(--border)] transition-all cursor-pointer flex items-center gap-1 text-xs"
               title="Page Grid Navigator"
             >
               <span>▦</span>
               <span className="hidden sm:inline font-semibold">Pages</span>
             </button>
 
-            <div className="flex flex-col text-left truncate ml-1">
+            <div className="hidden md:flex flex-col text-left truncate ml-1">
               <h3 className="text-xs sm:text-sm font-bold font-serif text-[var(--foreground)] truncate max-w-[110px] sm:max-w-xs">
                 {book.title}
               </h3>
@@ -1861,8 +1990,8 @@ export default function BookReader({ book }: BookReaderProps) {
             </div>
           </div>
 
-          {/* Quick Toolbar Actions */}
-          <div className="flex items-center gap-1 sm:gap-1.5 flex-shrink-0">
+          {/* Quick Toolbar Actions (Edge-to-edge touch scrollable on mobile) */}
+          <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto scrollbar-none max-w-full py-0.5 min-w-0">
             {/* Structured Reading Session */}
             <button
               onClick={() => {
@@ -1877,7 +2006,7 @@ export default function BookReader({ book }: BookReaderProps) {
                 }
               }}
               aria-label="Start Structured Reading Session"
-              className={`p-2 sm:px-3 sm:py-1.5 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1.5 cursor-pointer ${
+              className={`p-1.5 sm:px-3 sm:py-1.5 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1.5 cursor-pointer flex-shrink-0 ${
                 sessionStatus === "ACTIVE"
                   ? "bg-amber-500/20 text-amber-400 border-amber-500/40 shadow-xs animate-pulse"
                   : "bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] border-[var(--border)]"
@@ -1896,7 +2025,7 @@ export default function BookReader({ book }: BookReaderProps) {
             <button
               onClick={() => toggleFocusMode(true)}
               aria-label="Enter Distraction-Free Focus Mode"
-              className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] text-xs font-semibold border border-[var(--border)] transition-all flex items-center gap-1 cursor-pointer"
+              className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] text-xs font-semibold border border-[var(--border)] transition-all flex items-center gap-1 cursor-pointer flex-shrink-0"
               title="Enter Distraction-Free Focus Mode (Z)"
             >
               <span>🎯</span>
@@ -1907,7 +2036,7 @@ export default function BookReader({ book }: BookReaderProps) {
             <button
               onClick={handleToggleOffline}
               aria-label={isOfflineSaved ? "Remove Offline Copy" : "Save Book for Offline Reading"}
-              className={`p-2 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1 cursor-pointer ${
+              className={`p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1 cursor-pointer flex-shrink-0 ${
                 isOfflineSaved
                   ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
                   : "bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border-[var(--border)]"
@@ -1922,7 +2051,7 @@ export default function BookReader({ book }: BookReaderProps) {
             <button
               onClick={() => setIsMemoryOpen(true)}
               aria-label="Open My Reading Memory"
-              className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] text-xs font-semibold border border-[var(--border)] transition-all flex items-center gap-1 cursor-pointer"
+              className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] text-xs font-semibold border border-[var(--border)] transition-all flex items-center gap-1 cursor-pointer flex-shrink-0"
               title="Open My Reading Memory"
             >
               <span>🧠</span>
@@ -1933,7 +2062,7 @@ export default function BookReader({ book }: BookReaderProps) {
             <button
               onClick={handleToggleBookmark}
               aria-label={isCurrentPageBookmarked ? "Remove Bookmark" : "Bookmark this Page"}
-              className={`p-2 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1 cursor-pointer ${
+              className={`p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1 cursor-pointer flex-shrink-0 ${
                 isCurrentPageBookmarked
                   ? "bg-amber-500/20 text-amber-400 border-amber-500/40 shadow-xs"
                   : "bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border-[var(--border)]"
@@ -1948,7 +2077,7 @@ export default function BookReader({ book }: BookReaderProps) {
               <button
                 onClick={() => updatePref("layoutMode", isDouble ? "single" : "double")}
                 aria-label={isDouble ? "Switch to Single Page" : "Switch to Open Book 2-Page"}
-                className="px-2 py-1.5 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] text-xs font-semibold border border-[var(--border)] transition-all cursor-pointer hidden md:flex items-center gap-1"
+                className="px-2 py-1.5 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] text-xs font-semibold border border-[var(--border)] transition-all cursor-pointer hidden md:flex items-center gap-1 flex-shrink-0"
                 title={isDouble ? "Switch to Single Page" : "Switch to Open Book (2-Page)"}
               >
                 <span>{isDouble ? "📖" : "📄"}</span>
@@ -1965,7 +2094,7 @@ export default function BookReader({ book }: BookReaderProps) {
                 }
               }}
               aria-label="Translate Current Page Spread"
-              className={`p-2 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1 cursor-pointer ${
+              className={`p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1 cursor-pointer flex-shrink-0 ${
                 isTranslateOpen
                   ? "bg-[var(--accent)] text-[var(--primary-foreground)] border-[var(--accent)] shadow-md"
                   : "bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] border-[var(--border)]"
@@ -1980,7 +2109,7 @@ export default function BookReader({ book }: BookReaderProps) {
             <button
               onClick={() => setIsStudyMode(!isStudyMode)}
               aria-label="Toggle Study and Annotation Suite"
-              className={`p-2 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1 cursor-pointer ${
+              className={`p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1 cursor-pointer flex-shrink-0 ${
                 isStudyMode
                   ? "bg-[var(--accent)] text-[var(--primary-foreground)] border-[var(--accent)] shadow-md"
                   : "bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] border-[var(--border)]"
@@ -1994,7 +2123,7 @@ export default function BookReader({ book }: BookReaderProps) {
             <button
               onClick={() => setIsAnnotationDrawerOpen(true)}
               aria-label="View Highlights, Notes and Bookmarks"
-              className="p-2 sm:px-2.5 sm:py-1.5 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] text-xs font-semibold border border-[var(--border)] transition-all flex items-center gap-1 cursor-pointer"
+              className="p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] text-xs font-semibold border border-[var(--border)] transition-all flex items-center gap-1 cursor-pointer flex-shrink-0"
               title="View Highlights, Notes & Bookmarks"
             >
               <span>📌</span>
@@ -2009,7 +2138,7 @@ export default function BookReader({ book }: BookReaderProps) {
             <button
               onClick={() => setShowSettings(!showSettings)}
               aria-label="Eye Comfort and Lighting Controls"
-              className="p-2 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] text-xs border border-[var(--border)] transition-all cursor-pointer"
+              className="p-1.5 sm:p-2 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] text-xs border border-[var(--border)] transition-all cursor-pointer flex-shrink-0"
               title="Eye Comfort & Lighting Controls"
             >
               <span>🔆</span>
@@ -2019,7 +2148,7 @@ export default function BookReader({ book }: BookReaderProps) {
             <button
               onClick={toggleFullscreen}
               aria-label="Toggle Fullscreen"
-              className="p-2 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] text-xs border border-[var(--border)] transition-all cursor-pointer"
+              className="p-1.5 sm:p-2 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] text-xs border border-[var(--border)] transition-all cursor-pointer flex-shrink-0"
               title="Toggle Fullscreen (F)"
             >
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2881,7 +3010,7 @@ export default function BookReader({ book }: BookReaderProps) {
       {/* -------------------------------------------------------------
        * Main Book Viewport Canvas (100% Stable, Full Size)
        * ------------------------------------------------------------- */}
-      <div className="flex-1 flex items-center justify-center relative p-2 sm:p-6 w-full h-full overflow-hidden">
+      <div className="flex-1 flex items-center justify-center relative p-0.5 sm:p-6 w-full h-full overflow-hidden touch-none">
         {pdfLoadError ? (
           <div className="flex flex-col items-center justify-center p-8 text-center max-w-md mx-auto glass-card rounded-3xl border border-rose-500/30 bg-[var(--card)] space-y-4 shadow-2xl animate-fade-in">
             <div className="w-14 h-14 rounded-2xl bg-rose-500/15 border border-rose-500/30 text-3xl flex items-center justify-center text-rose-400">
@@ -2927,10 +3056,11 @@ export default function BookReader({ book }: BookReaderProps) {
           </div>
         ) : (
           <div
-            className="relative flex items-center justify-center transition-all duration-300"
+            className="relative flex items-center justify-center transition-transform duration-75"
             style={{
               perspective: "2000px",
               transformStyle: "preserve-3d",
+              transform: prefs.zoom > 100 ? `translate3d(${panOffset.x}px, ${panOffset.y}px, 0)` : undefined,
               ...getFilterStyle(),
             }}
           >
@@ -3038,7 +3168,7 @@ export default function BookReader({ book }: BookReaderProps) {
               /* Single Page Mode */
               <div
                 onMouseUp={(e) => handlePageMouseUp(e, currentPage)}
-                className={`relative rounded-2xl shadow-[0_20px_55px_rgba(0,0,0,0.7)] border border-[#2b221a]/30 p-2 sm:p-4 transition-transform duration-300 ${
+                className={`relative rounded-xl sm:rounded-2xl shadow-[0_20px_55px_rgba(0,0,0,0.7)] border border-[#2b221a]/30 p-1 sm:p-4 transition-transform duration-300 max-w-full ${
                   isFlipping ? (flipDirection === "next" ? "animate-page-flip-next" : "animate-page-flip-prev") : ""
                 }`}
                 style={{ backgroundColor: getPageBgColor() }}
@@ -3120,7 +3250,7 @@ export default function BookReader({ book }: BookReaderProps) {
        * ------------------------------------------------------------- */}
       <div
         className={`absolute bottom-0 inset-x-0 z-30 flex flex-col gap-2 p-3 sm:p-4 bg-[var(--card)]/90 backdrop-blur-xl border-t border-[var(--border)]/70 transition-all duration-300 ${
-          showControls || isFocusMode ? "translate-y-0 opacity-100" : "translate-y-full opacity-0 pointer-events-none"
+          showControls && (!isFocusMode || !isMobile) ? "translate-y-0 opacity-100" : "translate-y-full opacity-0 pointer-events-none"
         }`}
       >
         <div className="flex items-center justify-between gap-4 max-w-4xl mx-auto w-full">
