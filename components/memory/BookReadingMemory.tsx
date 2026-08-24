@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import Link from "next/link";
 import { Book } from "@/data/books";
@@ -25,6 +26,25 @@ export default function BookReadingMemory({
   const { getReadingProgress, getReadingMemory, globalActiveSeconds } = useLibrary();
   const [activeTab, setActiveTab] = useState<MemoryTab>("overview");
   const [selectedHighlightColor, setSelectedHighlightColor] = useState<string>("all");
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const origOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = origOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, onClose]);
 
   const progress = getReadingProgress(book.id);
   const memory = getReadingMemory(book.id);
@@ -108,12 +128,14 @@ export default function BookReadingMemory({
 
   const timelineEvents: ReadingTimelineEvent[] = memory.timeline || [];
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md animate-fade-in text-left">
+  if (!mounted) return null;
+
+  const modalContent = (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-md animate-fade-in text-left">
       <div className="fixed inset-0" onClick={onClose} aria-hidden="true" />
 
       <div className="relative w-full max-w-3xl max-h-[90vh] bg-[var(--card)] border border-[var(--border)] rounded-3xl shadow-2xl overflow-hidden z-10 flex flex-col justify-between animate-scale-up">
-        <div className="p-5 sm:p-6 border-b border-[var(--border)] bg-[var(--card)]/90 backdrop-blur-xl flex items-start justify-between gap-4">
+        <div className="p-4 sm:p-6 border-b border-[var(--border)] bg-[var(--card)]/90 backdrop-blur-xl flex items-start justify-between gap-4">
           <div className="flex items-center gap-4 min-w-0">
             <div className="relative w-14 h-20 rounded-xl overflow-hidden book-shadow flex-shrink-0 border border-[var(--border)]">
               <Image src={book.cover} alt={book.title} fill className="object-cover" />
@@ -642,4 +664,6 @@ export default function BookReadingMemory({
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }

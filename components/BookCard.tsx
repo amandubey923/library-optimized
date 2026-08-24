@@ -18,7 +18,7 @@ function BookCardComponent({ book, compact = false }: BookCardProps) {
 
   return (
     <CardTilt className="h-full">
-      <article className="group relative flex flex-col h-full glass-card rounded-2xl p-4 glass-card-hover overflow-hidden transition-all duration-300 border border-[var(--border)] hover:border-[var(--accent)]/50 hover:shadow-2xl">
+      <article className="group relative flex flex-col h-full glass-card rounded-2xl p-3.5 sm:p-4 glass-card-hover overflow-hidden transition-all duration-300 border border-[var(--border)] hover:border-[var(--accent)]/50 hover:shadow-2xl">
         {/* Subtle Light Sweep Gradient on Hover */}
         <div
           className="absolute -inset-full bg-gradient-to-r from-transparent via-[var(--accent)]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none group-hover:translate-x-full ease-in-out"
@@ -26,13 +26,13 @@ function BookCardComponent({ book, compact = false }: BookCardProps) {
         />
 
         {/* Category Pill & Favorite Button Bar */}
-        <div className="flex items-center justify-between gap-2 mb-3 relative z-10">
+        <div className="flex items-center justify-between gap-1.5 sm:gap-2 mb-2.5 sm:mb-3 relative z-10">
           <div className="flex items-center gap-1.5 min-w-0 flex-1">
-            <span className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/20 truncate">
+            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/20 truncate">
               {book.category}
             </span>
             {book.resourceType && book.resourceType !== "Book" && (
-              <span className="text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[var(--primary)]/15 text-[var(--primary)] border border-[var(--primary)]/30 shrink-0">
+              <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-[var(--primary)]/15 text-[var(--primary)] border border-[var(--primary)]/30 shrink-0">
                 {book.resourceType === "HandwrittenNotes"
                   ? "Handwritten"
                   : book.resourceType === "InterviewPrep"
@@ -49,7 +49,7 @@ function BookCardComponent({ book, compact = false }: BookCardProps) {
               e.stopPropagation();
               toggleFavorite(book.id);
             }}
-            className={`p-1.5 rounded-full border transition-all cursor-pointer ${
+            className={`p-1.5 rounded-full border transition-all cursor-pointer shrink-0 ${
               favorited
                 ? "bg-rose-500/20 text-rose-400 border-rose-500/40 shadow-[0_0_10px_rgba(244,63,94,0.3)]"
                 : "bg-[var(--card)] text-[var(--text-secondary)] border-[var(--border)] hover:text-[var(--foreground)] hover:border-[var(--accent)]/50"
@@ -122,17 +122,17 @@ function BookCardComponent({ book, compact = false }: BookCardProps) {
           </div>
 
           {/* Meta Bar & CTA */}
-          <div className="mt-4 pt-3 border-t border-[var(--border)] flex items-center justify-between">
-            <div className="flex items-center gap-1.5 text-xs text-[var(--accent)] font-semibold">
+          <div className="mt-3.5 sm:mt-4 pt-2.5 sm:pt-3 border-t border-[var(--border)] flex items-center justify-between gap-1.5 flex-wrap sm:flex-nowrap">
+            <div className="flex items-center gap-1 text-[11px] sm:text-xs text-[var(--accent)] font-semibold truncate">
               <span>★</span>
               <span className="text-[var(--foreground)] font-bold">{book.rating.toFixed(1)}</span>
-              <span className="text-[var(--text-secondary)] font-normal text-[11px]">({book.year})</span>
+              <span className="text-[var(--text-secondary)] font-normal text-[10px] sm:text-[11px]">({book.year})</span>
             </div>
 
             <Link
               href={`/book/${book.id}`}
               onClick={() => recordReading(book.id)}
-              className="px-3 py-1.5 rounded-lg bg-[var(--accent)]/10 hover:bg-[var(--primary)] text-[var(--accent)] hover:text-[var(--primary-foreground)] border border-[var(--accent)]/30 font-semibold text-xs transition-all shadow-xs"
+              className="px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg bg-[var(--accent)]/10 hover:bg-[var(--primary)] text-[var(--accent)] hover:text-[var(--primary-foreground)] border border-[var(--accent)]/30 font-semibold text-[11px] sm:text-xs transition-all shadow-xs shrink-0"
             >
               Read ↗
             </Link>

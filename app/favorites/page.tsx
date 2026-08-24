@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useMemo, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import Image from "next/image";
 import { useLibrary } from "@/context/LibraryContext";
@@ -48,7 +49,27 @@ export default function FavoritesPage() {
     buttonText: string;
     dangerLevel: "warning" | "danger";
   } | null>(null);
+  const [mounted, setMounted] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Lock body scroll when confirmation modal is open
+  useEffect(() => {
+    if (!confirmModal?.isOpen) return;
+    const origOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setConfirmModal(null);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = origOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [confirmModal?.isOpen]);
 
   // Scan offline Cache API for saved books
   const refreshOfflineBooks = async () => {
@@ -238,41 +259,41 @@ export default function FavoritesPage() {
   };
 
   return (
-    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 text-left">
+    <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 pt-20 sm:pt-24 pb-16 text-left overflow-x-clip">
       {/* Header */}
-      <div className="mb-8">
-        <div className="flex items-center gap-2 text-xs font-bold text-[var(--accent)] uppercase tracking-widest mb-1.5">
+      <div className="mb-6 sm:mb-8 space-y-1 sm:space-y-1.5">
+        <div className="flex items-center gap-2 text-[11px] sm:text-xs font-bold text-[var(--accent)] uppercase tracking-wider sm:tracking-widest">
           <span>📚</span>
           <span>Personal Shelf &amp; Study Dashboard</span>
         </div>
-        <h1 className="text-3xl sm:text-4xl font-bold font-serif text-[var(--foreground)] tracking-tight">
+        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold font-serif text-[var(--foreground)] tracking-tight">
           My Library
         </h1>
-        <p className="text-sm text-[var(--text-secondary)] mt-1 font-normal">
+        <p className="text-xs sm:text-sm text-[var(--text-secondary)] font-normal max-w-2xl">
           Your private reading workspace, saved 100% locally with zero logins or server tracking.
         </p>
       </div>
 
       {/* Smart Continue Reading Hero Card */}
       {spotlightBook && (
-        <div className="mb-8 p-6 sm:p-7 rounded-3xl glass-card border border-[var(--accent)]/30 bg-gradient-to-r from-[var(--card)] via-[var(--card)] to-[var(--accent)]/10 shadow-2xl flex flex-col sm:flex-row items-center justify-between gap-6 animate-fade-in">
-          <div className="flex items-center gap-5 min-w-0 w-full sm:w-auto">
-            <div className="relative w-16 h-24 sm:w-20 sm:h-28 rounded-2xl overflow-hidden book-shadow flex-shrink-0 border border-[var(--border)]">
-              <Image src={spotlightBook.cover} alt={spotlightBook.title} fill className="object-cover" />
+        <div className="mb-6 sm:mb-8 p-4 sm:p-7 rounded-2xl sm:rounded-3xl glass-card border border-[var(--accent)]/30 bg-gradient-to-r from-[var(--card)] via-[var(--card)] to-[var(--accent)]/10 shadow-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-6 animate-fade-in">
+          <div className="flex items-start sm:items-center gap-3.5 sm:gap-5 min-w-0 w-full sm:w-auto">
+            <div className="relative w-14 h-20 sm:w-20 sm:h-28 rounded-xl sm:rounded-2xl overflow-hidden book-shadow flex-shrink-0 border border-[var(--border)]">
+              <Image src={spotlightBook.cover} alt={spotlightBook.title} fill className="object-cover" sizes="(max-width: 640px) 56px, 80px" />
             </div>
             <div className="min-w-0 flex-1">
-              <span className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-wider block mb-1">
+              <span className="text-[10px] font-bold text-[var(--accent)] uppercase tracking-wider block mb-0.5 sm:mb-1">
                 ⚡ Continue Where You Left Off
               </span>
-              <h3 className="font-serif font-bold text-base sm:text-lg text-[var(--foreground)] truncate">
+              <h3 className="font-serif font-bold text-sm sm:text-lg text-[var(--foreground)] truncate">
                 {spotlightBook.title}
               </h3>
-              <p className="text-xs text-[var(--text-secondary)] truncate">
+              <p className="text-[11px] sm:text-xs text-[var(--text-secondary)] truncate">
                 by {spotlightBook.author} • {spotlightBook.category}
               </p>
 
-              <div className="mt-3 space-y-1.5 max-w-sm">
-                <div className="flex justify-between text-[11px] font-medium text-[var(--text-secondary)]">
+              <div className="mt-2 sm:mt-3 space-y-1 sm:space-y-1.5 max-w-sm">
+                <div className="flex justify-between text-[10px] sm:text-[11px] font-medium text-[var(--text-secondary)]">
                   <span>Page {spotlightBook.currentPage} of {spotlightBook.totalPages}</span>
                   <span className="text-[var(--accent)] font-bold">{spotlightBook.progress}%</span>
                 </div>
@@ -291,10 +312,10 @@ export default function FavoritesPage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3 w-full sm:w-auto flex-shrink-0">
+          <div className="flex items-center gap-3 w-full sm:w-auto flex-shrink-0 pt-1 sm:pt-0">
             <Link
               href={`/book/${spotlightBook.id}`}
-              className="w-full sm:w-auto px-6 py-3.5 rounded-2xl bg-[var(--primary)] text-[var(--primary-foreground)] text-xs font-bold shadow-xl hover:scale-105 transition-all text-center flex items-center justify-center gap-2"
+              className="w-full sm:w-auto px-5 sm:px-6 py-3 sm:py-3.5 rounded-xl sm:rounded-2xl bg-[var(--primary)] text-[var(--primary-foreground)] text-xs font-bold shadow-xl hover:scale-105 transition-all text-center flex items-center justify-center gap-2"
             >
               <span>Resume Reading Page {spotlightBook.currentPage}</span>
               <span>→</span>
@@ -303,11 +324,11 @@ export default function FavoritesPage() {
         </div>
       )}
 
-      {/* Navigation Tabs */}
-      <div className="flex items-center gap-2 border-b border-[var(--border)] pb-3 mb-8 overflow-x-auto">
+      {/* Navigation Tabs (Edge-to-edge swipeable container on mobile) */}
+      <div className="-mx-3 px-3 sm:mx-0 sm:px-0 flex items-center gap-1.5 sm:gap-2 border-b border-[var(--border)] pb-2.5 sm:pb-3 mb-6 sm:mb-8 overflow-x-auto scrollbar-none">
         <button
           onClick={() => setActiveTab("favorites")}
-          className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
+          className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 sm:gap-2 whitespace-nowrap flex-shrink-0 ${
             activeTab === "favorites"
               ? "bg-[var(--primary)] text-[var(--primary-foreground)] shadow-md"
               : "bg-[var(--card)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)]"
@@ -321,7 +342,7 @@ export default function FavoritesPage() {
 
         <button
           onClick={() => setActiveTab("reading")}
-          className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
+          className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 sm:gap-2 whitespace-nowrap flex-shrink-0 ${
             activeTab === "reading"
               ? "bg-[var(--primary)] text-[var(--primary-foreground)] shadow-md"
               : "bg-[var(--card)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)]"
@@ -335,7 +356,7 @@ export default function FavoritesPage() {
 
         <button
           onClick={() => setActiveTab("completed")}
-          className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
+          className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 sm:gap-2 whitespace-nowrap flex-shrink-0 ${
             activeTab === "completed"
               ? "bg-[var(--primary)] text-[var(--primary-foreground)] shadow-md"
               : "bg-[var(--card)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)]"
@@ -352,7 +373,7 @@ export default function FavoritesPage() {
             setActiveTab("offline");
             refreshOfflineBooks();
           }}
-          className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
+          className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 sm:gap-2 whitespace-nowrap flex-shrink-0 ${
             activeTab === "offline"
               ? "bg-[var(--primary)] text-[var(--primary-foreground)] shadow-md"
               : "bg-[var(--card)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)]"
@@ -366,7 +387,7 @@ export default function FavoritesPage() {
 
         <button
           onClick={() => setActiveTab("memory")}
-          className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
+          className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 sm:gap-2 whitespace-nowrap flex-shrink-0 ${
             activeTab === "memory"
               ? "bg-[var(--primary)] text-[var(--primary-foreground)] shadow-md"
               : "bg-[var(--card)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)]"
@@ -380,7 +401,7 @@ export default function FavoritesPage() {
 
         <button
           onClick={() => setActiveTab("stats")}
-          className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap ${
+          className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 sm:gap-2 whitespace-nowrap flex-shrink-0 ${
             activeTab === "stats"
               ? "bg-[var(--primary)] text-[var(--primary-foreground)] shadow-md"
               : "bg-[var(--card)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)]"
@@ -396,34 +417,34 @@ export default function FavoritesPage() {
       {activeTab === "favorites" && (
         <>
           {favoriteBooks.length === 0 ? (
-            <div className="text-center py-20 px-6 glass-card rounded-3xl border border-[var(--border)] max-w-2xl mx-auto bg-[var(--card)] shadow-2xl">
-              <div className="w-16 h-16 rounded-2xl bg-rose-500/10 border border-rose-500/25 text-3xl flex items-center justify-center mx-auto mb-4 text-rose-400 shadow-inner">
+            <div className="text-center py-16 sm:py-20 px-4 sm:px-6 glass-card rounded-2xl sm:rounded-3xl border border-[var(--border)] max-w-2xl mx-auto bg-[var(--card)] shadow-2xl">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-rose-500/10 border border-rose-500/25 text-2xl sm:text-3xl flex items-center justify-center mx-auto mb-3 sm:mb-4 text-rose-400 shadow-inner">
                 ♥
               </div>
-              <h2 className="text-2xl sm:text-3xl font-bold font-serif text-[var(--foreground)] mb-2">
+              <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold font-serif text-[var(--foreground)] mb-2">
                 Your shelf is waiting.
               </h2>
-              <p className="text-sm text-[var(--text-secondary)] max-w-md mx-auto mb-8 leading-relaxed font-normal">
+              <p className="text-xs sm:text-sm text-[var(--text-secondary)] max-w-md mx-auto mb-6 sm:mb-8 leading-relaxed font-normal">
                 Click the heart icon on any book across the catalog to build your private reading collection.
               </p>
               <Link
                 href="/library"
-                className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-gradient-to-r from-[var(--primary)] to-[var(--accent-secondary)] text-[var(--primary-foreground)] font-bold text-xs shadow-xl hover:scale-105 transition-all"
+                className="inline-flex items-center gap-2 px-6 sm:px-8 py-3 sm:py-3.5 rounded-xl bg-gradient-to-r from-[var(--primary)] to-[var(--accent-secondary)] text-[var(--primary-foreground)] font-bold text-xs shadow-xl hover:scale-105 transition-all"
               >
                 <span>Explore Library</span>
                 <span>→</span>
               </Link>
             </div>
           ) : (
-            <div className="space-y-6">
+            <div className="space-y-4 sm:space-y-6">
               {savedCategories.length > 2 && (
-                <div className="flex flex-wrap items-center gap-2 pb-2">
-                  <span className="text-xs text-[var(--text-secondary)] font-medium mr-2">Filter Shelf:</span>
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 pb-2">
+                  <span className="text-[11px] sm:text-xs text-[var(--text-secondary)] font-medium mr-1">Filter Shelf:</span>
                   {savedCategories.map((cat) => (
                     <button
                       key={cat}
                       onClick={() => setSelectedCategory(cat)}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer ${
+                      className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-xl text-[11px] sm:text-xs font-medium transition-all cursor-pointer ${
                         selectedCategory === cat
                           ? "bg-[var(--primary)] text-[var(--primary-foreground)] font-bold shadow-md"
                           : "bg-[var(--secondary)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)]"
@@ -435,7 +456,7 @@ export default function FavoritesPage() {
                 </div>
               )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-6">
                 {filteredFavorites.map((book) => (
                   <BookCard key={book.id} book={book} />
                 ))}
@@ -449,48 +470,48 @@ export default function FavoritesPage() {
        * Tab 2: In Progress
        * ------------------------------------------------------------- */}
       {activeTab === "reading" && (
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {currentlyReadingBooks.length === 0 ? (
-            <div className="text-center py-20 px-6 glass-card rounded-3xl border border-[var(--border)] max-w-2xl mx-auto bg-[var(--card)] shadow-2xl">
-              <div className="w-16 h-16 rounded-2xl bg-[var(--accent)]/10 border border-[var(--accent)]/25 text-3xl flex items-center justify-center mx-auto mb-4 text-[var(--accent)] shadow-inner">
+            <div className="text-center py-16 sm:py-20 px-4 sm:px-6 glass-card rounded-2xl sm:rounded-3xl border border-[var(--border)] max-w-2xl mx-auto bg-[var(--card)] shadow-2xl">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-[var(--accent)]/10 border border-[var(--accent)]/25 text-2xl sm:text-3xl flex items-center justify-center mx-auto mb-3 sm:mb-4 text-[var(--accent)] shadow-inner">
                 📖
               </div>
-              <h2 className="text-2xl sm:text-3xl font-bold font-serif text-[var(--foreground)] mb-2">
+              <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold font-serif text-[var(--foreground)] mb-2">
                 No Books Currently In Progress
               </h2>
-              <p className="text-sm text-[var(--text-secondary)] max-w-md mx-auto mb-8 leading-relaxed font-normal">
+              <p className="text-xs sm:text-sm text-[var(--text-secondary)] max-w-md mx-auto mb-6 sm:mb-8 leading-relaxed font-normal">
                 Open any book in the reader to start tracking your reading journey automatically.
               </p>
               <Link
                 href="/library"
-                className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-[var(--primary)] text-[var(--primary-foreground)] font-bold text-xs shadow-xl hover:scale-105 transition-all"
+                className="inline-flex items-center gap-2 px-6 sm:px-8 py-3 sm:py-3.5 rounded-xl bg-[var(--primary)] text-[var(--primary-foreground)] font-bold text-xs shadow-xl hover:scale-105 transition-all"
               >
-                <span>Browse Masterworks</span>
+                <span>Explore Library</span>
                 <span>→</span>
               </Link>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-6">
               {currentlyReadingBooks.map((book) => (
                 <div
                   key={book.id}
-                  className="glass-card rounded-3xl p-5 border border-[var(--border)] bg-[var(--card)] shadow-xl flex flex-col justify-between space-y-4"
+                  className="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-[var(--border)] bg-[var(--card)] shadow-xl flex flex-col justify-between space-y-3 sm:space-y-4"
                 >
-                  <div className="flex gap-4">
-                    <div className="relative w-16 h-24 rounded-xl overflow-hidden book-shadow flex-shrink-0 border border-[var(--border)]">
-                      <Image src={book.cover} alt={book.title} fill className="object-cover" sizes="64px" />
+                  <div className="flex gap-3.5 sm:gap-4">
+                    <div className="relative w-14 h-20 sm:w-16 sm:h-24 rounded-xl overflow-hidden book-shadow flex-shrink-0 border border-[var(--border)]">
+                      <Image src={book.cover} alt={book.title} fill className="object-cover" sizes="(max-width: 640px) 56px, 64px" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--secondary)] text-[var(--accent)] font-semibold border border-[var(--border)]">
+                      <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-[var(--secondary)] text-[var(--accent)] font-semibold border border-[var(--border)] truncate inline-block max-w-full">
                         {book.category}
                       </span>
-                      <h4 className="font-serif font-bold text-sm text-[var(--foreground)] truncate mt-1">
+                      <h4 className="font-serif font-bold text-xs sm:text-sm text-[var(--foreground)] truncate mt-1">
                         {book.title}
                       </h4>
-                      <p className="text-xs text-[var(--text-secondary)] truncate">
+                      <p className="text-[11px] sm:text-xs text-[var(--text-secondary)] truncate">
                         by {book.author}
                       </p>
-                      <div className="mt-2 text-[11px] text-[var(--text-secondary)] font-medium">
+                      <div className="mt-1.5 sm:mt-2 text-[10px] sm:text-[11px] text-[var(--text-secondary)] font-medium">
                         Page {book.currentPage} of {book.totalPages} ({book.progress}%)
                       </div>
                     </div>
@@ -505,7 +526,7 @@ export default function FavoritesPage() {
 
                   <Link
                     href={`/book/${book.id}`}
-                    className="w-full py-2.5 rounded-xl bg-[var(--primary)] text-[var(--primary-foreground)] text-xs font-bold text-center block shadow-md hover:scale-102 transition-transform"
+                    className="w-full py-2 sm:py-2.5 rounded-xl bg-[var(--primary)] text-[var(--primary-foreground)] text-xs font-bold text-center block shadow-md hover:scale-102 transition-transform"
                   >
                     Resume Reading →
                   </Link>
@@ -520,48 +541,48 @@ export default function FavoritesPage() {
        * Tab 3: Completed Books
        * ------------------------------------------------------------- */}
       {activeTab === "completed" && (
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {completedBooks.length === 0 ? (
-            <div className="text-center py-20 px-6 glass-card rounded-3xl border border-[var(--border)] max-w-2xl mx-auto bg-[var(--card)] shadow-2xl">
-              <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 text-3xl flex items-center justify-center mx-auto mb-4 text-emerald-400 shadow-inner">
+            <div className="text-center py-16 sm:py-20 px-4 sm:px-6 glass-card rounded-2xl sm:rounded-3xl border border-[var(--border)] max-w-2xl mx-auto bg-[var(--card)] shadow-2xl">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 text-2xl sm:text-3xl flex items-center justify-center mx-auto mb-3 sm:mb-4 text-emerald-400 shadow-inner">
                 🏆
               </div>
-              <h2 className="text-2xl sm:text-3xl font-bold font-serif text-[var(--foreground)] mb-2">
+              <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold font-serif text-[var(--foreground)] mb-2">
                 No Completed Books Yet
               </h2>
-              <p className="text-sm text-[var(--text-secondary)] max-w-md mx-auto mb-8 leading-relaxed font-normal">
+              <p className="text-xs sm:text-sm text-[var(--text-secondary)] max-w-md mx-auto mb-6 sm:mb-8 leading-relaxed font-normal">
                 Finish reading books in the reader to earn your completion badge and archive your study memories.
               </p>
               <Link
                 href="/library"
-                className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-[var(--primary)] text-[var(--primary-foreground)] font-bold text-xs shadow-xl hover:scale-105 transition-all"
+                className="inline-flex items-center gap-2 px-6 sm:px-8 py-3 sm:py-3.5 rounded-xl bg-[var(--primary)] text-[var(--primary-foreground)] font-bold text-xs shadow-xl hover:scale-105 transition-all"
               >
-                <span>Discover Books</span>
+                <span>Explore Library</span>
                 <span>→</span>
               </Link>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-6">
               {completedBooks.map((book) => (
                 <div
                   key={book.id}
-                  className="glass-card rounded-3xl p-5 border border-emerald-500/30 bg-[var(--card)] shadow-xl flex flex-col justify-between space-y-4"
+                  className="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-emerald-500/30 bg-[var(--card)] shadow-xl flex flex-col justify-between space-y-3 sm:space-y-4"
                 >
-                  <div className="flex gap-4">
-                    <div className="relative w-16 h-24 rounded-xl overflow-hidden book-shadow flex-shrink-0 border border-[var(--border)]">
-                      <Image src={book.cover} alt={book.title} fill className="object-cover" sizes="64px" />
+                  <div className="flex gap-3.5 sm:gap-4">
+                    <div className="relative w-14 h-20 sm:w-16 sm:h-24 rounded-xl overflow-hidden book-shadow flex-shrink-0 border border-[var(--border)]">
+                      <Image src={book.cover} alt={book.title} fill className="object-cover" sizes="(max-width: 640px) 56px, 64px" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30">
+                      <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30">
                         Finished ✓
                       </span>
-                      <h4 className="font-serif font-bold text-sm text-[var(--foreground)] truncate mt-1">
+                      <h4 className="font-serif font-bold text-xs sm:text-sm text-[var(--foreground)] truncate mt-1">
                         {book.title}
                       </h4>
-                      <p className="text-xs text-[var(--text-secondary)] truncate">
+                      <p className="text-[11px] sm:text-xs text-[var(--text-secondary)] truncate">
                         by {book.author}
                       </p>
-                      <p className="text-[11px] text-[var(--text-secondary)] mt-1">
+                      <p className="text-[10px] sm:text-[11px] text-[var(--text-secondary)] mt-1">
                         {book.totalPages} pages read
                       </p>
                     </div>
@@ -569,7 +590,7 @@ export default function FavoritesPage() {
 
                   <Link
                     href={`/book/${book.id}`}
-                    className="w-full py-2.5 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] text-xs font-bold text-center block border border-[var(--border)]"
+                    className="w-full py-2 sm:py-2.5 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] text-xs font-bold text-center block border border-[var(--border)]"
                   >
                     Re-read Book →
                   </Link>
@@ -584,25 +605,25 @@ export default function FavoritesPage() {
        * Tab 4: Offline Books Manager
        * ------------------------------------------------------------- */}
       {activeTab === "offline" && (
-        <div className="space-y-6">
-          <div className="p-6 rounded-3xl glass-card border border-[var(--border)] bg-[var(--card)] flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl">
-            <div className="flex items-center gap-4 text-left">
-              <div className="w-14 h-14 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-2xl flex items-center justify-center flex-shrink-0">
+        <div className="space-y-4 sm:space-y-6">
+          <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl glass-card border border-[var(--border)] bg-[var(--card)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xl">
+            <div className="flex items-center gap-3.5 sm:gap-4 text-left w-full sm:w-auto">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xl sm:text-2xl flex items-center justify-center flex-shrink-0">
                 📦
               </div>
-              <div>
-                <h3 className="font-serif font-bold text-base text-[var(--foreground)]">
+              <div className="min-w-0 flex-1">
+                <h3 className="font-serif font-bold text-sm sm:text-base text-[var(--foreground)] truncate">
                   Offline Library Storage
                 </h3>
-                <p className="text-xs text-[var(--text-secondary)]">
-                  {offlineBooksList.length} book{offlineBooksList.length === 1 ? "" : "s"} cached locally (~{offlineStorageSizeMb} MB on device storage).
+                <p className="text-[11px] sm:text-xs text-[var(--text-secondary)]">
+                  {offlineBooksList.length} book{offlineBooksList.length === 1 ? "" : "s"} cached locally (~{offlineStorageSizeMb} MB on device).
                 </p>
               </div>
             </div>
 
             <button
               onClick={refreshOfflineBooks}
-              className="px-4 py-2 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] text-xs font-semibold border border-[var(--border)] transition-all cursor-pointer flex items-center gap-1.5"
+              className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] text-xs font-semibold border border-[var(--border)] transition-all cursor-pointer flex items-center justify-center gap-1.5 flex-shrink-0"
             >
               <span>↻</span>
               <span>Refresh Cache</span>
@@ -610,43 +631,43 @@ export default function FavoritesPage() {
           </div>
 
           {offlineBooksList.length === 0 ? (
-            <div className="text-center py-20 px-6 glass-card rounded-3xl border border-[var(--border)] max-w-2xl mx-auto bg-[var(--card)] shadow-2xl">
-              <div className="w-16 h-16 rounded-2xl bg-[var(--secondary)] border border-[var(--border)] text-3xl flex items-center justify-center mx-auto mb-4 text-[var(--text-secondary)] shadow-inner">
+            <div className="text-center py-16 sm:py-20 px-4 sm:px-6 glass-card rounded-2xl sm:rounded-3xl border border-[var(--border)] max-w-2xl mx-auto bg-[var(--card)] shadow-2xl">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-[var(--secondary)] border border-[var(--border)] text-2xl sm:text-3xl flex items-center justify-center mx-auto mb-3 sm:mb-4 text-[var(--text-secondary)] shadow-inner">
                 📦
               </div>
-              <h2 className="text-2xl sm:text-3xl font-bold font-serif text-[var(--foreground)] mb-2">
+              <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold font-serif text-[var(--foreground)] mb-2">
                 No Offline Books Saved
               </h2>
-              <p className="text-sm text-[var(--text-secondary)] max-w-md mx-auto mb-8 leading-relaxed font-normal">
+              <p className="text-xs sm:text-sm text-[var(--text-secondary)] max-w-md mx-auto mb-6 sm:mb-8 leading-relaxed font-normal">
                 Click the &ldquo;Save Offline (📦)&rdquo; button in any book header or reader to keep full copies available on your device without internet.
               </p>
               <Link
                 href="/library"
-                className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-[var(--primary)] text-[var(--primary-foreground)] font-bold text-xs shadow-xl hover:scale-105 transition-all"
+                className="inline-flex items-center gap-2 px-6 sm:px-8 py-3 sm:py-3.5 rounded-xl bg-[var(--primary)] text-[var(--primary-foreground)] font-bold text-xs shadow-xl hover:scale-105 transition-all"
               >
                 <span>Browse Library to Cache Books</span>
                 <span>→</span>
               </Link>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-6">
               {offlineBooksList.map((book) => (
                 <div
                   key={book.id}
-                  className="glass-card rounded-3xl p-5 border border-emerald-500/30 bg-[var(--card)] shadow-xl flex flex-col justify-between space-y-4"
+                  className="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-emerald-500/30 bg-[var(--card)] shadow-xl flex flex-col justify-between space-y-3 sm:space-y-4"
                 >
-                  <div className="flex gap-4">
-                    <div className="relative w-16 h-24 rounded-xl overflow-hidden book-shadow flex-shrink-0 border border-[var(--border)]">
-                      <Image src={book.cover} alt={book.title} fill className="object-cover" sizes="64px" />
+                  <div className="flex gap-3.5 sm:gap-4">
+                    <div className="relative w-14 h-20 sm:w-16 sm:h-24 rounded-xl overflow-hidden book-shadow flex-shrink-0 border border-[var(--border)]">
+                      <Image src={book.cover} alt={book.title} fill className="object-cover" sizes="(max-width: 640px) 56px, 64px" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30">
+                      <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30">
                         Available Offline ✓
                       </span>
-                      <h4 className="font-serif font-bold text-sm text-[var(--foreground)] truncate mt-1">
+                      <h4 className="font-serif font-bold text-xs sm:text-sm text-[var(--foreground)] truncate mt-1">
                         {book.title}
                       </h4>
-                      <p className="text-xs text-[var(--text-secondary)] truncate">
+                      <p className="text-[11px] sm:text-xs text-[var(--text-secondary)] truncate">
                         by {book.author}
                       </p>
                     </div>
@@ -681,50 +702,50 @@ export default function FavoritesPage() {
        * Tab 5: Books with Reading Memory
        * ------------------------------------------------------------- */}
       {activeTab === "memory" && (
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {memoryBooks.length === 0 ? (
-            <div className="text-center py-20 px-6 glass-card rounded-3xl border border-[var(--border)] max-w-2xl mx-auto bg-[var(--card)] shadow-2xl">
-              <div className="w-16 h-16 rounded-2xl bg-[var(--accent)]/10 border border-[var(--accent)]/25 text-3xl flex items-center justify-center mx-auto mb-4 text-[var(--accent)] shadow-inner">
+            <div className="text-center py-16 sm:py-20 px-4 sm:px-6 glass-card rounded-2xl sm:rounded-3xl border border-[var(--border)] max-w-2xl mx-auto bg-[var(--card)] shadow-2xl">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-[var(--accent)]/10 border border-[var(--accent)]/25 text-2xl sm:text-3xl flex items-center justify-center mx-auto mb-3 sm:mb-4 text-[var(--accent)] shadow-inner">
                 🧠
               </div>
-              <h2 className="text-2xl sm:text-3xl font-bold font-serif text-[var(--foreground)] mb-2">
+              <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold font-serif text-[var(--foreground)] mb-2">
                 No Reading Memories Recorded
               </h2>
-              <p className="text-sm text-[var(--text-secondary)] max-w-md mx-auto mb-8 leading-relaxed font-normal">
+              <p className="text-xs sm:text-sm text-[var(--text-secondary)] max-w-md mx-auto mb-6 sm:mb-8 leading-relaxed font-normal">
                 Reading time, highlight quotes, drawing layers, and timeline events will automatically populate here as you read.
               </p>
               <Link
                 href="/library"
-                className="inline-flex items-center gap-2 px-8 py-3.5 rounded-xl bg-[var(--primary)] text-[var(--primary-foreground)] font-bold text-xs shadow-xl hover:scale-105 transition-all"
+                className="inline-flex items-center gap-2 px-6 sm:px-8 py-3 sm:py-3.5 rounded-xl bg-[var(--primary)] text-[var(--primary-foreground)] font-bold text-xs shadow-xl hover:scale-105 transition-all"
               >
                 <span>Start Reading</span>
                 <span>→</span>
               </Link>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5 sm:gap-6">
               {memoryBooks.map((book) => (
                 <div
                   key={book.id}
-                  className="glass-card rounded-3xl p-5 border border-[var(--border)] bg-[var(--card)] shadow-xl flex flex-col justify-between space-y-4"
+                  className="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-[var(--border)] bg-[var(--card)] shadow-xl flex flex-col justify-between space-y-3 sm:space-y-4"
                 >
-                  <div className="flex gap-4">
-                    <div className="relative w-16 h-24 rounded-xl overflow-hidden book-shadow flex-shrink-0 border border-[var(--border)]">
-                      <Image src={book.cover} alt={book.title} fill className="object-cover" sizes="64px" />
+                  <div className="flex gap-3.5 sm:gap-4">
+                    <div className="relative w-14 h-20 sm:w-16 sm:h-24 rounded-xl overflow-hidden book-shadow flex-shrink-0 border border-[var(--border)]">
+                      <Image src={book.cover} alt={book.title} fill className="object-cover" sizes="(max-width: 640px) 56px, 64px" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <h4 className="font-serif font-bold text-sm text-[var(--foreground)] truncate">
+                      <h4 className="font-serif font-bold text-xs sm:text-sm text-[var(--foreground)] truncate">
                         {book.title}
                       </h4>
-                      <p className="text-xs text-[var(--text-secondary)] truncate">
+                      <p className="text-[11px] sm:text-xs text-[var(--text-secondary)] truncate">
                         by {book.author}
                       </p>
-                      <div className="mt-2 text-[11px] text-[var(--text-secondary)] space-y-0.5">
+                      <div className="mt-1.5 sm:mt-2 text-[10px] sm:text-[11px] text-[var(--text-secondary)] space-y-0.5">
                         <span className="block font-medium">
                           Page {book.currentPage} / {book.totalPages} ({book.progress}%)
                         </span>
                         <span className="block text-[10px] opacity-80">
-                          {Math.floor(book.memory.totalSeconds / 60)} min read • {book.memory.timeline.length} sessions
+                          {Math.floor(book.memory.totalSeconds / 60)} min read • {book.memory.timeline?.length || 0} sessions
                         </span>
                       </div>
                     </div>
@@ -732,7 +753,7 @@ export default function FavoritesPage() {
 
                   <button
                     onClick={() => setSelectedMemoryBook(book)}
-                    className="w-full py-2.5 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+                    className="w-full py-2 sm:py-2.5 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
                   >
                     <span>🧠</span>
                     <span>View Reading Memory 2.0 →</span>
@@ -748,29 +769,29 @@ export default function FavoritesPage() {
        * Tab 6: Reading Stats, Goals & Local Data Backup
        * ------------------------------------------------------------- */}
       {activeTab === "stats" && (
-        <div className="space-y-8">
+        <div className="space-y-6 sm:space-y-8">
           {/* Daily Reading Streak & Habit Banner */}
-          <div className="glass-card rounded-3xl p-6 sm:p-7 border border-[var(--border)] bg-gradient-to-r from-[var(--card)] via-[var(--card)] to-amber-500/5 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-4 text-left">
-              <div className={`w-16 h-16 rounded-2xl flex items-center justify-center text-3xl border flex-shrink-0 ${
+          <div className="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-7 border border-[var(--border)] bg-gradient-to-r from-[var(--card)] via-[var(--card)] to-amber-500/5 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-6">
+            <div className="flex items-center gap-3.5 sm:gap-4 text-left w-full sm:w-auto">
+              <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center text-2xl sm:text-3xl border flex-shrink-0 ${
                 stats.isTodayQualified
                   ? "bg-amber-500/20 border-amber-500/40 text-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.3)]"
                   : "bg-[var(--secondary)] border-[var(--border)] text-[var(--text-secondary)]"
               }`}>
                 🪔
               </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="font-serif font-bold text-lg text-[var(--foreground)]">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="font-serif font-bold text-base sm:text-lg text-[var(--foreground)]">
                     {stats.readingStreakDays} Day Reading Streak
                   </h3>
                   {stats.isTodayQualified && (
-                    <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[10px] font-bold">
+                    <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[10px] font-bold">
                       Diya Lit Today ✨
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-[var(--text-secondary)] mt-1">
+                <p className="text-[11px] sm:text-xs text-[var(--text-secondary)] mt-0.5 sm:mt-1 leading-relaxed">
                   {stats.isTodayQualified
                     ? `15-minute goal completed today (${Math.floor(stats.todayReadingSeconds / 60)} min read). Keep it up!`
                     : stats.todayReadingSeconds > 0
@@ -780,34 +801,32 @@ export default function FavoritesPage() {
               </div>
             </div>
 
-            <div className="w-full sm:w-auto flex items-center gap-3 bg-[var(--secondary)]/50 px-4 py-3 rounded-2xl border border-[var(--border)]">
-              <div className="text-center">
-                <span className="text-[10px] text-[var(--text-secondary)] block font-medium">Today&apos;s Reading</span>
-                <span className={`text-sm font-bold font-mono ${stats.isTodayQualified ? "text-amber-400" : "text-[var(--foreground)]"}`}>
-                  {Math.floor(stats.todayReadingSeconds / 60)} / 15 min
-                </span>
-              </div>
+            <div className="w-full sm:w-auto flex items-center justify-between sm:justify-start gap-3 bg-[var(--secondary)]/50 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-2xl border border-[var(--border)] flex-shrink-0">
+              <span className="text-[10px] sm:text-[11px] text-[var(--text-secondary)] font-medium">Today&apos;s Reading</span>
+              <span className={`text-xs sm:text-sm font-bold font-mono ${stats.isTodayQualified ? "text-amber-400" : "text-[var(--foreground)]"}`}>
+                {Math.floor(stats.todayReadingSeconds / 60)} / 15 min
+              </span>
             </div>
           </div>
 
           {/* Personal Reading Goals Selector Widget */}
-          <div className="p-6 rounded-3xl glass-card border border-[var(--border)] bg-[var(--card)] space-y-4 shadow-xl">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[var(--border)] pb-3">
+          <div className="p-4 sm:p-6 rounded-2xl sm:rounded-3xl glass-card border border-[var(--border)] bg-[var(--card)] space-y-3.5 sm:space-y-4 shadow-xl">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--border)] pb-3">
               <div>
-                <h4 className="font-serif font-bold text-sm text-[var(--foreground)] flex items-center gap-2">
+                <h4 className="font-serif font-bold text-xs sm:text-sm text-[var(--foreground)] flex items-center gap-1.5 sm:gap-2">
                   <span>🎯</span>
                   <span>Personal Daily Reading Target</span>
                 </h4>
-                <p className="text-xs text-[var(--text-secondary)]">
+                <p className="text-[11px] sm:text-xs text-[var(--text-secondary)]">
                   Streak qualifies at 15 minutes. Set your own higher personal commitment if desired.
                 </p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="grid grid-cols-4 sm:flex gap-1.5 sm:gap-2 w-full sm:w-auto">
                 {[15, 30, 45, 60].map((mins) => (
                   <button
                     key={mins}
                     onClick={() => handleUpdateGoal(mins)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer text-center ${
                       customGoalMinutes === mins
                         ? "bg-[var(--primary)] text-[var(--primary-foreground)] shadow-md"
                         : "bg-[var(--secondary)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)]"
@@ -821,7 +840,7 @@ export default function FavoritesPage() {
 
             {/* Goal Progress Ring Bar */}
             <div className="space-y-1.5">
-              <div className="flex justify-between text-xs font-medium text-[var(--text-secondary)]">
+              <div className="flex justify-between text-[11px] sm:text-xs font-medium text-[var(--text-secondary)]">
                 <span>Today&apos;s Progress towards {customGoalMinutes}m goal</span>
                 <span className="font-bold text-[var(--accent)]">
                   {Math.min(100, Math.round((stats.todayReadingSeconds / (customGoalMinutes * 60)) * 100))}%
@@ -839,9 +858,9 @@ export default function FavoritesPage() {
           </div>
 
           {/* Real Local Statistics Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
             <div
-              className="p-5 rounded-3xl bg-[var(--card)] border border-[var(--border)] shadow-xl flex items-center justify-between gap-4"
+              className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-[var(--card)] border border-[var(--border)] shadow-xl flex items-center justify-between gap-4"
               title="Time you actively spent exploring, searching, and studying on Reader's HUB."
             >
               <div className="space-y-1">
@@ -849,22 +868,22 @@ export default function FavoritesPage() {
                   <span>⚡</span>
                   <span>Website Active Time</span>
                 </div>
-                <h4 className="text-2xl sm:text-3xl font-bold font-serif text-emerald-400 font-mono">
+                <h4 className="text-xl sm:text-3xl font-bold font-serif text-emerald-400 font-mono">
                   {Math.floor((stats.totalActiveSeconds || 0) / 60) >= 60
                     ? `${Math.floor((stats.totalActiveSeconds || 0) / 3600)}h ${Math.floor(((stats.totalActiveSeconds || 0) % 3600) / 60)}m`
                     : `${Math.floor((stats.totalActiveSeconds || 0) / 60)}m`}
                 </h4>
-                <p className="text-[11px] text-[var(--text-secondary)]">
+                <p className="text-[10px] sm:text-[11px] text-[var(--text-secondary)]">
                   Meaningful time spent using Reader&apos;s HUB
                 </p>
               </div>
-              <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-xl flex-shrink-0">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-lg sm:text-xl flex-shrink-0">
                 ⚡
               </div>
             </div>
 
             <div
-              className="p-5 rounded-3xl bg-[var(--card)] border border-[var(--border)] shadow-xl flex items-center justify-between gap-4"
+              className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-[var(--card)] border border-[var(--border)] shadow-xl flex items-center justify-between gap-4"
               title="Actual active book-reading time used by your Diya and reading streak."
             >
               <div className="space-y-1">
@@ -872,64 +891,64 @@ export default function FavoritesPage() {
                   <span>📖</span>
                   <span>Genuine Reading Time</span>
                 </div>
-                <h4 className="text-2xl sm:text-3xl font-bold font-serif text-[var(--accent)] font-mono">
+                <h4 className="text-xl sm:text-3xl font-bold font-serif text-[var(--accent)] font-mono">
                   {Math.floor((stats.totalReadingSeconds || 0) / 60) >= 60
                     ? `${Math.floor((stats.totalReadingSeconds || 0) / 3600)}h ${Math.floor(((stats.totalReadingSeconds || 0) % 3600) / 60)}m`
                     : `${Math.floor((stats.totalReadingSeconds || 0) / 60)}m`}
                 </h4>
-                <p className="text-[11px] text-[var(--text-secondary)]">
+                <p className="text-[10px] sm:text-[11px] text-[var(--text-secondary)]">
                   Actual active time spent reading books
                 </p>
               </div>
-              <div className="w-12 h-12 rounded-2xl bg-[var(--accent)]/10 border border-[var(--accent)]/20 text-[var(--accent)] flex items-center justify-center text-xl flex-shrink-0">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-[var(--accent)]/10 border border-[var(--accent)]/20 text-[var(--accent)] flex items-center justify-center text-lg sm:text-xl flex-shrink-0">
                 🪔
               </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            <div className="p-5 rounded-3xl bg-[var(--card)] border border-[var(--border)] shadow-xl text-center space-y-1">
-              <span className="text-2xl">📖</span>
-              <h4 className="text-2xl font-bold font-serif text-[var(--foreground)]">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4">
+            <div className="p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl bg-[var(--card)] border border-[var(--border)] shadow-xl text-center space-y-1">
+              <span className="text-xl sm:text-2xl">📖</span>
+              <h4 className="text-xl sm:text-2xl font-bold font-serif text-[var(--foreground)]">
                 {stats.booksStarted}
               </h4>
-              <p className="text-xs text-[var(--text-secondary)] font-medium">Books Explored</p>
+              <p className="text-[10px] sm:text-xs text-[var(--text-secondary)] font-medium">Books Explored</p>
             </div>
 
-            <div className="p-5 rounded-3xl bg-[var(--card)] border border-[var(--border)] shadow-xl text-center space-y-1">
-              <span className="text-2xl">🏆</span>
-              <h4 className="text-2xl font-bold font-serif text-emerald-400">
+            <div className="p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl bg-[var(--card)] border border-[var(--border)] shadow-xl text-center space-y-1">
+              <span className="text-xl sm:text-2xl">🏆</span>
+              <h4 className="text-xl sm:text-2xl font-bold font-serif text-emerald-400">
                 {stats.booksCompleted}
               </h4>
-              <p className="text-xs text-[var(--text-secondary)] font-medium">Books Finished</p>
+              <p className="text-[10px] sm:text-xs text-[var(--text-secondary)] font-medium">Books Finished</p>
             </div>
 
-            <div className="p-5 rounded-3xl bg-[var(--card)] border border-[var(--border)] shadow-xl text-center space-y-1">
-              <span className="text-2xl">📑</span>
-              <h4 className="text-2xl font-bold font-serif text-[var(--accent)]">
+            <div className="p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl bg-[var(--card)] border border-[var(--border)] shadow-xl text-center space-y-1">
+              <span className="text-xl sm:text-2xl">📑</span>
+              <h4 className="text-xl sm:text-2xl font-bold font-serif text-[var(--accent)]">
                 {stats.pagesRead}
               </h4>
-              <p className="text-xs text-[var(--text-secondary)] font-medium">Pages Read</p>
+              <p className="text-[10px] sm:text-xs text-[var(--text-secondary)] font-medium">Pages Read</p>
             </div>
 
-            <div className="p-5 rounded-3xl bg-[var(--card)] border border-[var(--border)] shadow-xl text-center space-y-1">
-              <span className="text-2xl">✏️</span>
-              <h4 className="text-2xl font-bold font-serif text-amber-400">
+            <div className="p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl bg-[var(--card)] border border-[var(--border)] shadow-xl text-center space-y-1">
+              <span className="text-xl sm:text-2xl">✏️</span>
+              <h4 className="text-xl sm:text-2xl font-bold font-serif text-amber-400">
                 {stats.totalHighlights + stats.totalNotes + stats.totalDrawings}
               </h4>
-              <p className="text-xs text-[var(--text-secondary)] font-medium">Study Markings</p>
+              <p className="text-[10px] sm:text-xs text-[var(--text-secondary)] font-medium">Study Markings</p>
             </div>
           </div>
 
           {/* Annual 12-Week Reading Activity Contribution Heatmap */}
-          <div className="glass-card rounded-3xl p-6 sm:p-7 border border-[var(--border)] bg-[var(--card)] shadow-xl space-y-4">
-            <div className="flex items-center justify-between">
+          <div className="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-7 border border-[var(--border)] bg-[var(--card)] shadow-xl space-y-3.5 sm:space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
               <div>
-                <h4 className="font-serif font-bold text-sm text-[var(--foreground)] flex items-center gap-1.5">
+                <h4 className="font-serif font-bold text-xs sm:text-sm text-[var(--foreground)] flex items-center gap-1.5">
                   <span>📅</span>
                   <span>12-Week Active Reading Activity Heatmap</span>
                 </h4>
-                <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+                <p className="text-[11px] sm:text-xs text-[var(--text-secondary)] mt-0.5">
                   Derived from your genuine browser-local reading sessions.
                 </p>
               </div>
@@ -943,8 +962,8 @@ export default function FavoritesPage() {
             </div>
 
             {/* Heatmap Grid */}
-            <div className="overflow-x-auto pb-1">
-              <div className="inline-flex gap-1.5">
+            <div className="overflow-x-auto pb-2 scrollbar-none">
+              <div className="inline-flex gap-1.5 min-w-max">
                 {heatmapWeeks.map((week, wIdx) => (
                   <div key={wIdx} className="flex flex-col gap-1.5">
                     {week.map((d) => (
@@ -967,25 +986,25 @@ export default function FavoritesPage() {
           </div>
 
           {/* Backup & Data Sovereignty Center */}
-          <div className="glass-card rounded-3xl p-6 sm:p-8 border border-[var(--border)] bg-[var(--card)] shadow-2xl space-y-6">
-            <div className="border-b border-[var(--border)] pb-4">
+          <div className="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-8 border border-[var(--border)] bg-[var(--card)] shadow-2xl space-y-4 sm:space-y-6">
+            <div className="border-b border-[var(--border)] pb-3 sm:pb-4">
               <div className="flex items-center gap-2">
-                <span className="text-xl">🔒</span>
-                <h3 className="font-serif font-bold text-base text-[var(--foreground)]">
+                <span className="text-lg sm:text-xl">🔒</span>
+                <h3 className="font-serif font-bold text-sm sm:text-base text-[var(--foreground)]">
                   Data Sovereignty &amp; Local Backup (v1.2.0)
                 </h3>
               </div>
-              <p className="text-xs text-[var(--text-secondary)] mt-1 max-w-2xl leading-relaxed">
+              <p className="text-[11px] sm:text-xs text-[var(--text-secondary)] mt-1 max-w-2xl leading-relaxed">
                 Reader&apos;s HUB is intentionally 100% offline-capable and client-side. Your reading progress,
                 favorites, bookmarks, study drawings, reading memories, and streak history belong entirely to you.
                 Export a backup anytime as a portable JSON file or restore on any other browser.
               </p>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-4 items-center">
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 items-stretch sm:items-center">
               <button
                 onClick={handleExport}
-                className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-gradient-to-r from-[var(--primary)] to-[var(--accent-secondary)] text-[var(--primary-foreground)] font-bold text-xs shadow-xl hover:scale-105 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full sm:w-auto px-5 sm:px-6 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl bg-gradient-to-r from-[var(--primary)] to-[var(--accent-secondary)] text-[var(--primary-foreground)] font-bold text-xs shadow-xl hover:scale-105 transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 <span>📥</span>
                 <span>Export My Reading Data (JSON)</span>
@@ -993,7 +1012,7 @@ export default function FavoritesPage() {
 
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] font-bold text-xs border border-[var(--border)] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full sm:w-auto px-5 sm:px-6 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] font-bold text-xs border border-[var(--border)] transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 <span>📤</span>
                 <span>Restore from Backup (JSON)</span>
@@ -1009,27 +1028,27 @@ export default function FavoritesPage() {
             </div>
 
             {importStatus && (
-              <div className="p-3.5 rounded-2xl bg-[var(--accent)]/10 border border-[var(--accent)]/25 text-xs text-[var(--accent)] font-semibold">
+              <div className="p-3 sm:p-3.5 rounded-xl sm:rounded-2xl bg-[var(--accent)]/10 border border-[var(--accent)]/25 text-xs text-[var(--accent)] font-semibold">
                 {importStatus}
               </div>
             )}
           </div>
 
           {/* Granular Reset & Recovery Zone */}
-          <div className="glass-card rounded-3xl p-6 sm:p-8 border border-rose-500/25 bg-[var(--card)] shadow-xl space-y-5 text-left">
+          <div className="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-8 border border-rose-500/25 bg-[var(--card)] shadow-xl space-y-4 sm:space-y-5 text-left">
             <div className="border-b border-[var(--border)] pb-3">
               <div className="flex items-center gap-2">
-                <span className="text-xl">⚠️</span>
-                <h4 className="font-serif font-bold text-sm text-[var(--foreground)]">
+                <span className="text-lg sm:text-xl">⚠️</span>
+                <h4 className="font-serif font-bold text-xs sm:text-sm text-[var(--foreground)]">
                   Data Reset &amp; Granular Recovery
                 </h4>
               </div>
-              <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+              <p className="text-[11px] sm:text-xs text-[var(--text-secondary)] mt-0.5">
                 Manage specific subsets of locally cached reading data without affecting the rest of your library.
               </p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-3">
               <button
                 onClick={() =>
                   setConfirmModal({
@@ -1135,7 +1154,7 @@ export default function FavoritesPage() {
                     dangerLevel: "danger",
                   })
                 }
-                className="p-3.5 rounded-2xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-left transition-all cursor-pointer space-y-1 sm:col-span-2"
+                className="p-3.5 rounded-2xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-left transition-all cursor-pointer space-y-1 sm:col-span-2 lg:col-span-2"
               >
                 <div className="flex items-center gap-2 text-xs font-bold">
                   <span>💥</span>
@@ -1150,51 +1169,53 @@ export default function FavoritesPage() {
         </div>
       )}
 
-      {/* Confirmation Modal */}
-      {confirmModal && confirmModal.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in text-left">
-          <div className="glass-card rounded-3xl p-6 sm:p-7 border border-[var(--border)] bg-[var(--card)] max-w-md w-full shadow-2xl space-y-4">
-            <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl ${
-                confirmModal.dangerLevel === "danger"
-                  ? "bg-rose-500/20 text-rose-400 border border-rose-500/30"
-                  : "bg-amber-500/20 text-amber-400 border border-amber-500/30"
-              }`}>
-                ⚠️
-              </div>
-              <h4 className="font-serif font-bold text-base text-[var(--foreground)]">
-                {confirmModal.title}
-              </h4>
-            </div>
-
-            <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-              {confirmModal.description}
-            </p>
-
-            <div className="flex justify-end gap-2 pt-2 text-xs">
-              <button
-                onClick={() => setConfirmModal(null)}
-                className="px-4 py-2 rounded-xl text-[var(--text-secondary)] hover:text-[var(--foreground)] font-semibold cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={async () => {
-                  await confirmModal.action();
-                  setConfirmModal(null);
-                }}
-                className={`px-5 py-2 rounded-xl font-bold transition-transform hover:scale-105 cursor-pointer shadow-md ${
+      {/* Confirmation Modal (Mounted via React Portal) */}
+      {confirmModal && confirmModal.isOpen && mounted &&
+        createPortal(
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in text-left">
+            <div className="glass-card rounded-2xl sm:rounded-3xl p-5 sm:p-7 border border-[var(--border)] bg-[var(--card)] max-w-md w-full shadow-2xl space-y-3.5 sm:space-y-4">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0 ${
                   confirmModal.dangerLevel === "danger"
-                    ? "bg-rose-600 hover:bg-rose-700 text-white"
-                    : "bg-amber-500 hover:bg-amber-600 text-black"
-                }`}
-              >
-                {confirmModal.buttonText}
-              </button>
+                    ? "bg-rose-500/20 text-rose-400 border border-rose-500/30"
+                    : "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+                }`}>
+                  ⚠️
+                </div>
+                <h4 className="font-serif font-bold text-sm sm:text-base text-[var(--foreground)]">
+                  {confirmModal.title}
+                </h4>
+              </div>
+
+              <p className="text-xs text-[var(--text-secondary)] leading-relaxed font-normal">
+                {confirmModal.description}
+              </p>
+
+              <div className="flex justify-end gap-2 pt-2 text-xs">
+                <button
+                  onClick={() => setConfirmModal(null)}
+                  className="px-4 py-2 rounded-xl text-[var(--text-secondary)] hover:text-[var(--foreground)] font-semibold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    await confirmModal.action();
+                    setConfirmModal(null);
+                  }}
+                  className={`px-4 sm:px-5 py-2 rounded-xl font-bold transition-transform hover:scale-105 cursor-pointer shadow-md ${
+                    confirmModal.dangerLevel === "danger"
+                      ? "bg-rose-600 hover:bg-rose-700 text-white"
+                      : "bg-amber-500 hover:bg-amber-600 text-black"
+                  }`}
+                >
+                  {confirmModal.buttonText}
+                </button>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
 
       {/* Selected Book Reading Memory Modal */}
       {selectedMemoryBook && (

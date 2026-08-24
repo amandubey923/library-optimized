@@ -58,7 +58,7 @@ export default function AboutClient({ totalBooks, totalCategories }: AboutClient
       why: "Production React framework with App Router, SSG prerendering & API routes.",
       benefit: "Sub-second page delivery, zero hydration lag, and static rendering across 370+ books.",
       iconSvg: (
-        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+        <svg className="w-6 h-6 text-[var(--foreground)]" viewBox="0 0 24 24" fill="currentColor">
           <path d="M18.665 21.978C16.758 23.255 14.465 24 12 24 5.377 24 0 18.623 0 12S5.377 0 12 0s12 5.377 12 12c0 3.583-1.574 6.801-4.067 9.001L9.219 7.2H7.2v9.596h1.615V9.251l9.85 12.727Zm-3.332-8.533 1.6 2.061V7.2h-1.6v6.245Z" />
         </svg>
       ),
@@ -69,11 +69,13 @@ export default function AboutClient({ totalBooks, totalCategories }: AboutClient
       why: "Modern UI library with concurrent transitions & Server Component models.",
       benefit: "Silky 60fps animations, instant React Portals, and fluid user interactions.",
       iconSvg: (
-        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <ellipse cx="12" cy="12" rx="10" ry="4.5" />
-          <ellipse cx="12" cy="12" rx="10" ry="4.5" transform="rotate(60 12 12)" />
-          <ellipse cx="12" cy="12" rx="10" ry="4.5" transform="rotate(120 12 12)" />
-          <circle cx="12" cy="12" r="1.8" fill="currentColor" />
+        <svg className="w-6 h-6 text-[#61DAFB]" viewBox="-11.5 -10.23174 23 20.46348" fill="currentColor">
+          <circle cx="0" cy="0" r="2.05" fill="#61DAFB" />
+          <g stroke="#61DAFB" strokeWidth="1" fill="none">
+            <ellipse rx="11" ry="4.2" />
+            <ellipse rx="11" ry="4.2" transform="rotate(60)" />
+            <ellipse rx="11" ry="4.2" transform="rotate(120)" />
+          </g>
         </svg>
       ),
     },
@@ -83,8 +85,10 @@ export default function AboutClient({ totalBooks, totalCategories }: AboutClient
       why: "Strict static type system applied across the entire application and data pipelines.",
       benefit: "Prevents runtime crashes, guarantees catalog consistency, and accelerates refactoring.",
       iconSvg: (
-        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-          <path d="M1.125 0C.502 0 0 .502 0 1.125v21.75C0 23.498.502 24 1.125 24h21.75c.623 0 1.125-.502 1.125-1.125V1.125C24 .502 23.498 0 22.875 0zm17.363 9.75c.612 0 1.154.037 1.627.111a6.38 6.38 0 0 1 1.306.34v2.458a3.95 3.95 0 0 0-.643-.361 5.093 5.093 0 0 0-.717-.26 5.453 5.453 0 0 0-1.426-.2c-.3 0-.573.028-.819.086a2.1 2.1 0 0 0-.623.242c-.17.104-.3.229-.393.374a.888.888 0 0 0-.14.49c0 .196.053.373.156.529.104.156.252.304.443.444s.423.276.696.41c.273.135.582.274.926.416.47.197.892.407 1.266.628.374.222.695.473.963.753.268.279.472.598.614.957.142.359.214.776.214 1.253 0 .657-.125 1.21-.373 1.656a3.033 3.033 0 0 1-1.012 1.085 4.38 4.38 0 0 1-1.487.596c-.566.12-1.163.18-1.79.18a9.916 9.916 0 0 1-1.84-.164 5.544 5.544 0 0 1-1.512-.493v-2.63a5.033 5.033 0 0 0 3.237 1.2c.333 0 .624-.03.872-.09.249-.06.456-.144.623-.25.166-.108.29-.234.373-.38a1.023 1.023 0 0 0-.074-1.089 2.12 2.12 0 0 0-.537-.5 5.597 5.597 0 0 0-.807-.444 27.72 27.72 0 0 0-1.007-.436c-.918-.383-1.602-.852-2.053-1.405-.45-.553-.676-1.222-.676-2.005 0-.614.123-1.141.369-1.582.246-.441.58-.804 1.004-1.089a4.494 4.494 0 0 1 1.47-.629 7.536 7.536 0 0 1 1.77-.201zm-15.113.188h9.563v2.166H9.506v9.646H6.789v-9.646H3.375z" />
+        <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
+          <rect width="24" height="24" rx="4" fill="#3178C6" />
+          <path d="M4.5 10.5H11.5V12.5H9.25V19.5H6.75V12.5H4.5V10.5Z" fill="white" />
+          <path d="M12.5 16.5C12.5 15.5 13.2 14.8 14.2 14.5L16.2 13.8C16.8 13.6 17.1 13.3 17.1 12.8C17.1 12.2 16.6 11.8 15.8 11.8C14.9 11.8 14.1 12.2 13.5 12.7L12.5 11.2C13.4 10.4 14.7 10 16 10C18 10 19.5 11.1 19.5 12.8C19.5 14 18.7 14.8 17.6 15.2L15.6 15.9C15.1 16.1 14.8 16.4 14.8 16.8C14.8 17.5 15.4 17.9 16.3 17.9C17.3 17.9 18.2 17.4 19 16.7L20 18.2C18.9 19.2 17.5 19.7 16 19.7C13.8 19.7 12.5 18.4 12.5 16.5Z" fill="white" />
         </svg>
       ),
     },
@@ -94,7 +98,7 @@ export default function AboutClient({ totalBooks, totalCategories }: AboutClient
       why: "Utility-first CSS styling powered by dynamic theme custom property tokens.",
       benefit: "Instant real-time theme customization across 7 palettes with zero CSS overhead.",
       iconSvg: (
-        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+        <svg className="w-6 h-6 text-[#38BDF8]" viewBox="0 0 24 24" fill="currentColor">
           <path d="M12.001 4.8c-3.2 0-5.2 1.6-6 4.8 1.2-1.6 2.6-2.2 4.2-1.8.913.228 1.565.89 2.288 1.624C13.666 10.618 15.027 12 18.001 12c3.2 0 5.2-1.6 6-4.8-1.2 1.6-2.6 2.2-4.2 1.8-.913-.228-1.565-.89-2.288-1.624C16.337 6.182 14.976 4.8 12.001 4.8zm-6 7.2c-3.2 0-5.2 1.6-6 4.8 1.2-1.6 2.6-2.2 4.2-1.8.913.228 1.565.89 2.288 1.624 1.177 1.194 2.538 2.576 5.512 2.576 3.2 0 5.2-1.6 6-4.8-1.2 1.6-2.6 2.2-4.2 1.8-.913-.228-1.565-.89-2.288-1.624C10.336 13.382 8.975 12 6.001 12z" />
         </svg>
       ),
@@ -105,12 +109,8 @@ export default function AboutClient({ totalBooks, totalCategories }: AboutClient
       why: "Canvas document rendering offloaded entirely to background Web Workers.",
       benefit: "High-DPI rendering, responsive dual-page mode, and zero UI thread freeze.",
       iconSvg: (
-        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-          <polyline points="14 2 14 8 20 8" />
-          <line x1="16" y1="13" x2="8" y2="13" />
-          <line x1="16" y1="17" x2="8" y2="17" />
-          <polyline points="10 9 9 9 8 9" />
+        <svg className="w-6 h-6 text-[#E02424]" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M19.5 3H4.5C3.67 3 3 3.67 3 4.5v15c0 .83.67 1.5 1.5 1.5h15c.83 0 1.5-.67 1.5-1.5v-15c0-.83-.67-1.5-1.5-1.5zm-8.25 11.25H9.75v1.5H8.25V8.25h3c1.24 0 2.25 1.01 2.25 2.25v1.5c0 1.24-1.01 2.25-2.25 2.25zm5.25-3h-1.5v4.5h-1.5V8.25h3c.83 0 1.5.67 1.5 1.5v1.5c0 .83-.67 1.5-1.5 1.5zm-5.25-3H9.75v1.5h1.5c.41 0 .75-.34.75-.75s-.34-.75-.75-.75z" />
         </svg>
       ),
     },
@@ -120,10 +120,8 @@ export default function AboutClient({ totalBooks, totalCategories }: AboutClient
       why: "Automated Node.js image pipeline generating 3-tier WebP editorial covers.",
       benefit: "80% smaller cover payloads, crisp 600×900 resolution, and instant gallery scroll.",
       iconSvg: (
-        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-          <circle cx="8.5" cy="8.5" r="1.5" />
-          <polyline points="21 15 16 10 5 21" />
+        <svg className="w-6 h-6 text-[#00ACC1]" viewBox="0 0 24 24" fill="currentColor">
+          <path d="M12 2L2 7l10 5 10-5-10-5zm0 8.5L4.5 7 12 3.25 19.5 7 12 10.5zm-8 4.25l8 4 8-4v2.5l-8 4-8-4v-2.5zm0-4l8 4 8-4v2.5l-8 4-8-4v-2.5z" />
         </svg>
       ),
     },
@@ -133,7 +131,7 @@ export default function AboutClient({ totalBooks, totalCategories }: AboutClient
       why: "Server-side streaming API connecting Gemini LLM with grounded library context.",
       benefit: "Smart literary recommendations, contextual discovery, and intelligent book query assistance.",
       iconSvg: (
-        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+        <svg className="w-6 h-6 text-[#4285F4]" viewBox="0 0 24 24" fill="currentColor">
           <path d="M12 0C12 6.627 6.627 12 0 12c6.627 0 12 5.373 12 12 0-6.627 5.373-12 12-12-6.627 0-12-5.373-12-12Z" />
         </svg>
       ),
@@ -144,9 +142,10 @@ export default function AboutClient({ totalBooks, totalCategories }: AboutClient
       why: "Zero-cloud architecture utilizing browser localStorage & IndexedDB paradigms.",
       benefit: "100% private notes, reading analytics, bookmarks, and streaks with zero external telemetry.",
       iconSvg: (
-        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-          <path d="m9 12 2 2 4-4" />
+        <svg className="w-6 h-6 text-[#10B981]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M21 5c0 1.66-4 3-9 3s-9-1.34-9-3 4-3 9-3 9 1.34 9 3Z" />
+          <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+          <path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3" />
         </svg>
       ),
     },
@@ -158,7 +157,7 @@ export default function AboutClient({ totalBooks, totalCategories }: AboutClient
       title: "Why I Built Reader's HUB as a Solo Engineer",
       paragraphs: [
         "I created Reader's HUB to solve a frustration shared by avid readers: the modern web has turned reading into an obstacle course of subscriptions, cookie banners, tracking scripts, and clunky PDF readers.",
-        "As an Information Technology engineer, I wanted to build a digital reading sanctum that honors literature. And theme palette was designed from scratch to deliver a calm, distraction-free reading experience.",
+        "As an Information Technology engineer, I wanted to build a digital reading sanctum that honors literature. Every interface element, canvas rendering pipeline, and theme palette was designed from scratch to deliver a calm, distraction-free reading experience.",
       ],
       points: [
         "Solo-engineered architecture: full-stack, UI/UX, pipeline, and AI integration",
@@ -195,22 +194,22 @@ export default function AboutClient({ totalBooks, totalCategories }: AboutClient
   };
 
   return (
-    <div className="space-y-16 sm:space-y-24 max-w-6xl mx-auto relative">
+    <div className="space-y-12 sm:space-y-20 lg:space-y-24 max-w-6xl mx-auto relative overflow-x-clip px-1 sm:px-2">
       {/* Global Background Ambient Glow Orbs */}
       <div
-        className="pointer-events-none absolute -top-20 left-1/2 -translate-x-1/2 w-[700px] h-[350px] rounded-full blur-[140px] opacity-25 -z-10"
+        className="pointer-events-none absolute -top-20 left-1/2 -translate-x-1/2 w-[90vw] max-w-[700px] h-[350px] rounded-full blur-[140px] opacity-25 -z-10"
         style={{
           background: "radial-gradient(circle, var(--accent) 0%, var(--primary) 45%, transparent 70%)",
         }}
       />
       <div
-        className="pointer-events-none absolute top-[40%] -right-40 w-[500px] h-[350px] rounded-full blur-[140px] opacity-15 -z-10"
+        className="pointer-events-none absolute top-[40%] -right-20 sm:-right-40 w-[80vw] max-w-[500px] h-[350px] rounded-full blur-[140px] opacity-15 -z-10"
         style={{
           background: "radial-gradient(circle, var(--primary) 0%, var(--accent) 50%, transparent 70%)",
         }}
       />
       <div
-        className="pointer-events-none absolute top-[75%] -left-40 w-[500px] h-[350px] rounded-full blur-[140px] opacity-15 -z-10"
+        className="pointer-events-none absolute top-[75%] -left-20 sm:-left-40 w-[80vw] max-w-[500px] h-[350px] rounded-full blur-[140px] opacity-15 -z-10"
         style={{
           background: "radial-gradient(circle, var(--accent) 0%, var(--primary) 50%, transparent 70%)",
         }}
@@ -219,74 +218,74 @@ export default function AboutClient({ totalBooks, totalCategories }: AboutClient
       {/* -------------------------------------------------------------
        * HERO SECTION: Compact Cinematic Overview & Platform Stats
        * ------------------------------------------------------------- */}
-      <section className="relative pt-4 pb-6 text-center space-y-6">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[var(--card)]/90 backdrop-blur-md border border-[var(--border)] text-[var(--accent)] text-xs font-bold uppercase tracking-widest shadow-[0_0_20px_var(--theme-glow)]/20 transition-all hover:scale-105 hover:border-[var(--accent)]/40">
-          <span className="w-2 h-2 rounded-full bg-[var(--accent)] animate-pulse" />
-          <span>Platform Overview &amp; Developer Story</span>
+      <section className="relative pt-2 sm:pt-4 pb-4 sm:pb-6 text-center space-y-4 sm:space-y-6">
+        <div className="inline-flex items-center gap-2 px-3.5 sm:px-4 py-1.5 rounded-full bg-[var(--card)]/90 backdrop-blur-md border border-[var(--border)] text-[var(--accent)] text-[11px] sm:text-xs font-bold uppercase tracking-wider sm:tracking-widest shadow-[0_0_20px_var(--theme-glow)]/20 transition-all hover:scale-105 hover:border-[var(--accent)]/40 max-w-full">
+          <span className="w-2 h-2 rounded-full bg-[var(--accent)] animate-pulse flex-shrink-0" />
+          <span className="truncate">Platform Overview &amp; Developer Story</span>
         </div>
 
-        <h1 className="text-3xl sm:text-5xl lg:text-6xl font-bold font-serif text-[var(--foreground)] tracking-tight leading-[1.12] max-w-3xl mx-auto">
+        <h1 className="text-2xl sm:text-4xl md:text-5xl lg:text-6xl font-bold font-serif text-[var(--foreground)] tracking-tight leading-[1.18] sm:leading-[1.12] max-w-3xl mx-auto break-words">
           A barrier-free digital reading sanctuary,{" "}
           <span className="italic text-[var(--accent)] bg-clip-text drop-shadow-[0_0_25px_var(--theme-glow)]">
             built with craftsmanship.
           </span>
         </h1>
 
-        <p className="text-sm sm:text-base text-[var(--text-secondary)] leading-relaxed max-w-2xl mx-auto font-normal">
+        <p className="text-xs sm:text-sm md:text-base text-[var(--text-secondary)] leading-relaxed max-w-2xl mx-auto font-normal px-2">
           Conceived and engineered by <strong className="text-[var(--foreground)] font-semibold">Aman Dubey</strong> as a solo full-stack project — Reader&#39;s HUB strips away subscriptions, paywalls, and clunky interfaces to deliver pure, distraction-free literature.
         </p>
 
         {/* Quick Action Buttons */}
-        <div className="flex flex-wrap items-center justify-center gap-3.5 pt-1">
+        <div className="flex flex-wrap items-center justify-center gap-2.5 sm:gap-3.5 pt-1">
           <Link
             href="/library"
-            className="px-6 py-3 rounded-xl bg-gradient-to-r from-[var(--primary)] to-[var(--accent-secondary)] hover:opacity-95 text-[var(--primary-foreground)] font-bold text-xs shadow-lg transition-all hover:scale-105 hover:shadow-[0_0_24px_var(--theme-glow)] flex items-center gap-2"
+            className="w-full sm:w-auto px-6 py-3 rounded-xl bg-gradient-to-r from-[var(--primary)] to-[var(--accent-secondary)] hover:opacity-95 text-[var(--primary-foreground)] font-bold text-xs shadow-lg transition-all hover:scale-105 hover:shadow-[0_0_24px_var(--theme-glow)] flex items-center justify-center gap-2"
           >
             <span>Explore the Library</span>
             <span>→</span>
           </Link>
           <a
             href="#developer-story"
-            className="px-5 py-3 rounded-xl bg-[var(--card)]/90 hover:bg-[var(--secondary)] text-[var(--foreground)] border border-[var(--border)] hover:border-[var(--accent)]/60 font-semibold text-xs transition-all shadow-xs hover:scale-102 hover:shadow-[0_0_15px_var(--theme-glow)]/30"
+            className="w-full sm:w-auto px-5 py-3 rounded-xl bg-[var(--card)]/90 hover:bg-[var(--secondary)] text-[var(--foreground)] border border-[var(--border)] hover:border-[var(--accent)]/60 font-semibold text-xs transition-all shadow-xs hover:scale-102 hover:shadow-[0_0_15px_var(--theme-glow)]/30 text-center"
           >
             Read Developer Story ↓
           </a>
         </div>
 
         {/* Platform Metric Badges */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 pt-4 max-w-4xl mx-auto">
-          <div className="p-4 sm:p-5 rounded-2xl glass-card border border-[var(--border)] text-center space-y-1 hover:border-[var(--accent)]/50 transition-all hover:-translate-y-1 hover:shadow-[0_10px_25px_-10px_var(--theme-glow)] group">
-            <div className="text-2xl sm:text-3xl font-extrabold font-serif text-[var(--foreground)] group-hover:text-[var(--accent)] transition-colors">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4 pt-3 sm:pt-4 max-w-4xl mx-auto w-full">
+          <div className="p-3.5 sm:p-5 rounded-2xl glass-card border border-[var(--border)] text-center space-y-1 hover:border-[var(--accent)]/50 transition-all hover:-translate-y-1 hover:shadow-[0_10px_25px_-10px_var(--theme-glow)] group">
+            <div className="text-xl sm:text-3xl font-extrabold font-serif text-[var(--foreground)] group-hover:text-[var(--accent)] transition-colors">
               {totalBooks}+
             </div>
-            <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+            <div className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
               Digital Volumes
             </div>
           </div>
 
-          <div className="p-4 sm:p-5 rounded-2xl glass-card border border-[var(--border)] text-center space-y-1 hover:border-[var(--accent)]/50 transition-all hover:-translate-y-1 hover:shadow-[0_10px_25px_-10px_var(--theme-glow)] group">
-            <div className="text-2xl sm:text-3xl font-extrabold font-serif text-[var(--foreground)] group-hover:text-[var(--accent)] transition-colors">
+          <div className="p-3.5 sm:p-5 rounded-2xl glass-card border border-[var(--border)] text-center space-y-1 hover:border-[var(--accent)]/50 transition-all hover:-translate-y-1 hover:shadow-[0_10px_25px_-10px_var(--theme-glow)] group">
+            <div className="text-xl sm:text-3xl font-extrabold font-serif text-[var(--foreground)] group-hover:text-[var(--accent)] transition-colors">
               {totalCategories}
             </div>
-            <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+            <div className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
               Curated Genres
             </div>
           </div>
 
-          <div className="p-4 sm:p-5 rounded-2xl glass-card border border-[var(--border)] text-center space-y-1 hover:border-[var(--accent)]/50 transition-all hover:-translate-y-1 hover:shadow-[0_10px_25px_-10px_var(--theme-glow)] group">
-            <div className="text-2xl sm:text-3xl font-extrabold font-serif text-[var(--foreground)] group-hover:text-[var(--accent)] transition-colors">
+          <div className="p-3.5 sm:p-5 rounded-2xl glass-card border border-[var(--border)] text-center space-y-1 hover:border-[var(--accent)]/50 transition-all hover:-translate-y-1 hover:shadow-[0_10px_25px_-10px_var(--theme-glow)] group">
+            <div className="text-xl sm:text-3xl font-extrabold font-serif text-[var(--foreground)] group-hover:text-[var(--accent)] transition-colors">
               0s
             </div>
-            <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+            <div className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
               Zero Login Barrier
             </div>
           </div>
 
-          <div className="p-4 sm:p-5 rounded-2xl glass-card border border-[var(--border)] text-center space-y-1 hover:border-[var(--accent)]/50 transition-all hover:-translate-y-1 hover:shadow-[0_10px_25px_-10px_var(--theme-glow)] group">
-            <div className="text-2xl sm:text-3xl font-extrabold font-serif text-[var(--foreground)] group-hover:text-[var(--accent)] transition-colors">
+          <div className="p-3.5 sm:p-5 rounded-2xl glass-card border border-[var(--border)] text-center space-y-1 hover:border-[var(--accent)]/50 transition-all hover:-translate-y-1 hover:shadow-[0_10px_25px_-10px_var(--theme-glow)] group">
+            <div className="text-xl sm:text-3xl font-extrabold font-serif text-[var(--foreground)] group-hover:text-[var(--accent)] transition-colors">
               100%
             </div>
-            <div className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+            <div className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
               Private &amp; Local-First
             </div>
           </div>
@@ -296,13 +295,13 @@ export default function AboutClient({ totalBooks, totalCategories }: AboutClient
       {/* -------------------------------------------------------------
        * SECTION 2: WHY IT WAS BUILT & PLATFORM PILLARS
        * ------------------------------------------------------------- */}
-      <section className="space-y-6 text-left relative">
-        <div className="max-w-xl space-y-1.5">
-          <div className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--accent)] uppercase tracking-widest">
+      <section className="space-y-4 sm:space-y-6 text-left relative">
+        <div className="max-w-xl space-y-1 sm:space-y-1.5">
+          <div className="inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-bold text-[var(--accent)] uppercase tracking-widest">
             <span>✦</span>
             <span>Core Pillars</span>
           </div>
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold font-serif text-[var(--foreground)] tracking-tight">
+          <h2 className="text-xl sm:text-3xl lg:text-4xl font-bold font-serif text-[var(--foreground)] tracking-tight">
             Why Reader&#39;s HUB Exists
           </h2>
           <p className="text-xs sm:text-sm text-[var(--text-secondary)] leading-relaxed">
@@ -310,17 +309,17 @@ export default function AboutClient({ totalBooks, totalCategories }: AboutClient
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 sm:gap-5 w-full">
           {platformPillars.map((pillar) => (
             <div
               key={pillar.step}
-              className="p-6 sm:p-7 rounded-2xl glass-panel border border-[var(--border)] hover:border-[var(--accent)]/60 transition-all duration-300 space-y-3 relative group bg-[var(--card)]/75 hover:-translate-y-1 hover:shadow-[0_12px_30px_-10px_var(--theme-glow)] overflow-hidden"
+              className="p-5 sm:p-7 rounded-2xl glass-panel border border-[var(--border)] hover:border-[var(--accent)]/60 transition-all duration-300 space-y-2.5 sm:space-y-3 relative group bg-[var(--card)]/75 hover:-translate-y-1 hover:shadow-[0_12px_30px_-10px_var(--theme-glow)] overflow-hidden"
             >
               <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-[var(--accent)]/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <span className="text-2xl group-hover:scale-110 transition-transform duration-300">{pillar.icon}</span>
+                  <span className="text-xl sm:text-2xl group-hover:scale-110 transition-transform duration-300">{pillar.icon}</span>
                   <span className="text-[10px] font-extrabold uppercase tracking-widest text-[var(--accent)]">
                     {pillar.step} — {pillar.tag}
                   </span>
@@ -353,13 +352,13 @@ export default function AboutClient({ totalBooks, totalCategories }: AboutClient
       {/* -------------------------------------------------------------
        * SECTION 3: VERIFIED TECH STACK
        * ------------------------------------------------------------- */}
-      <section className="space-y-6 text-left relative">
-        <div className="max-w-xl space-y-1.5">
-          <div className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--accent)] uppercase tracking-widest">
+      <section className="space-y-4 sm:space-y-6 text-left relative">
+        <div className="max-w-xl space-y-1 sm:space-y-1.5">
+          <div className="inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-bold text-[var(--accent)] uppercase tracking-widest">
             <span>⚡</span>
             <span>Architecture &amp; Stack</span>
           </div>
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold font-serif text-[var(--foreground)] tracking-tight">
+          <h2 className="text-xl sm:text-3xl lg:text-4xl font-bold font-serif text-[var(--foreground)] tracking-tight">
             Engineered with Modern Tools
           </h2>
           <p className="text-xs sm:text-sm text-[var(--text-secondary)] leading-relaxed">
@@ -367,15 +366,15 @@ export default function AboutClient({ totalBooks, totalCategories }: AboutClient
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4 w-full">
           {technologies.map((tech) => (
             <div
               key={tech.name}
-              className="p-5 rounded-2xl glass-card border border-[var(--border)] hover:border-[var(--accent)]/60 transition-all duration-300 space-y-3 bg-[var(--card)]/80 hover:scale-[1.02] hover:shadow-[0_10px_25px_-8px_var(--theme-glow)] flex flex-col justify-between group"
+              className="p-4 sm:p-5 rounded-2xl glass-card border border-[var(--border)] hover:border-[var(--accent)]/60 transition-all duration-300 space-y-3 bg-[var(--card)]/80 hover:scale-[1.02] hover:shadow-[0_10px_25px_-8px_var(--theme-glow)] flex flex-col justify-between group"
             >
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between">
-                  <div className="w-10 h-10 rounded-xl bg-[var(--secondary)] text-[var(--accent)] flex items-center justify-center font-bold text-xs group-hover:scale-110 transition-transform shadow-sm border border-[var(--border)] group-hover:border-[var(--accent)]/40">
+                  <div className="w-10 h-10 rounded-xl bg-[var(--secondary)] flex items-center justify-center font-bold text-xs group-hover:scale-110 transition-transform shadow-sm border border-[var(--border)] group-hover:border-[var(--accent)]/40 flex-shrink-0">
                     {tech.iconSvg}
                   </div>
                   <span className="text-[9px] uppercase font-bold text-[var(--text-secondary)] tracking-wider px-2 py-0.5 rounded bg-[var(--background)] border border-[var(--border)]">
@@ -408,13 +407,13 @@ export default function AboutClient({ totalBooks, totalCategories }: AboutClient
        * SECTION 4: DEVELOPER STORY & CREATOR DOSSIER (Aman Dubey)
        * Fixed/Stable Dimensions Outer Card with Zero Tab Resizing
        * ------------------------------------------------------------- */}
-      <section id="developer-story" className="scroll-mt-20 space-y-6 text-left relative">
-        <div className="max-w-xl space-y-1.5">
-          <div className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--accent)] uppercase tracking-widest">
+      <section id="developer-story" className="scroll-mt-20 space-y-4 sm:space-y-6 text-left relative">
+        <div className="max-w-xl space-y-1 sm:space-y-1.5">
+          <div className="inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-bold text-[var(--accent)] uppercase tracking-widest">
             <span>👨‍💻</span>
             <span>Developer Story &amp; Dossier</span>
           </div>
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold font-serif text-[var(--foreground)] tracking-tight">
+          <h2 className="text-xl sm:text-3xl lg:text-4xl font-bold font-serif text-[var(--foreground)] tracking-tight">
             Meet the Creator Behind Reader&#39;s HUB
           </h2>
           <p className="text-xs sm:text-sm text-[var(--text-secondary)] leading-relaxed">
@@ -423,7 +422,7 @@ export default function AboutClient({ totalBooks, totalCategories }: AboutClient
         </div>
 
         {/* Master Developer Story Card with Animated Chromatic / Rainbow Glow Ring */}
-        <div className="developer-story-wrapper group relative p-[2.5px] rounded-3xl overflow-hidden shadow-2xl transition-all duration-500 hover:shadow-[0_0_45px_var(--theme-glow)]">
+        <div className="developer-story-wrapper group relative p-[2px] sm:p-[2.5px] rounded-3xl overflow-hidden shadow-2xl transition-all duration-500 hover:shadow-[0_0_45px_var(--theme-glow)] w-full">
           {/* Traveling Multi-Color / Chromatic Gradient Beam (Perimeter Ring) */}
           <span className="chromatic-border-beam absolute inset-[-200%] pointer-events-none" />
 
@@ -431,22 +430,22 @@ export default function AboutClient({ totalBooks, totalCategories }: AboutClient
           <div className="absolute -inset-1 rounded-3xl bg-gradient-to-r from-[var(--primary)] via-[var(--accent)] to-[#a855f7] opacity-25 blur-xl group-hover:opacity-45 transition-opacity duration-500 pointer-events-none -z-10" />
 
           {/* Inner Clean Content Card Container with Stable Height */}
-          <div className="relative z-10 w-full h-full rounded-[22px] bg-[var(--card)]/95 backdrop-blur-2xl p-6 sm:p-9">
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
+          <div className="relative z-10 w-full h-full rounded-[22px] bg-[var(--card)]/95 backdrop-blur-2xl p-5 sm:p-8 lg:p-9">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-stretch">
               {/* Left Column: Creator Identity & Photo Card (Permanently Stable) */}
               <div className="lg:col-span-4 flex flex-col items-center sm:items-start text-center sm:text-left justify-between space-y-4">
-                <div className="space-y-4 w-full flex flex-col items-center sm:items-start">
-                  <div className="relative w-44 h-44 sm:w-52 sm:h-52 rounded-2xl overflow-hidden border-2 border-[var(--accent)]/50 shadow-2xl bg-[var(--card)] group/photo">
+                <div className="space-y-3 sm:space-y-4 w-full flex flex-col items-center sm:items-start">
+                  <div className="relative w-40 h-40 sm:w-48 sm:h-48 md:w-52 md:h-52 rounded-2xl overflow-hidden border-2 border-[var(--accent)]/50 shadow-2xl bg-[var(--card)] group/photo flex-shrink-0">
                     <Image
                       src="/images/hero.png"
                       alt="Aman Dubey - Developer & Creator of Reader's HUB"
                       fill
                       className="object-cover object-top group-hover/photo:scale-105 transition-transform duration-500"
-                      sizes="(max-width: 640px) 176px, 208px"
+                      sizes="(max-width: 640px) 160px, (max-width: 768px) 192px, 208px"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-[var(--background)]/85 via-transparent to-transparent" />
-                    <div className="absolute bottom-2.5 left-2.5 right-2.5 text-center">
-                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-[var(--background)]/90 text-[var(--accent)] border border-[var(--border)] shadow-xs">
+                    <div className="absolute bottom-2 left-2 right-2 text-center">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[var(--background)]/90 text-[var(--accent)] border border-[var(--border)] shadow-xs">
                         Solo Creator &amp; Engineer
                       </span>
                     </div>
@@ -466,7 +465,7 @@ export default function AboutClient({ totalBooks, totalCategories }: AboutClient
                 </div>
 
                 {/* Creator Direct Dossier Links */}
-                <div className="flex flex-wrap gap-2 w-full pt-2">
+                <div className="flex flex-wrap gap-2 w-full pt-1 sm:pt-2 justify-center sm:justify-start">
                   <a
                     href="https://github.com/amandubey923"
                     target="_blank"
@@ -506,10 +505,10 @@ export default function AboutClient({ totalBooks, totalCategories }: AboutClient
               {/* Right Column: Tabbed Dossier Narrative with Stable Fixed Content Height */}
               <div className="lg:col-span-8 flex flex-col justify-between space-y-4">
                 {/* Segmented Navigation Switcher (Position remains permanently locked) */}
-                <div className="flex items-center gap-1.5 p-1 rounded-xl bg-[var(--background)] border border-[var(--border)] max-w-fit shadow-inner">
+                <div className="flex flex-wrap sm:flex-nowrap gap-1.5 p-1 rounded-xl bg-[var(--background)] border border-[var(--border)] max-w-full w-full sm:w-auto shadow-inner">
                   <button
                     onClick={() => setActiveTab("origin")}
-                    className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                    className={`flex-1 sm:flex-initial text-center px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold transition-all cursor-pointer ${
                       activeTab === "origin"
                         ? "bg-[var(--card)] text-[var(--accent)] shadow-sm border border-[var(--border)]"
                         : "text-[var(--text-secondary)] hover:text-[var(--foreground)]"
@@ -519,7 +518,7 @@ export default function AboutClient({ totalBooks, totalCategories }: AboutClient
                   </button>
                   <button
                     onClick={() => setActiveTab("philosophy")}
-                    className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                    className={`flex-1 sm:flex-initial text-center px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold transition-all cursor-pointer ${
                       activeTab === "philosophy"
                         ? "bg-[var(--card)] text-[var(--accent)] shadow-sm border border-[var(--border)]"
                         : "text-[var(--text-secondary)] hover:text-[var(--foreground)]"
@@ -529,7 +528,7 @@ export default function AboutClient({ totalBooks, totalCategories }: AboutClient
                   </button>
                   <button
                     onClick={() => setActiveTab("engineering")}
-                    className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                    className={`flex-1 sm:flex-initial text-center px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold transition-all cursor-pointer ${
                       activeTab === "engineering"
                         ? "bg-[var(--card)] text-[var(--accent)] shadow-sm border border-[var(--border)]"
                         : "text-[var(--text-secondary)] hover:text-[var(--foreground)]"
@@ -540,13 +539,13 @@ export default function AboutClient({ totalBooks, totalCategories }: AboutClient
                 </div>
 
                 {/* Active Tab Content (Constrained to a permanent stable height) */}
-                <div className="min-h-[260px] sm:min-h-[235px] lg:min-h-[220px] flex flex-col justify-between space-y-2.5 pt-1">
+                <div className="min-h-[290px] sm:min-h-[240px] lg:min-h-[220px] flex flex-col justify-between space-y-2.5 pt-1">
                   <div className="space-y-2.5 animate-fade-in">
                     <div className="inline-flex items-center gap-2 text-[10px] font-mono text-[var(--accent)] uppercase tracking-widest font-bold">
                       <span>// {developerHighlights[activeTab].badge}</span>
                     </div>
 
-                    <h4 className="text-lg sm:text-xl font-bold font-serif text-[var(--foreground)]">
+                    <h4 className="text-base sm:text-lg lg:text-xl font-bold font-serif text-[var(--foreground)]">
                       {developerHighlights[activeTab].title}
                     </h4>
 
@@ -568,7 +567,7 @@ export default function AboutClient({ totalBooks, totalCategories }: AboutClient
                 </div>
 
                 {/* Dossier Footer Action Link (Permanently Locked at Base) */}
-                <div className="pt-4 border-t border-[var(--border)] flex flex-wrap items-center justify-between gap-3">
+                <div className="pt-3 sm:pt-4 border-t border-[var(--border)] flex flex-wrap items-center justify-between gap-2.5">
                   <p className="text-[11px] text-[var(--text-secondary)] font-medium">
                     Explore my complete background, production projects, and technical milestones:
                   </p>
