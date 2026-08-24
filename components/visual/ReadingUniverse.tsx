@@ -1,33 +1,34 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import Link from "next/link";
 import { BOOKS, CATEGORIES, isTechnicalBook, Book } from "@/data/books";
 
 export default function ReadingUniverse() {
   const [hoveredCategory, setHoveredCategory] = useState<string | null>(null);
 
-  // Group books by top-level category
-  const validCategories = CATEGORIES.filter((c) => c !== "All");
+  // Group books by top-level category (memoized once for static catalog)
+  const categoryStats = useMemo(() => {
+    const validCategories = CATEGORIES.filter((c) => c !== "All");
+    return validCategories.map((cat, idx) => {
+      const booksInCat: Book[] =
+        cat === "Technical Knowledge"
+          ? BOOKS.filter((b) => isTechnicalBook(b))
+          : BOOKS.filter((b) => b.category === cat);
 
-  const categoryStats = validCategories.map((cat, idx) => {
-    const booksInCat: Book[] =
-      cat === "Technical Knowledge"
-        ? BOOKS.filter((b) => isTechnicalBook(b))
-        : BOOKS.filter((b) => b.category === cat);
-
-    const isTech = cat === "Technical Knowledge";
-    return {
-      name: cat,
-      count: booksInCat.length,
-      sampleBooks: booksInCat.slice(0, 3).map((b) => b.title),
-      description: isTech
-        ? "DSA • CS Fundamentals • Web & Backend • SQL • System Design • Interview Prep"
-        : null,
-      unit: isTech ? "Resources" : "Books",
-      index: idx,
-    };
-  });
+      const isTech = cat === "Technical Knowledge";
+      return {
+        name: cat,
+        count: booksInCat.length,
+        sampleBooks: booksInCat.slice(0, 3).map((b) => b.title),
+        description: isTech
+          ? "DSA • CS Fundamentals • Web & Backend • SQL • System Design • Interview Prep"
+          : null,
+        unit: isTech ? "Resources" : "Books",
+        index: idx,
+      };
+    });
+  }, []);
 
   return (
     <section className="py-16 sm:py-24 relative overflow-hidden border-t border-[var(--border)]/80 bg-[var(--card)]/25">

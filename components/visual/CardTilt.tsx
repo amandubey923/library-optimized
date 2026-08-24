@@ -14,8 +14,7 @@ export default function CardTilt({
   maxTilt = 6,
 }: CardTiltProps) {
   const cardRef = useRef<HTMLDivElement>(null);
-  const [tilt, setTilt] = useState({ x: 0, y: 0 });
-  const [glare, setGlare] = useState({ x: 50, y: 50, opacity: 0 });
+  const glareRef = useRef<HTMLDivElement>(null);
   const [enabled, setEnabled] = useState(false);
 
   useEffect(() => {
@@ -38,18 +37,21 @@ export default function CardTilt({
     const tiltX = ((y - centerY) / centerY) * -maxTilt;
     const tiltY = ((x - centerX) / centerX) * maxTilt;
 
-    setTilt({ x: tiltX, y: tiltY });
-    setGlare({
-      x: (x / rect.width) * 100,
-      y: (y / rect.height) * 100,
-      opacity: 0.15,
-    });
+    cardRef.current.style.transform = `perspective(1000px) rotateX(${tiltX.toFixed(2)}deg) rotateY(${tiltY.toFixed(2)}deg)`;
+    if (glareRef.current) {
+      const glareX = ((x / rect.width) * 100).toFixed(1);
+      const glareY = ((y / rect.height) * 100).toFixed(1);
+      glareRef.current.style.background = `radial-gradient(circle at ${glareX}% ${glareY}%, rgba(255, 255, 255, 0.15), transparent 60%)`;
+      glareRef.current.style.opacity = "1";
+    }
   };
 
   const handleMouseLeave = () => {
-    if (!enabled) return;
-    setTilt({ x: 0, y: 0 });
-    setGlare((prev) => ({ ...prev, opacity: 0 }));
+    if (!enabled || !cardRef.current) return;
+    cardRef.current.style.transform = "perspective(1000px) rotateX(0deg) rotateY(0deg)";
+    if (glareRef.current) {
+      glareRef.current.style.opacity = "0";
+    }
   };
 
   if (!enabled) {
@@ -63,7 +65,7 @@ export default function CardTilt({
       onMouseLeave={handleMouseLeave}
       className={`relative transition-transform duration-200 ease-out ${className}`}
       style={{
-        transform: `perspective(1000px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)`,
+        transform: "perspective(1000px) rotateX(0deg) rotateY(0deg)",
         transformStyle: "preserve-3d",
       }}
     >
@@ -71,9 +73,10 @@ export default function CardTilt({
 
       {/* Dynamic Glare Overlay */}
       <div
-        className="pointer-events-none absolute inset-0 rounded-2xl transition-opacity duration-300 z-20"
+        ref={glareRef}
+        className="pointer-events-none absolute inset-0 rounded-2xl transition-opacity duration-300 z-20 opacity-0"
         style={{
-          background: `radial-gradient(circle at ${glare.x}% ${glare.y}%, rgba(255, 255, 255, ${glare.opacity}), transparent 60%)`,
+          background: "radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.15), transparent 60%)",
         }}
       />
     </div>

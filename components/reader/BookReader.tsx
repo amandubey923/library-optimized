@@ -76,6 +76,7 @@ const DEFAULT_PREFS: ReaderPrefs = {
 };
 
 const PREFS_KEY = "readers_hub_reader_prefs_v3";
+const EMPTY_DRAWINGS: DrawingStroke[] = [];
 
 export default function BookReader({ book }: BookReaderProps) {
   const {
@@ -2590,7 +2591,7 @@ export default function BookReader({ book }: BookReaderProps) {
                       <canvas ref={canvasLeftRef} className="block max-w-full h-auto object-contain rounded-sm" />
                       <DrawingCanvas
                         pageNumber={activeLeftPage}
-                        initialStrokes={annotations.drawings[activeLeftPage] || []}
+                        initialStrokes={annotations.drawings[activeLeftPage] || EMPTY_DRAWINGS}
                         onStrokesChange={(strokes) => handleStrokesChange(activeLeftPage, strokes)}
                         width={pageCanvasSize.width}
                         height={pageCanvasSize.height}
@@ -2637,7 +2638,7 @@ export default function BookReader({ book }: BookReaderProps) {
                     <canvas ref={canvasRightRef} className="block max-w-full h-auto object-contain rounded-sm" />
                     <DrawingCanvas
                       pageNumber={activeRightPage}
-                      initialStrokes={annotations.drawings[activeRightPage] || []}
+                      initialStrokes={annotations.drawings[activeRightPage] || EMPTY_DRAWINGS}
                       onStrokesChange={(strokes) => handleStrokesChange(activeRightPage, strokes)}
                       width={pageCanvasSize.width}
                       height={pageCanvasSize.height}
@@ -2676,7 +2677,7 @@ export default function BookReader({ book }: BookReaderProps) {
                   <canvas ref={canvasSingleRef} className="block max-w-full h-auto object-contain rounded-sm" />
                   <DrawingCanvas
                     pageNumber={currentPage}
-                    initialStrokes={annotations.drawings[currentPage] || []}
+                    initialStrokes={annotations.drawings[currentPage] || EMPTY_DRAWINGS}
                     onStrokesChange={(strokes) => handleStrokesChange(currentPage, strokes)}
                     width={pageCanvasSize.width}
                     height={pageCanvasSize.height}

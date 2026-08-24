@@ -3,9 +3,9 @@
 import React, { useEffect, useState, useRef } from "react";
 
 export default function Hero3DLayer() {
-  const [rotate, setRotate] = useState({ x: 0, y: 0 });
   const [enabled, setEnabled] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
+  const volumeRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Check reduced motion or very small screens
@@ -18,13 +18,14 @@ export default function Hero3DLayer() {
     }
 
     const handleMouseMove = (e: MouseEvent) => {
+      if (!volumeRef.current) return;
       const { innerWidth, innerHeight } = window;
-      const x = (e.clientX / innerWidth - 0.5) * 16; // subtle max 8deg tilt
-      const y = (e.clientY / innerHeight - 0.5) * -16;
-      setRotate({ x: y, y: x });
+      const x = ((e.clientX / innerWidth - 0.5) * 16).toFixed(2); // subtle max 8deg tilt
+      const y = ((e.clientY / innerHeight - 0.5) * -16).toFixed(2);
+      volumeRef.current.style.transform = `rotateX(${y}deg) rotateY(${x}deg) translateZ(0px)`;
     };
 
-    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mousemove", handleMouseMove, { passive: true });
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
 
@@ -39,9 +40,10 @@ export default function Hero3DLayer() {
     >
       {/* Floating 3D Prismatic Volume behind the hero text */}
       <div
+        ref={volumeRef}
         className="relative w-[340px] h-[460px] sm:w-[480px] sm:h-[580px] transition-transform duration-500 ease-out"
         style={{
-          transform: `rotateX(${rotate.x}deg) rotateY(${rotate.y}deg) translateZ(0px)`,
+          transform: "rotateX(0deg) rotateY(0deg) translateZ(0px)",
           transformStyle: "preserve-3d",
         }}
       >
