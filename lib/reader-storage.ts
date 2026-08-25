@@ -1251,3 +1251,122 @@ export async function factoryResetAllData(): Promise<void> {
     console.warn("[ReaderStorage] Factory reset failed:", e);
   }
 }
+
+export function invalidateAllCaches(): void {
+  progressCache.clear();
+  annotationsCache.clear();
+  bookmarksCache.clear();
+  memoryCache.clear();
+  activeTimeCache = null;
+}
+
+export function exportAllStorageDataForSync(): {
+  favorites: string[];
+  readingHistory: ReadingProgressItem[];
+  readingActivity: ReadingStreakData;
+  activeTime: WebsiteActiveTimeData;
+  readingMemories: Record<string, BookReadingMemory>;
+  annotations: Record<string, BookAnnotations>;
+} {
+  if (typeof window === "undefined") {
+    return {
+      favorites: [],
+      readingHistory: [],
+      readingActivity: { daily: {}, currentStreak: 0, longestStreak: 0, lastQualifiedDate: null },
+      activeTime: { totalActiveSeconds: 0, daily: {}, lastUpdated: Date.now() },
+      readingMemories: {},
+      annotations: {},
+    };
+  }
+
+  let favorites: string[] = [];
+  try {
+    favorites = JSON.parse(localStorage.getItem(FAVORITES_KEY) || "[]");
+  } catch (e) {}
+
+  let readingHistory: ReadingProgressItem[] = [];
+  try {
+    readingHistory = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+  } catch (e) {}
+
+  const readingActivity = getReadingActivityData();
+  const activeTime = getWebsiteActiveTimeData();
+  const readingMemories = getAllReadingMemories();
+  const annotations = getAllBookAnnotations();
+
+  return {
+    favorites,
+    readingHistory,
+    readingActivity,
+    activeTime,
+    readingMemories,
+    annotations,
+  };
+}
+
+export function hydrateStorageFromCloudData(data: {
+  favorites?: string[];
+  readingHistory?: ReadingProgressItem[];
+  readingActivity?: ReadingStreakData;
+  activeTime?: WebsiteActiveTimeData;
+  readingMemories?: Record<string, BookReadingMemory>;
+  annotations?: Record<string, BookAnnotations>;
+}): void {
+  if (typeof window === "undefined") return;
+
+  try {
+    if (data.favorites) {
+      localStorage.setItem(FAVORITES_KEY, JSON.stringify(data.favorites));
+    }
+
+    if (data.readingHistory) {
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(data.readingHistory));
+      // Also update individual progress keys
+      data.readingHistory.forEach((item) => {
+        if (item.bookId) {
+          const key = `${PROGRESS_KEY_PREFIX}:${item.bookId}`;
+          localStorage.setItem(
+            key,
+            JSON.stringify({
+              bookId: item.bookId,
+              page: item.page,
+              totalPages: item.totalPages,
+              progress: item.progress,
+              lastReadAt: item.lastReadAt,
+            })
+          );
+        }
+      });
+    }
+
+    if (data.readingActivity) {
+      localStorage.setItem(ACTIVITY_KEY, JSON.stringify(data.readingActivity));
+    }
+
+    if (data.activeTime) {
+      localStorage.setItem(ACTIVE_TIME_KEY, JSON.stringify(data.activeTime));
+    }
+
+    if (data.readingMemories) {
+      for (const [bookId, memory] of Object.entries(data.readingMemories)) {
+        if (bookId && memory) {
+          localStorage.setItem(`${MEMORY_KEY_PREFIX}:${bookId}`, JSON.stringify(memory));
+        }
+      }
+    }
+
+    if (data.annotations) {
+      for (const [bookId, ann] of Object.entries(data.annotations)) {
+        if (bookId && ann) {
+          localStorage.setItem(`${ANNOTATIONS_KEY_PREFIX}:${bookId}`, JSON.stringify(ann));
+        }
+      }
+    }
+
+    // Invalidate in-memory caches so subsequent calls immediately read the hydrated values
+    invalidateAllCaches();
+  } catch (e) {
+    console.warn("[ReaderStorage] Hydration error:", e);
+  }
+}
+

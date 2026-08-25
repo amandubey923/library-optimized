@@ -1,24 +1,41 @@
 {
   "name": "Reader's HUB — Digital Reading Environment",
   "short_name": "Reader's HUB",
-  "description": "A private, distraction-free digital reading platform and study workspace with offline book access.",
+  "description": "A modern, private, distraction-free digital reading platform and study workspace with offline book access.",
+  "id": "/",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#0e1017",
-  "theme_color": "#0e1017",
+  "display_override": ["standalone", "minimal-ui", "window-controls-overlay"],
+  "background_color": "#0b0d13",
+  "theme_color": "#0b0d13",
   "orientation": "any",
   "categories": ["books", "education", "productivity", "lifestyle"],
+  "prefer_related_applications": false,
   "icons": [
     {
-      "src": "/images/logo.png",
+      "src": "/icons/icon-192x192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
-      "src": "/images/logo.png",
+      "src": "/icons/maskable-icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/maskable-icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }
-

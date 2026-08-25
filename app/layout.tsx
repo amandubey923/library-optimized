@@ -69,14 +69,24 @@ export const metadata: Metadata = {
     images: ["/images/login.jpg"],
   },
   icons: {
-    icon: "/images/logo.svg",
-    apple: "/images/logo.svg",
+    icon: [
+      { url: "/images/logo.svg", type: "image/svg+xml" },
+      { url: "/icons/icon-192x192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512x512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [
+      { url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    ],
   },
   manifest: "/manifest.json",
+  applicationName: "Reader's HUB",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
     title: "Reader's HUB",
+  },
+  other: {
+    "mobile-web-app-capable": "yes",
   },
 };
 
@@ -93,6 +103,13 @@ export default function RootLayout({
           strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: `try{var theme=localStorage.getItem('readers_hub_theme_v3')||localStorage.getItem('readers_hub_theme_v2')||localStorage.getItem('readers_hub_theme')||'original';document.documentElement.setAttribute('data-theme',theme);}catch(e){}`,
+          }}
+        />
+        <Script
+          id="pwa-service-worker"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `if('serviceWorker' in navigator && window.location.protocol.startsWith('http')){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js').catch(function(){});});}`,
           }}
         />
         <ThemeProvider>
