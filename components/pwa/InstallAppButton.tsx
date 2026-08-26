@@ -113,16 +113,34 @@ export default function InstallAppButton({
   }
 
   return (
-    <button
-      onClick={handleInstallClick}
-      className={`hidden sm:inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl bg-[var(--card)] hover:bg-[var(--secondary)] text-[var(--foreground)] border border-[var(--border)] hover:border-[var(--accent)]/50 text-xs font-semibold shadow-xs transition-all hover:scale-105 cursor-pointer ${className}`}
-      title="Install Reader's HUB as a standalone App"
-      aria-label="Install App"
-    >
-      <svg className="w-3.5 h-3.5 text-[var(--accent)] animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-      </svg>
-      <span>Install App</span>
-    </button>
+    <>
+      {/* Desktop / Tablet Button */}
+      <button
+        onClick={handleInstallClick}
+        className={`hidden sm:inline-flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl bg-[var(--card)] hover:bg-[var(--secondary)] text-[var(--foreground)] border border-[var(--border)] hover:border-[var(--accent)]/50 text-xs font-semibold shadow-xs transition-all hover:scale-105 cursor-pointer ${className}`}
+        title="Install Reader's HUB as a standalone App"
+        aria-label="Install App"
+      >
+        <svg className="w-3.5 h-3.5 text-[var(--accent)] animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+        </svg>
+        <span>Install App</span>
+      </button>
+
+      {/* Mobile Floating Install Pill */}
+      <div className="sm:hidden fixed bottom-4 left-4 z-40 animate-fade-in">
+        <button
+          onClick={handleInstallClick}
+          className="flex items-center gap-2 px-3.5 py-2 rounded-full bg-[var(--card)]/95 backdrop-blur-xl border border-[var(--accent)]/50 shadow-2xl shadow-black/40 text-xs font-bold text-[var(--foreground)] active:scale-95 cursor-pointer hover:border-[var(--accent)]"
+          aria-label="Install App"
+        >
+          <span className="flex h-2 w-2 rounded-full bg-[var(--accent)] animate-ping" />
+          <svg className="w-3.5 h-3.5 text-[var(--accent)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+          </svg>
+          <span>Install App</span>
+        </button>
+      </div>
+    </>
   );
 }
