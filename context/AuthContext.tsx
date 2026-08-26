@@ -6,6 +6,8 @@ import {
   signInWithPopup,
   signOut,
   onAuthStateChanged,
+  setPersistence,
+  browserLocalPersistence,
 } from "firebase/auth";
 import { getFirebaseAuth, getGoogleProvider } from "@/lib/firebase";
 
@@ -31,6 +33,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
       return;
     }
+
+    // Explicitly enforce browserLocalPersistence for session resilience across browser restarts
+    setPersistence(authInstance, browserLocalPersistence).catch((err) => {
+      console.warn("[Auth] setPersistence notice:", err);
+    });
 
     const unsubscribe = onAuthStateChanged(
       authInstance,
@@ -59,6 +66,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     try {
       setError(null);
+      // Ensure persistent storage before opening sign-in popup
+      await setPersistence(authInstance, browserLocalPersistence);
       const result = await signInWithPopup(authInstance, providerInstance);
       setUser(result.user);
       return result.user;

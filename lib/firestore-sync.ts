@@ -37,6 +37,22 @@ const activeTimeDebounceTimers: Record<string, NodeJS.Timeout> = {};
 const memoryDebounceTimers: Record<string, NodeJS.Timeout> = {};
 
 /**
+ * Cancel and clear all pending debounced background synchronization timers.
+ * Prevents stale write triggers when switching or logging out accounts.
+ */
+export function cancelAllPendingSyncTimers(): void {
+  Object.values(progressDebounceTimers).forEach(clearTimeout);
+  Object.values(activityDebounceTimers).forEach(clearTimeout);
+  Object.values(activeTimeDebounceTimers).forEach(clearTimeout);
+  Object.values(memoryDebounceTimers).forEach(clearTimeout);
+
+  for (const k of Object.keys(progressDebounceTimers)) delete progressDebounceTimers[k];
+  for (const k of Object.keys(activityDebounceTimers)) delete activityDebounceTimers[k];
+  for (const k of Object.keys(activeTimeDebounceTimers)) delete activeTimeDebounceTimers[k];
+  for (const k of Object.keys(memoryDebounceTimers)) delete memoryDebounceTimers[k];
+}
+
+/**
  * Synchronize user profile info to Firestore (/users/{uid})
  */
 export async function syncUserProfile(user: User): Promise<void> {

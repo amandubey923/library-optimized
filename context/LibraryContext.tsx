@@ -34,6 +34,7 @@ import {
   clearStreakData as purgeStreakData,
   clearAllOfflineBooks as purgeAllOfflineBooks,
   factoryResetAllData as purgeFactoryResetAll,
+  invalidateAllCaches,
 } from "@/lib/reader-storage";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -44,6 +45,7 @@ import {
   syncActiveTimeToCloud,
   syncReadingMemoryToCloud,
   syncFavoriteToCloud,
+  cancelAllPendingSyncTimers,
 } from "@/lib/firestore-sync";
 
 export interface ReadingProgressItem {
@@ -267,11 +269,22 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   }, [refreshStats]);
 
   const { user } = useAuth();
+  const prevUserRef = useRef<string | null>(null);
 
   // Synchronize with Firebase Firestore on authentication state changes (Authoritative Two-Way Convergence)
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      if (prevUserRef.current !== null) {
+        // User logged out: abort in-flight debounce timers & flush session cache
+        cancelAllPendingSyncTimers();
+        invalidateAllCaches();
+        refreshStats();
+      }
+      prevUserRef.current = null;
+      return;
+    }
 
+    prevUserRef.current = user.uid;
     let isCancelled = false;
 
     const performSync = async () => {

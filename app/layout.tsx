@@ -109,7 +109,7 @@ export default function RootLayout({
           id="pwa-service-worker"
           strategy="afterInteractive"
           dangerouslySetInnerHTML={{
-            __html: `if('serviceWorker' in navigator && window.location.protocol.startsWith('http')){window.addEventListener('load',function(){navigator.serviceWorker.register('/sw.js').catch(function(){});});}`,
+            __html: `if('serviceWorker' in navigator && window.location.protocol.startsWith('http')){function regSW(){navigator.serviceWorker.register('/sw.js').catch(function(e){console.warn('[PWA] SW registration notice:',e);});}if(document.readyState==='complete'){regSW();}else{window.addEventListener('load',regSW);}}`,
           }}
         />
         <ThemeProvider>
