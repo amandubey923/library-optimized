@@ -134,6 +134,7 @@ const FAVORITES_KEY = "readers_hub_favorites_v2";
 const HISTORY_KEY = "readers_hub_reading_progress_v2";
 
 export function LibraryProvider({ children }: { children: ReactNode }) {
+  const { user } = useAuth();
   const pathname = usePathname();
   const pathnameRef = useRef(pathname);
   pathnameRef.current = pathname;
@@ -198,6 +199,18 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     const events = ["pointerdown", "keydown", "scroll", "touchstart", "wheel"];
     events.forEach((ev) => window.addEventListener(ev, registerSiteActivity, { passive: true }));
 
+    const flushSiteActiveTime = () => {
+      if (accumulatedSiteSecs > 0) {
+        const res = addWebsiteActiveSeconds(accumulatedSiteSecs);
+        accumulatedSiteSecs = 0;
+        setActiveTimeState(res);
+        if (user) {
+          const actTime = getWebsiteActiveTimeData();
+          syncActiveTimeToCloud(user.uid, actTime);
+        }
+      }
+    };
+
     const interval = setInterval(() => {
       const isReadingPdf = pathnameRef.current?.startsWith("/book/");
       if (
@@ -211,17 +224,13 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
           const res = addWebsiteActiveSeconds(accumulatedSiteSecs);
           accumulatedSiteSecs = 0;
           setActiveTimeState(res);
+          if (user) {
+            const actTime = getWebsiteActiveTimeData();
+            syncActiveTimeToCloud(user.uid, actTime);
+          }
         }
       }
     }, 1000);
-
-    const flushSiteActiveTime = () => {
-      if (accumulatedSiteSecs > 0) {
-        const res = addWebsiteActiveSeconds(accumulatedSiteSecs);
-        accumulatedSiteSecs = 0;
-        setActiveTimeState(res);
-      }
-    };
 
     const handleVisibility = () => {
       if (document.visibilityState !== "visible") {
@@ -241,7 +250,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       document.removeEventListener("visibilitychange", handleVisibility);
       window.removeEventListener("beforeunload", flushSiteActiveTime);
     };
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     try {
@@ -268,7 +277,6 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     setMounted(true);
   }, [refreshStats]);
 
-  const { user } = useAuth();
   const prevUserRef = useRef<string | null>(null);
 
   // Synchronize with Firebase Firestore on authentication state changes (Authoritative Two-Way Convergence)
@@ -504,6 +512,10 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       };
     });
 
+    if (user) {
+      syncReadingActivityToCloud(user.uid, act);
+    }
+
     return res;
   }, [user]);
 
@@ -621,13 +633,20 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   const recordWebsiteActiveTime = useCallback((seconds: number) => {
     const res = addWebsiteActiveSeconds(seconds);
     setActiveTimeState(res);
+    if (user) {
+      const actTime = getWebsiteActiveTimeData();
+      syncActiveTimeToCloud(user.uid, actTime);
+    }
     return res;
-  }, []);
+  }, [user]);
 
   const addBookReadingTime = useCallback((bookId: string, seconds: number) => {
     const mem = addBookReadingSeconds(bookId, seconds);
+    if (user && mem) {
+      syncReadingMemoryToCloud(user.uid, bookId, mem);
+    }
     return mem;
-  }, []);
+  }, [user]);
 
   // Derive actual book objects
   const favoriteBooks = mounted
