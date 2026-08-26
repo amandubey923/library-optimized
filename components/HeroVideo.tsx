@@ -66,8 +66,14 @@ export default function HeroVideo({ onExploreClick }: HeroVideoProps) {
       <Hero3DLayer />
 
       {/* Cinematic Dark Overlays */}
-      <div className="absolute inset-0 bg-gradient-to-b from-[var(--background)]/85 via-[var(--background)]/75 to-[var(--background)] pointer-events-none" />
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-[var(--accent)]/15 via-transparent to-[var(--background)] pointer-events-none" />
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{ background: "linear-gradient(to bottom, color-mix(in srgb, var(--background) 85%, transparent), color-mix(in srgb, var(--background) 75%, transparent), var(--background))" }}
+      />
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{ background: "radial-gradient(ellipse at center, color-mix(in srgb, var(--accent) 15%, transparent), transparent 60%, var(--background))" }}
+      />
 
       {/* Hero Content Container */}
       <div className="relative z-10 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center flex flex-col items-center">

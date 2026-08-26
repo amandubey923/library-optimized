@@ -82,7 +82,8 @@ export default function ProfilePage() {
             1. PROFILE HEADER SECTION
            ========================================================================= */}
         <section 
-          className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[var(--card)] via-[var(--card)]/90 to-[var(--secondary)]/40 border border-[var(--border)] p-6 sm:p-8 shadow-xl"
+          className="relative overflow-hidden rounded-3xl border border-[var(--border)] p-6 sm:p-8 shadow-xl"
+          style={{ background: "linear-gradient(to bottom right, var(--card), color-mix(in srgb, var(--card) 90%, transparent), color-mix(in srgb, var(--secondary) 40%, transparent))" }}
           aria-label="Profile Header"
         >
           {/* Ambient Glow */}
@@ -292,7 +293,10 @@ export default function ProfilePage() {
           </div>
 
           {/* Explanatory Legend Card */}
-          <div className="rounded-3xl bg-gradient-to-b from-[var(--card)] to-[var(--secondary)]/30 border border-[var(--border)] p-6 shadow-md flex flex-col justify-between">
+          <div
+            className="rounded-3xl border border-[var(--border)] p-6 shadow-md flex flex-col justify-between"
+            style={{ background: "linear-gradient(to bottom, var(--card), color-mix(in srgb, var(--secondary) 30%, transparent))" }}
+          >
             <div>
               <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--text-secondary)] mb-3 flex items-center gap-2">
                 <span>💡</span> Timing Transparency
@@ -329,7 +333,8 @@ export default function ProfilePage() {
             3. PROMINENT READING REPORT CARD ENTRY
            ========================================================================= */}
         <section 
-          className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-[var(--card)] via-[var(--secondary)]/40 to-[var(--card)] border-2 border-[var(--accent)]/30 p-6 sm:p-7 shadow-xl"
+          className="relative overflow-hidden rounded-3xl border-2 border-[var(--accent)]/30 p-6 sm:p-7 shadow-xl"
+          style={{ background: "linear-gradient(to right, var(--card), color-mix(in srgb, var(--secondary) 40%, transparent), var(--card))" }}
           aria-label="Reading Report Card"
         >
           <div className="absolute top-0 right-0 -mt-10 -mr-10 w-48 h-48 bg-[var(--accent)]/10 rounded-full blur-3xl pointer-events-none" />

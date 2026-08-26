@@ -445,7 +445,10 @@ export default function AboutClient({ totalBooks, totalCategories }: AboutClient
                       className="object-cover object-top group-hover/photo:scale-105 transition-transform duration-500"
                       sizes="(max-width: 640px) 160px, (max-width: 768px) 192px, 208px"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[var(--background)]/85 via-transparent to-transparent" />
+                    <div
+                      className="absolute inset-0"
+                      style={{ background: "linear-gradient(to top, color-mix(in srgb, var(--background) 85%, transparent), transparent)" }}
+                    />
                     <div className="absolute bottom-2 left-2 right-2 text-center">
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[var(--background)]/90 text-[var(--accent)] border border-[var(--border)] shadow-xs">
                         Solo Creator &amp; Engineer
