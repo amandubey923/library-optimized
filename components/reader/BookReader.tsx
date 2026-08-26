@@ -302,6 +302,8 @@ export default function BookReader({ book }: BookReaderProps) {
   const lastActivityTimestampRef = useRef<number>(Date.now());
   const accumulatedSecondsRef = useRef<number>(0);
   const activeSessionRef = useRef(activeSession);
+  const sessionCompletedRef = useRef<boolean>(false);
+  const handleCompleteSessionRef = useRef<((customTargetSecs?: number) => void) | null>(null);
   const currentPageRef = useRef(currentPage);
   const isSessionCompleteOpenRef = useRef(isSessionCompleteOpen);
   const showToastRef = useRef(showToast);
@@ -475,20 +477,8 @@ export default function BookReader({ book }: BookReaderProps) {
           const curSession = activeSessionRef.current;
           if (curSession && curSession.isActive && curSession.bookId === book.id) {
             const totalSecs = curSession.elapsedSeconds + accumulatedSecondsRef.current;
-            if (totalSecs >= curSession.targetMinutes * 60 && !isSessionCompleteOpenRef.current) {
-              setIsSessionCompleteOpen(true);
-              recordSessionEventRef.current({
-                bookId: book.id,
-                timestamp: Date.now(),
-                startPage: sessionStartPageRef.current,
-                endPage: currentPageRef.current,
-                durationSeconds: totalSecs,
-                highlightsAdded: sessionMarksCountRef.current,
-                notesAdded: 0,
-                bookmarksAdded: 0,
-              });
-              endReadingSessionRef.current();
-              showToastRef.current("🎉 Structured Reading Session Complete!");
+            if (totalSecs >= curSession.targetMinutes * 60 && !sessionCompletedRef.current) {
+              handleCompleteSessionRef.current?.(curSession.targetMinutes * 60);
             }
           }
         }
@@ -860,7 +850,65 @@ export default function BookReader({ book }: BookReaderProps) {
     return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
   }, []);
 
+  const handleCompleteSession = useCallback((explicitTargetSecs?: number) => {
+    if (sessionCompletedRef.current) return;
+    sessionCompletedRef.current = true;
+
+    setSessionStatus("COMPLETED");
+    sessionEndTimeRef.current = null;
+    setIsSessionCompleteOpen(true);
+
+    const targetSecs = explicitTargetSecs || sessionDurationRef.current || SESSION_DURATION_SECONDS;
+    const targetMins = Math.max(1, Math.round(targetSecs / 60));
+
+    // 1. Flush any pending un-flushed seconds from the 1s interval
+    let flushed = 0;
+    if (accumulatedSecondsRef.current > 0) {
+      flushed = accumulatedSecondsRef.current;
+      accumulatedSecondsRef.current = 0;
+      recordActiveReadingRef.current(flushed);
+      addBookReadingTimeRef.current(book.id, flushed);
+    }
+
+    // 2. Guarantee full session duration is credited to today's reading activity
+    const curSession = activeSessionRef.current;
+    const currentSessionElapsed = (curSession?.elapsedSeconds || 0) + flushed;
+    const missingDelta = Math.max(0, targetSecs - currentSessionElapsed);
+
+    if (missingDelta > 0) {
+      recordActiveReadingRef.current(missingDelta);
+      addBookReadingTimeRef.current(book.id, missingDelta);
+    }
+
+    // 3. Record completed session in memory timeline
+    recordSessionEventRef.current({
+      bookId: book.id,
+      timestamp: Date.now(),
+      startPage: sessionStartPageRef.current,
+      endPage: currentPageRef.current,
+      durationSeconds: targetSecs,
+      highlightsAdded: sessionMarksCountRef.current,
+      notesAdded: 0,
+      bookmarksAdded: 0,
+    });
+
+    // 4. End session in context
+    endReadingSessionRef.current();
+
+    // 5. Success and Streak Toast Notifications
+    showToastRef.current(`🎉 ${targetMins}-minute Focus Session Successfully Completed!`);
+
+    setTimeout(() => {
+      showToastRef.current("🔥 Streak is ON! Your Diwali Diya is lit! ✨");
+    }, 1200);
+  }, [book.id]);
+
+  useEffect(() => {
+    handleCompleteSessionRef.current = handleCompleteSession;
+  }, [handleCompleteSession]);
+
   const handleStartFocusSession = useCallback((chosenMinutes?: number) => {
+    sessionCompletedRef.current = false;
     const mins = chosenMinutes || sessionTargetMinutes || 15;
     const targetSecs = mins * 60;
     sessionDurationRef.current = targetSecs;
@@ -904,6 +952,7 @@ export default function BookReader({ book }: BookReaderProps) {
   }, []);
 
   const handleAbandonSession = useCallback(() => {
+    sessionCompletedRef.current = false;
     setSessionStatus("IDLE");
     sessionEndTimeRef.current = null;
     const resetSecs = sessionDurationRef.current || SESSION_DURATION_SECONDS;
@@ -987,33 +1036,14 @@ export default function BookReader({ book }: BookReaderProps) {
 
       if (remaining === 0) {
         // 00:00 -> SUCCESSFUL COMPLETION
-        setSessionStatus("COMPLETED");
-        sessionEndTimeRef.current = null;
-        setIsSessionCompleteOpen(true);
-
-        const completedDuration = sessionDurationRef.current || SESSION_DURATION_SECONDS;
-
-        // Record completed session event in reading memory
-        recordSessionEventRef.current({
-          bookId: book.id,
-          timestamp: Date.now(),
-          startPage: sessionStartPageRef.current,
-          endPage: currentPageRef.current,
-          durationSeconds: completedDuration,
-          highlightsAdded: sessionMarksCountRef.current,
-          notesAdded: 0,
-          bookmarksAdded: 0,
-        });
-
-        endReadingSessionRef.current();
-        showToastRef.current(`🎉 ${Math.round(completedDuration / 60)}-minute Focus Session Successfully Completed!`);
+        handleCompleteSessionRef.current?.();
       }
     };
 
     updateCountdown();
     const interval = setInterval(updateCountdown, 500);
     return () => clearInterval(interval);
-  }, [sessionStatus, book.id]);
+  }, [sessionStatus]);
 
   // 7c. Contextual Page Spread Text Extractor (Current Spread Only)
   const extractSpreadText = useCallback(async () => {
