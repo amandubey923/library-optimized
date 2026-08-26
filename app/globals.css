@@ -1,4 +1,10 @@
 @import "tailwindcss";
+@source "../app";
+@source "../components";
+@source "../context";
+@source "../hooks";
+@source "../lib";
+@source "../data";
 
 /* -------------------------------------------------------------
  * 1. Default / Baseline Theme ("Original" Dark Amber)
