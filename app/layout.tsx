@@ -97,21 +97,14 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" data-theme="original" className="scroll-smooth" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('readers_hub_theme_v3')||localStorage.getItem('readers_hub_theme_v2')||localStorage.getItem('readers_hub_theme')||'original';document.documentElement.setAttribute('data-theme',t);}catch(e){}if('serviceWorker' in navigator && window.location.protocol.startsWith('http')){navigator.serviceWorker.register('/sw.js').catch(function(e){console.warn('[PWA] SW registration notice:',e);});}window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.__pwaInstallPrompt=e;window.dispatchEvent(new Event('pwa-prompt-available'));});window.addEventListener('appinstalled',function(){window.__pwaInstallPrompt=null;window.dispatchEvent(new Event('pwa-installed'));});})();`,
+          }}
+        />
+      </head>
       <body className="min-h-screen flex flex-col bg-[var(--background)] text-[var(--foreground)] selection:bg-[var(--primary)] selection:text-[var(--primary-foreground)] relative">
-        <Script
-          id="theme-initializer"
-          strategy="beforeInteractive"
-          dangerouslySetInnerHTML={{
-            __html: `try{var theme=localStorage.getItem('readers_hub_theme_v3')||localStorage.getItem('readers_hub_theme_v2')||localStorage.getItem('readers_hub_theme')||'original';document.documentElement.setAttribute('data-theme',theme);}catch(e){}`,
-          }}
-        />
-        <Script
-          id="pwa-service-worker"
-          strategy="beforeInteractive"
-          dangerouslySetInnerHTML={{
-            __html: `(function(){if('serviceWorker' in navigator && window.location.protocol.startsWith('http')){navigator.serviceWorker.register('/sw.js').catch(function(e){console.warn('[PWA] SW registration notice:',e);});}window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.__pwaInstallPrompt=e;window.dispatchEvent(new Event('pwa-prompt-available'));});window.addEventListener('appinstalled',function(){window.__pwaInstallPrompt=null;window.dispatchEvent(new Event('pwa-installed'));});})();`,
-          }}
-        />
         <ThemeProvider>
           <AuthProvider>
             <LibraryProvider>
