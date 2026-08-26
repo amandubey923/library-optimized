@@ -20,7 +20,7 @@ export default function ReadingReportCardModal({
   onClose,
   initialFilter = "month",
 }: ReadingReportCardModalProps) {
-  const { streakData, stats, globalActiveSeconds, todayReadingSeconds, todayActiveSeconds } = useLibrary();
+  const { favorites, readingHistory, streakData, stats, globalActiveSeconds, todayReadingSeconds, todayActiveSeconds } = useLibrary();
   const [selectedPeriod, setSelectedPeriod] = useState<AnalyticsTimeFilter>(initialFilter);
   const [step, setStep] = useState<"choose" | "preview">("choose");
   const [mounted, setMounted] = useState(false);
@@ -63,8 +63,12 @@ export default function ReadingReportCardModal({
 
   // Compute analytics dynamically based on selected period
   const analytics = useMemo(() => {
-    return getComprehensiveAnalytics(selectedPeriod);
-  }, [selectedPeriod, streakData, stats, globalActiveSeconds, todayReadingSeconds, todayActiveSeconds]);
+    return getComprehensiveAnalytics(selectedPeriod, {
+      favorites,
+      readingHistory,
+      streakData,
+    });
+  }, [selectedPeriod, favorites, readingHistory, streakData, stats, globalActiveSeconds, todayReadingSeconds, todayActiveSeconds]);
 
   if (!isOpen || !mounted) return null;
 

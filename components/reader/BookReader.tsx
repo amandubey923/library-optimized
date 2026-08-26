@@ -1872,21 +1872,33 @@ export default function BookReader({ book }: BookReaderProps) {
           </div>
 
           <div className="flex items-center gap-1 sm:gap-2">
-            {/* Active Session Show Timer Toggle (when hidden) */}
-            {sessionStatus === "ACTIVE" && !isTimerVisible && (
-              <button
-                onClick={() => {
-                  setIsTimerVisible(true);
-                  saveTimerPrefs({ isVisible: true });
-                }}
-                aria-label="Show Floating Focus Timer"
-                className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-[var(--secondary)] border border-[var(--border)] text-[11px] sm:text-xs font-mono font-bold text-[var(--foreground)] hover:border-[var(--accent)] shadow-md flex items-center gap-1 cursor-pointer animate-fade-in"
-                title="Show Floating Focus Timer"
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse" />
-                <span>⏱️ {formatSessionTime(sessionRemainingSeconds)}</span>
-              </button>
-            )}
+            {/* Structured Reading Session in Focus Mode */}
+            <button
+              onClick={() => {
+                if (sessionStatus === "ACTIVE") {
+                  if (!isTimerVisible) {
+                    setIsTimerVisible(true);
+                    saveTimerPrefs({ isVisible: true });
+                  }
+                } else {
+                  setIsSessionModalOpen(true);
+                }
+              }}
+              aria-label="Structured Reading Session"
+              className={`p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1 cursor-pointer shadow-md ${
+                sessionStatus === "ACTIVE"
+                  ? "bg-amber-500/20 text-amber-400 border-amber-500/40 animate-pulse"
+                  : "bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] border-[var(--border)]"
+              }`}
+              title={sessionStatus === "ACTIVE" ? "Active Focus Session Timer" : "Start Dedicated Reading Session"}
+            >
+              <span>⏱️</span>
+              <span className="hidden sm:inline">
+                {sessionStatus === "ACTIVE"
+                  ? `${formatSessionTime(sessionRemainingSeconds)} left`
+                  : "Session"}
+              </span>
+            </button>
 
             {/* Contextual Translation Button in Focus Mode */}
             <button
@@ -1907,6 +1919,20 @@ export default function BookReader({ book }: BookReaderProps) {
             >
               <span>🌐</span>
               <span className="hidden sm:inline">Translate</span>
+            </button>
+
+            {/* Eye Comfort & Lighting Controls in Focus Mode */}
+            <button
+              onClick={() => setShowSettings(!showSettings)}
+              aria-label="Eye Comfort and Lighting Controls"
+              className={`p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl text-xs font-semibold border transition-all flex items-center gap-1 cursor-pointer shadow-md ${
+                showSettings
+                  ? "bg-[var(--accent)] text-[var(--primary-foreground)] border-[var(--accent)]"
+                  : "bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] border-[var(--border)]"
+              }`}
+              title="Eye Comfort & Lighting Controls"
+            >
+              <span>🔆</span>
             </button>
 
             {/* Exit Focus Mode Button */}
@@ -2878,8 +2904,8 @@ export default function BookReader({ book }: BookReaderProps) {
       {/* -------------------------------------------------------------
        * Eye Comfort Settings Popover
        * ------------------------------------------------------------- */}
-      {showSettings && !isFocusMode && (
-        <div className="absolute top-16 right-4 sm:right-6 z-40 w-80 p-5 rounded-3xl glass-panel shadow-2xl border border-[var(--border)] bg-[var(--card)]/95 backdrop-blur-2xl animate-scale-up space-y-4 text-left">
+      {showSettings && (
+        <div className="fixed sm:absolute top-14 sm:top-16 right-2 sm:right-6 z-50 w-80 max-w-[calc(100vw-1rem)] p-5 rounded-3xl glass-panel shadow-2xl border border-[var(--border)] bg-[var(--card)]/95 backdrop-blur-2xl animate-scale-up space-y-4 text-left">
           <div className="flex items-center justify-between pb-2 border-b border-[var(--border)]">
             <h4 className="text-xs font-bold font-serif text-[var(--foreground)] uppercase tracking-wider">
               Eye Comfort &amp; Display

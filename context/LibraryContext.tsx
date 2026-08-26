@@ -46,6 +46,7 @@ import {
   syncReadingMemoryToCloud,
   syncFavoriteToCloud,
   cancelAllPendingSyncTimers,
+  flushPendingActivitySyncs,
 } from "@/lib/firestore-sync";
 
 export interface ReadingProgressItem {
@@ -240,8 +241,21 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       }
     };
 
+    // Immediately flush all pending debounced writes to Firestore on tab close / browser switch.
+    // pagehide is more reliable than beforeunload across browsers (including mobile).
+    const handlePageHide = () => {
+      flushSiteActiveTime();
+      if (user) {
+        const act = getReadingActivityData();
+        const actTime = getWebsiteActiveTimeData();
+        // flushPendingActivitySyncs cancels existing debounce timers and writes immediately.
+        flushPendingActivitySyncs(user.uid, act, actTime);
+      }
+    };
+
     document.addEventListener("visibilitychange", handleVisibility);
     window.addEventListener("beforeunload", flushSiteActiveTime);
+    window.addEventListener("pagehide", handlePageHide);
 
     return () => {
       clearInterval(interval);
@@ -249,44 +263,34 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       events.forEach((ev) => window.removeEventListener(ev, registerSiteActivity));
       document.removeEventListener("visibilitychange", handleVisibility);
       window.removeEventListener("beforeunload", flushSiteActiveTime);
+      window.removeEventListener("pagehide", handlePageHide);
     };
   }, [user]);
 
   useEffect(() => {
-    try {
-      const savedFavs = localStorage.getItem(FAVORITES_KEY) || localStorage.getItem("readers_hub_favorites_v1");
-      if (savedFavs) {
-        setFavorites(JSON.parse(savedFavs));
-      }
-      const savedHistory = localStorage.getItem(HISTORY_KEY) || localStorage.getItem("readers_hub_history_v1");
-      if (savedHistory) {
-        const parsed = JSON.parse(savedHistory);
-        const normalized: ReadingProgressItem[] = parsed.map((item: any) => ({
-          bookId: item.bookId || item,
-          page: item.page || 1,
-          totalPages: item.totalPages || 100,
-          progress: item.progress || Math.min(100, Math.round(((item.page || 1) / (item.totalPages || 100)) * 100)),
-          lastReadAt: item.lastReadAt || item.timestamp || Date.now(),
-        }));
-        setReadingHistory(normalized);
-      }
-    } catch (e) {
-      console.warn("Could not read from localStorage", e);
-    }
-    refreshStats();
     setMounted(true);
-  }, [refreshStats]);
+  }, []);
 
   const prevUserRef = useRef<string | null>(null);
 
-  // Synchronize with Firebase Firestore on authentication state changes (Authoritative Two-Way Convergence)
+  // Synchronize with Firebase Firestore on authentication state changes (Authoritative Cloud State)
   useEffect(() => {
     if (!user) {
       if (prevUserRef.current !== null) {
-        // User logged out: abort in-flight debounce timers & flush session cache
+        // User logged out: abort in-flight debounce timers, clear session caches and reset state to guest defaults
         cancelAllPendingSyncTimers();
         invalidateAllCaches();
-        refreshStats();
+        setFavorites([]);
+        setReadingHistory([]);
+        setStreakData({
+          daily: {},
+          currentStreak: 0,
+          longestStreak: 0,
+          lastQualifiedDate: null,
+        });
+        setActiveTimeState({ totalActiveSeconds: 0, todayActiveSeconds: 0 });
+        setStats(calculateReadingStats());
+        setActiveSession(null);
       }
       prevUserRef.current = null;
       return;
@@ -296,27 +300,22 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     let isCancelled = false;
 
     const performSync = async () => {
-      // 1. Sync User Profile metadata document
-      await syncUserProfile(user);
-
-      // 2. Perform authoritative two-way convergence with Firestore
-      const reconciled = await reconcileAndSyncAllUserData(user);
+      // 1. Fetch Authoritative Cloud State from Firestore
+      const cloudData = await reconcileAndSyncAllUserData(user);
 
       if (isCancelled) return;
 
-      // 3. Update React state from the reconciled authoritative cloud state
-      setFavorites(reconciled.favorites);
-      setReadingHistory(reconciled.readingHistory);
-      setStreakData(reconciled.readingActivity);
+      // 2. Update React state strictly from the authenticated cloud state
+      setFavorites(cloudData.favorites);
+      setReadingHistory(cloudData.readingHistory);
+      setStreakData(cloudData.readingActivity);
 
       const todayKey = getLocalDateKey();
       setActiveTimeState({
-        totalActiveSeconds: reconciled.activeTime.totalActiveSeconds || 0,
-        todayActiveSeconds: reconciled.activeTime.daily[todayKey] || 0,
+        totalActiveSeconds: cloudData.activeTime.totalActiveSeconds || 0,
+        todayActiveSeconds: cloudData.activeTime.daily[todayKey] || 0,
       });
       setStats(calculateReadingStats());
-
-      refreshStats();
     };
 
     performSync();
@@ -324,7 +323,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     return () => {
       isCancelled = true;
     };
-  }, [user, refreshStats]);
+  }, [user]);
 
 
   const showToast = useCallback((msg: string) => {
@@ -348,12 +347,6 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
         wasAdded = true;
         updated = [...prev, bookId];
       }
-
-      try {
-        localStorage.setItem(FAVORITES_KEY, JSON.stringify(updated));
-      } catch (e) {
-        console.warn("Could not save favorites", e);
-      }
       return updated;
     });
 
@@ -372,11 +365,6 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   const removeFavorite = useCallback((bookId: string) => {
     setFavorites((prev) => {
       const updated = prev.filter((id) => id !== bookId);
-      try {
-        localStorage.setItem(FAVORITES_KEY, JSON.stringify(updated));
-      } catch (e) {
-        console.warn("Could not remove favorite", e);
-      }
       return updated;
     });
     if (user) {
@@ -421,11 +409,6 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       };
 
       const updated = [newItem, ...filtered].slice(0, 16);
-      try {
-        localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
-      } catch (e) {
-        console.warn("Could not save reading progress", e);
-      }
       return updated;
     });
 
@@ -449,11 +432,6 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   const removeHistoryItem = useCallback((bookId: string) => {
     setReadingHistory((prev) => {
       const updated = prev.filter((item) => item.bookId !== bookId);
-      try {
-        localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
-      } catch (e) {
-        console.warn("Could not save reading history", e);
-      }
       return updated;
     });
     refreshStats();
@@ -461,11 +439,6 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
 
   const clearHistory = useCallback(() => {
     setReadingHistory([]);
-    try {
-      localStorage.removeItem(HISTORY_KEY);
-    } catch (e) {
-      console.warn("Could not clear history", e);
-    }
     refreshStats();
     showToast("Reading history cleared");
   }, [refreshStats, showToast]);

@@ -9,6 +9,7 @@ import dynamic from "next/dynamic";
 import { Book, BOOKS } from "@/data/books";
 import BookCard from "@/components/BookCard";
 import { getLocalDateKey, getPreviousDateKey, DAILY_READING_GOAL_SECONDS } from "@/lib/reader-storage";
+import AuthGuard from "@/components/auth/AuthGuard";
 
 const BookReadingMemory = dynamic(() => import("@/components/memory/BookReadingMemory"), {
   ssr: false,
@@ -259,9 +260,13 @@ export default function FavoritesPage() {
   };
 
   return (
-    <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 sm:pt-24 pb-16 text-left min-w-0 overflow-x-hidden">
-      {/* Header */}
-      <div className="w-full mb-6 sm:mb-8 space-y-1 sm:space-y-1.5 min-w-0">
+    <AuthGuard
+      pageTitle="My Shelf & Favorites"
+      pageDescription="Please sign in with your Google account to access your personal reading shelf, saved favorites, and cloud bookmarks."
+    >
+      <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 sm:pt-24 pb-16 text-left min-w-0 overflow-x-hidden">
+        {/* Header */}
+        <div className="w-full mb-6 sm:mb-8 space-y-1 sm:space-y-1.5 min-w-0">
         <div className="flex items-center gap-2 text-[11px] sm:text-xs font-bold text-[var(--accent)] uppercase tracking-wider sm:tracking-widest">
           <span>📚</span>
           <span>Personal Shelf &amp; Study Dashboard</span>
@@ -1227,6 +1232,7 @@ export default function FavoritesPage() {
           onClose={() => setSelectedMemoryBook(null)}
         />
       )}
-    </main>
+      </main>
+    </AuthGuard>
   );
 }

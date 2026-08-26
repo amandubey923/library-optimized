@@ -218,37 +218,29 @@ export function formatCalendarDate(dateStr: string): string {
   return dateStr;
 }
 
+export interface AnalyticsDataSource {
+  favorites?: string[];
+  readingHistory?: ReadingProgressItem[];
+  streakData?: ReadingStreakData;
+  activeTimeData?: WebsiteActiveTimeData;
+  readingMemories?: Record<string, BookReadingMemory>;
+  annotations?: Record<string, BookAnnotations>;
+}
+
 // -------------------------------------------------------------
 // Core Analytics Computation
 // -------------------------------------------------------------
 
 export function getComprehensiveAnalytics(
-  filter: AnalyticsTimeFilter = "all"
+  filter: AnalyticsTimeFilter = "all",
+  customSource?: AnalyticsDataSource
 ): ComprehensiveAnalytics {
-  const streakData: ReadingStreakData = getReadingActivityData();
-  const activeTimeData: WebsiteActiveTimeData = getWebsiteActiveTimeData();
-  const readingMemories: Record<string, BookReadingMemory> = getAllReadingMemories();
+  const streakData: ReadingStreakData = customSource?.streakData || getReadingActivityData();
+  const activeTimeData: WebsiteActiveTimeData = customSource?.activeTimeData || getWebsiteActiveTimeData();
+  const readingMemories: Record<string, BookReadingMemory> = customSource?.readingMemories || getAllReadingMemories();
+  const readingHistory: ReadingProgressItem[] = customSource?.readingHistory || [];
+  const favoritesList: string[] = customSource?.favorites || [];
   const todayKey = getLocalDateKey();
-
-  // Load progress history from localStorage
-  let readingHistory: ReadingProgressItem[] = [];
-  let favoritesList: string[] = [];
-  if (typeof window !== "undefined") {
-    try {
-      const histRaw = localStorage.getItem("readers_hub_reading_progress_v2") || localStorage.getItem("readers_hub_history_v1");
-      if (histRaw) {
-        const parsed = JSON.parse(histRaw);
-        if (Array.isArray(parsed)) readingHistory = parsed;
-      }
-      const favRaw = localStorage.getItem("readers_hub_favorites_v2");
-      if (favRaw) {
-        const parsedFav = JSON.parse(favRaw);
-        if (Array.isArray(parsedFav)) favoritesList = parsedFav;
-      }
-    } catch (e) {
-      console.warn("[ReadingAnalytics] Failed to parse history/favorites:", e);
-    }
-  }
 
   // 1. Determine Earliest Activity Date (Member Since)
   let earliestTimestamp: number | null = null;

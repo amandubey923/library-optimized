@@ -13,9 +13,10 @@ import {
 } from "@/lib/reading-analytics";
 import ReadingReportCardModal from "@/components/profile/ReadingReportCardModal";
 import AuthModal from "@/components/auth/AuthModal";
+import AuthGuard from "@/components/auth/AuthGuard";
 
 export default function ProfilePage() {
-  const { streakData, stats, globalActiveSeconds, todayReadingSeconds, todayActiveSeconds } = useLibrary();
+  const { favorites, readingHistory, streakData, stats, globalActiveSeconds, todayReadingSeconds, todayActiveSeconds } = useLibrary();
   const { user, signOutUser } = useAuth();
   const [timeFilter, setTimeFilter] = useState<AnalyticsTimeFilter>("all");
   const [hoveredCell, setHoveredCell] = useState<HeatmapCell | null>(null);
@@ -28,10 +29,36 @@ export default function ProfilePage() {
     setMounted(true);
   }, []);
 
-  // Compute analytics dynamically based on storage & state
+  // Build activeTimeData from context's Firestore-hydrated state so analytics
+  // never falls back to browser localStorage for authenticated account data.
+  const activeTimeData = useMemo(() => {
+    // Derive per-day active seconds from streakData.daily (reading seconds = minimum active seconds).
+    // totalActiveSeconds and todayActiveSeconds come directly from the cloud-hydrated context state.
+    const daily: Record<string, number> = {};
+    const todayKey = new Date().toLocaleDateString("en-CA"); // "YYYY-MM-DD"
+    Object.entries(streakData.daily || {}).forEach(([dateKey, entry]) => {
+      daily[dateKey] = entry.seconds || 0;
+    });
+    // Ensure today's value reflects the live context value (may include site browsing time)
+    if (todayActiveSeconds > 0) {
+      daily[todayKey] = Math.max(daily[todayKey] || 0, todayActiveSeconds);
+    }
+    return {
+      totalActiveSeconds: globalActiveSeconds,
+      daily,
+      lastUpdated: Date.now(),
+    };
+  }, [streakData, globalActiveSeconds, todayActiveSeconds]);
+
+  // Compute analytics dynamically based on authenticated storage & state
   const analytics = useMemo(() => {
-    return getComprehensiveAnalytics(timeFilter);
-  }, [timeFilter, streakData, stats, globalActiveSeconds, todayReadingSeconds, todayActiveSeconds]);
+    return getComprehensiveAnalytics(timeFilter, {
+      favorites,
+      readingHistory,
+      streakData,
+      activeTimeData,
+    });
+  }, [timeFilter, favorites, readingHistory, streakData, activeTimeData, stats, globalActiveSeconds, todayReadingSeconds, todayActiveSeconds]);
 
   if (!mounted) {
     return (
@@ -75,8 +102,12 @@ export default function ProfilePage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] pt-24 pb-20 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-6xl mx-auto space-y-8">
+    <AuthGuard
+      pageTitle="Profile & Reading Analytics"
+      pageDescription="Please sign in with your Google account to access your personal reading journey, reading statistics, and cloud library."
+    >
+      <div className="min-h-screen bg-[var(--background)] text-[var(--foreground)] pt-24 pb-20 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto space-y-8">
         
         {/* =========================================================================
             1. PROFILE HEADER SECTION
@@ -960,6 +991,7 @@ export default function ProfilePage() {
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
       />
-    </div>
+      </div>
+    </AuthGuard>
   );
 }
