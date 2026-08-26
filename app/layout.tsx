@@ -107,9 +107,9 @@ export default function RootLayout({
         />
         <Script
           id="pwa-service-worker"
-          strategy="afterInteractive"
+          strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
-            __html: `if('serviceWorker' in navigator && window.location.protocol.startsWith('http')){function regSW(){navigator.serviceWorker.register('/sw.js').catch(function(e){console.warn('[PWA] SW registration notice:',e);});}if(document.readyState==='complete'){regSW();}else{window.addEventListener('load',regSW);}}`,
+            __html: `(function(){if('serviceWorker' in navigator && window.location.protocol.startsWith('http')){navigator.serviceWorker.register('/sw.js').catch(function(e){console.warn('[PWA] SW registration notice:',e);});}window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();window.__pwaInstallPrompt=e;window.dispatchEvent(new Event('pwa-prompt-available'));});window.addEventListener('appinstalled',function(){window.__pwaInstallPrompt=null;window.dispatchEvent(new Event('pwa-installed'));});})();`,
           }}
         />
         <ThemeProvider>

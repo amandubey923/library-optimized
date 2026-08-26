@@ -11,6 +11,7 @@ import Logo from "./Logo";
 import NavbarThemeControl from "./visual/NavbarThemeControl";
 import DiwaliDiya from "./visual/DiwaliDiya";
 import AuthModal from "./auth/AuthModal";
+import InstallAppButton from "./pwa/InstallAppButton";
 
 const SearchModal = dynamic(() => import("./SearchModal"), { ssr: false });
 
@@ -132,6 +133,9 @@ export default function Navbar() {
             <div className="hidden md:block">
               <NavbarThemeControl />
             </div>
+
+            {/* PWA Install App Button (Desktop / Tablet) */}
+            <InstallAppButton />
 
             {/* Read Catalog Direct CTA */}
             <Link
@@ -343,6 +347,14 @@ export default function Navbar() {
                   <span>Sign In with Google</span>
                 </button>
               )}
+
+              {/* In-App PWA Install Prompt for Mobile */}
+              <div className="pt-2">
+                <InstallAppButton
+                  variant="mobile-menu"
+                  onInstalled={() => setIsMobileMenuOpen(false)}
+                />
+              </div>
             </div>
 
             <div className="space-y-1.5">
