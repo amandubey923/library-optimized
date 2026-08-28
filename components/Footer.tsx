@@ -3,9 +3,11 @@
 import React from "react";
 import Link from "next/link";
 import Logo from "./Logo";
+import { useEntitlement } from "@/context/EntitlementContext";
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
+  const { openProModal, openSupportModal } = useEntitlement();
 
   return (
     <footer className="border-t border-[var(--border)]/80 bg-[var(--background)] text-[var(--text-secondary)] transition-colors duration-300">
@@ -46,6 +48,24 @@ export default function Footer() {
                 <Link href="/library" className="hover:text-[var(--accent)] transition-colors">
                   Full Catalog (25 Books)
                 </Link>
+              </li>
+              <li>
+                <button
+                  onClick={() => openProModal()}
+                  className="hover:text-amber-400 transition-colors text-left flex items-center gap-1 cursor-pointer"
+                >
+                  <span>✨</span>
+                  <span>Reader Pro</span>
+                </button>
+              </li>
+              <li>
+                <button
+                  onClick={() => openSupportModal()}
+                  className="hover:text-amber-400 transition-colors text-left flex items-center gap-1 cursor-pointer"
+                >
+                  <span>💛</span>
+                  <span>Support Library</span>
+                </button>
               </li>
               <li>
                 <Link href="/favorites" className="hover:text-[var(--accent)] transition-colors">

@@ -12,6 +12,8 @@ import NavbarThemeControl from "./visual/NavbarThemeControl";
 import DiwaliDiya from "./visual/DiwaliDiya";
 import AuthModal from "./auth/AuthModal";
 import InstallAppButton from "./pwa/InstallAppButton";
+import { useEntitlement } from "@/context/EntitlementContext";
+import ProBadge from "./payment/ProBadge";
 
 const SearchModal = dynamic(() => import("./SearchModal"), { ssr: false });
 
@@ -23,6 +25,7 @@ export default function Navbar() {
   const pathname = usePathname();
   const { favorites } = useLibrary();
   const { user } = useAuth();
+  const { isPro, openProModal, openSupportModal } = useEntitlement();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -136,6 +139,19 @@ export default function Navbar() {
 
             {/* PWA Install App Button (Desktop / Tablet) */}
             <InstallAppButton />
+
+            {/* Reader Pro Upgrade Button (Desktop / Tablet) */}
+            {!isPro && (
+              <button
+                onClick={() => openProModal()}
+                className="hidden sm:inline-flex items-center gap-1 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl bg-gradient-to-r from-amber-500/15 via-amber-500/25 to-orange-500/15 hover:from-amber-500/30 hover:to-orange-500/30 text-amber-300 hover:text-amber-200 border border-amber-500/40 text-xs font-bold shadow-xs transition-all hover:scale-105 cursor-pointer select-none"
+                title="Upgrade to Reader Pro"
+                aria-label="Reader Pro"
+              >
+                <span>✨</span>
+                <span>Pro</span>
+              </button>
+            )}
 
             {/* Read Catalog Direct CTA */}
             <Link
@@ -354,6 +370,30 @@ export default function Navbar() {
                   variant="mobile-menu"
                   onInstalled={() => setIsMobileMenuOpen(false)}
                 />
+              </div>
+
+              {/* Mobile Pro & Support CTAs */}
+              <div className="pt-2 grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    openProModal();
+                  }}
+                  className="py-2 px-3 rounded-xl bg-amber-500/15 border border-amber-500/40 text-amber-400 text-xs font-bold flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition-all"
+                >
+                  <span>✨</span>
+                  <span>{isPro ? "Pro Active" : "Reader Pro"}</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    openSupportModal();
+                  }}
+                  className="py-2 px-3 rounded-xl bg-[var(--card)] border border-[var(--border)] text-[var(--foreground)] text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition-all"
+                >
+                  <span>💛</span>
+                  <span>Support</span>
+                </button>
               </div>
             </div>
 
