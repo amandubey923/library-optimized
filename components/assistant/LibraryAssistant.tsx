@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { AssistantBook } from "@/lib/library-assistant";
 import { useLibrary } from "@/context/LibraryContext";
+import { useEntitlement } from "@/context/EntitlementContext";
 
 interface Message {
   id: string;
@@ -33,6 +34,7 @@ export default function LibraryAssistant() {
   const [hasUnread, setHasUnread] = useState(false);
 
   const { isFavorite, toggleFavorite } = useLibrary();
+  const { isPro, canUseAiAssistant, recordAiQuery, openProModal } = useEntitlement();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -56,6 +58,24 @@ export default function LibraryAssistant() {
     const textToSend = (queryText || input).trim();
     if (!textToSend || isLoading) return;
 
+    if (textToSend.includes("Upgrade to Reader Pro") || textToSend.includes("Reader Pro")) {
+      openProModal("Unlock unlimited AI Reader Assistant questions with Reader Pro.");
+      return;
+    }
+
+    // Check daily limit for free tier
+    if (!canUseAiAssistant()) {
+      const limitMessage: Message = {
+        id: `limit-${Date.now()}`,
+        sender: "assistant",
+        text: "You have reached today's free limit of 5 AI questions. Upgrade to **Reader Pro** for unlimited conversations with the AI Reader Assistant!",
+        suggestedActions: ["✨ Upgrade to Reader Pro", "Browse categories", "What's available?"],
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      };
+      setMessages((prev) => [...prev, limitMessage]);
+      return;
+    }
+
     const userMessage: Message = {
       id: `user-${Date.now()}`,
       sender: "user",
@@ -77,6 +97,8 @@ export default function LibraryAssistant() {
       if (!res.ok) throw new Error(`Server returned ${res.status}`);
 
       const data = await res.json();
+      recordAiQuery();
+
       const assistantMessage: Message = {
         id: `assistant-${Date.now()}`,
         sender: "assistant",

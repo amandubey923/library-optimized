@@ -547,7 +547,7 @@ export default function AboutClient({ totalBooks, totalCategories }: AboutClient
                 <div className="min-h-[290px] sm:min-h-[240px] lg:min-h-[220px] flex flex-col justify-between space-y-2.5 pt-1">
                   <div className="space-y-2.5 animate-fade-in">
                     <div className="inline-flex items-center gap-2 text-[10px] font-mono text-[var(--accent)] uppercase tracking-widest font-bold">
-                      <span>// {developerHighlights[activeTab].badge}</span>
+                      <span>{"//"} {developerHighlights[activeTab].badge}</span>
                     </div>
 
                     <h4 className="text-base sm:text-lg lg:text-xl font-bold font-serif text-[var(--foreground)]">
