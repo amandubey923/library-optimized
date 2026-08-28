@@ -14,10 +14,13 @@ import {
 import ReadingReportCardModal from "@/components/profile/ReadingReportCardModal";
 import AuthModal from "@/components/auth/AuthModal";
 import AuthGuard from "@/components/auth/AuthGuard";
+import { useEntitlement } from "@/context/EntitlementContext";
+import ProBadge from "@/components/payment/ProBadge";
 
 export default function ProfilePage() {
   const { favorites, readingHistory, streakData, stats, globalActiveSeconds, todayReadingSeconds, todayActiveSeconds } = useLibrary();
   const { user, signOutUser } = useAuth();
+  const { isPro, isSupporter, openProModal, openSupportModal } = useEntitlement();
   const [timeFilter, setTimeFilter] = useState<AnalyticsTimeFilter>("all");
   const [hoveredCell, setHoveredCell] = useState<HeatmapCell | null>(null);
   const [selectedCell, setSelectedCell] = useState<HeatmapCell | null>(null);
@@ -46,7 +49,7 @@ export default function ProfilePage() {
     return {
       totalActiveSeconds: globalActiveSeconds,
       daily,
-      lastUpdated: Date.now(),
+      lastUpdated: 0,
     };
   }, [streakData, globalActiveSeconds, todayActiveSeconds]);
 
@@ -154,8 +157,9 @@ export default function ProfilePage() {
 
               <div>
                 <div className="flex items-center gap-2.5 flex-wrap">
-                  <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--foreground)]">
-                    {user?.displayName || profileHeader.userTitle}
+                  <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--foreground)] flex items-center gap-2">
+                    <span>{user?.displayName || profileHeader.userTitle}</span>
+                    <ProBadge />
                   </h1>
                   {user ? (
                     <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5 shadow-xs">
@@ -187,8 +191,31 @@ export default function ProfilePage() {
                   </p>
                 )}
 
-                {/* Primary Auth Action Trigger */}
-                <div className="flex items-center gap-3 mt-3">
+                {/* Primary Auth & Monetization Action Trigger */}
+                <div className="flex items-center gap-2.5 flex-wrap mt-3">
+                  {!isPro ? (
+                    <button
+                      onClick={() => openProModal()}
+                      className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-amber-500 to-orange-500 hover:opacity-95 text-zinc-950 shadow-md transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+                    >
+                      <span>✨</span>
+                      <span>Upgrade to Pro</span>
+                    </button>
+                  ) : (
+                    <span className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-amber-500/15 border border-amber-500/40 text-amber-400 flex items-center gap-1.5">
+                      <span>★</span>
+                      <span>Reader Pro Active</span>
+                    </span>
+                  )}
+
+                  <button
+                    onClick={() => openSupportModal()}
+                    className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-[var(--card)] hover:bg-[var(--secondary)] text-[var(--foreground)] border border-[var(--border)] transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+                  >
+                    <span>💛</span>
+                    <span>Support</span>
+                  </button>
+
                   {user ? (
                     <button
                       onClick={signOutUser}
@@ -260,7 +287,7 @@ export default function ProfilePage() {
               <div className="flex items-center gap-2">
                 <span className="flex h-2.5 w-2.5 rounded-full bg-[var(--accent)] animate-pulse" />
                 <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--text-secondary)]">
-                  Today's Activity
+                  Today&apos;s Activity
                 </h2>
               </div>
               <span className="text-xs font-semibold px-2.5 py-1 rounded-lg bg-[var(--secondary)] text-[var(--foreground)]">
