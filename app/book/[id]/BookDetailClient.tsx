@@ -8,6 +8,8 @@ import { useLibrary } from "@/context/LibraryContext";
 import dynamic from "next/dynamic";
 import BookCard from "@/components/BookCard";
 import { getBookAnnotations } from "@/lib/reader-storage";
+import { getAffiliateInfoForBook } from "@/lib/affiliate-config";
+import AdPlaceholder from "@/components/monetization/AdPlaceholder";
 
 const PdfReader = dynamic(() => import("@/components/PdfReader"), {
   ssr: false,
@@ -57,6 +59,7 @@ export default function BookDetailClient({
 
   const progress = getReadingProgress(book.id);
   const annotations = useMemo(() => getBookAnnotations(book.id), [book.id]);
+  const affiliateInfo = useMemo(() => getAffiliateInfoForBook(book), [book]);
 
   useEffect(() => {
     recordReading(book.id);
@@ -332,10 +335,41 @@ export default function BookDetailClient({
                   &ldquo;{book.excerpt}&rdquo;
                 </div>
               )}
+
+              {/* Physical Copy Affiliate Card (Only for verified eligible titles) */}
+              {affiliateInfo && (
+                <div className="mt-4 sm:mt-6 p-4 rounded-2xl bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent border border-amber-500/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-fade-in">
+                  <div className="space-y-0.5 min-w-0">
+                    <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <span>📦</span>
+                      <span>Physical Edition</span>
+                    </span>
+                    <h4 className="text-xs sm:text-sm font-bold text-[var(--foreground)]">
+                      Want a physical printed copy?
+                    </h4>
+                    <p className="text-[10px] sm:text-[11px] text-[var(--text-secondary)]">
+                      {affiliateInfo.disclosure}
+                    </p>
+                  </div>
+
+                  <a
+                    href={affiliateInfo.url}
+                    target="_blank"
+                    rel="noopener noreferrer nofollow"
+                    className="px-4 py-2 rounded-xl bg-[var(--card)] hover:bg-[var(--secondary)] text-[var(--foreground)] border border-amber-500/40 hover:border-amber-500 text-xs font-bold shadow-xs transition-all flex items-center justify-center gap-2 whitespace-nowrap self-start sm:self-auto active:scale-95"
+                  >
+                    <span>{affiliateInfo.label}</span>
+                    <span>↗</span>
+                  </a>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
+
+      {/* Strict Policy-Compliant Ad Unit Placeholder (renders null when ADS_ENABLED=false) */}
+      <AdPlaceholder bookId={book.id} className="max-w-4xl mx-auto" />
 
       {/* Embedded 3D PDF Book Reader Section */}
       <section ref={readerRef} className="mb-12 sm:mb-16 scroll-mt-20 w-full min-w-0">
