@@ -20,6 +20,7 @@ import {
   exportAllStorageDataForSync,
   hydrateStorageFromCloudData,
 } from "./reader-storage";
+import { UserEntitlement, DEFAULT_FREE_ENTITLEMENT } from "./entitlements";
 
 export interface CloudFullUserData {
   favorites: string[];
@@ -28,6 +29,7 @@ export interface CloudFullUserData {
   activeTime: WebsiteActiveTimeData;
   readingMemories: Record<string, BookReadingMemory>;
   annotations: Record<string, BookAnnotations>;
+  entitlement?: UserEntitlement;
 }
 
 // In-memory debounce timers for non-blocking background writes
@@ -202,11 +204,38 @@ export async function fetchFullCloudUserData(uid: string): Promise<CloudFullUser
         defaultResult.annotations = annData.annotations;
       }
     }
+
+    // 7. Fetch Cloud Entitlement
+    const entitlementDocRef = doc(currentDb, "users", uid, "data", "entitlement");
+    const entitlementDocSnap = await getDoc(entitlementDocRef);
+    if (entitlementDocSnap.exists()) {
+      const entData = entitlementDocSnap.data();
+      if (entData) {
+        defaultResult.entitlement = entData as UserEntitlement;
+      }
+    }
   } catch (err) {
     console.warn("[Firestore] Error fetching full cloud user data:", err);
   }
 
   return defaultResult;
+}
+
+/**
+ * Persist verified entitlement to Firestore under /users/{uid}/data/entitlement
+ */
+export async function syncEntitlementToCloud(
+  uid: string,
+  entitlement: UserEntitlement
+): Promise<void> {
+  const currentDb = getFirebaseDb() || db;
+  if (!currentDb || !uid || !entitlement) return;
+  try {
+    const entRef = doc(currentDb, "users", uid, "data", "entitlement");
+    await setDoc(entRef, entitlement, { merge: true });
+  } catch (err) {
+    console.warn("[Firestore] Failed to sync entitlement to cloud:", err);
+  }
 }
 
 /**
@@ -223,6 +252,7 @@ export async function reconcileAndSyncAllUserData(user: User): Promise<CloudFull
     activeTime: { totalActiveSeconds: 0, daily: {}, lastUpdated: Date.now() },
     readingMemories: {},
     annotations: {},
+    entitlement: DEFAULT_FREE_ENTITLEMENT,
   };
 
   if (!currentDb || !user) {
