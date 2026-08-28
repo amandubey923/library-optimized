@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Book } from "@/data/books";
 import { useLibrary } from "@/context/LibraryContext";
+import { useEntitlement } from "@/context/EntitlementContext";
 import DrawingCanvas from "@/components/reader/DrawingCanvas";
 import AnnotationDrawer from "@/components/reader/AnnotationDrawer";
 import BookReadingMemory from "@/components/memory/BookReadingMemory";
@@ -98,6 +99,8 @@ export default function BookReader({ book }: BookReaderProps) {
     removeBookOffline,
     addBookReadingTime,
   } = useLibrary();
+
+  const { isPro, canTranslateSpread, recordTranslationSpread, openProModal } = useEntitlement();
 
   // Load saved position from centralized storage or context
   const savedContextProgress = getReadingProgress(book.id);
@@ -1098,6 +1101,12 @@ export default function BookReader({ book }: BookReaderProps) {
         return;
       }
 
+      if (!canTranslateSpread()) {
+        setIsTranslating(false);
+        openProModal("You have reached today's free limit of 10 translated page spreads. Upgrade to Reader Pro for unlimited translations.");
+        return;
+      }
+
       const res = await translatePageSpread({
         bookId: book.id,
         pages: extracts,
@@ -1107,11 +1116,14 @@ export default function BookReader({ book }: BookReaderProps) {
 
       // Stale request protection (Phase 37)
       if (reqId === translationReqIdRef.current) {
+        if (res.success) {
+          recordTranslationSpread();
+        }
         setTranslationResult(res);
         setIsTranslating(false);
       }
     },
-    [book.id, extractSpreadText, translationTarget]
+    [book.id, extractSpreadText, translationTarget, canTranslateSpread, recordTranslationSpread, openProModal]
   );
 
   // 7e. Auto-Reset Translation on Page Flip (Phase 4 & 36)
