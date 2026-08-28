@@ -141,7 +141,8 @@ export default function SupportReaderModal() {
               alt="Support Reader's HUB via UPI QR"
               width={220}
               height={330}
-              className="rounded-xl object-contain w-full h-auto"
+              style={{ width: "100%", height: "auto" }}
+              className="rounded-xl object-contain"
               priority
             />
           </div>

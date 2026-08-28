@@ -276,7 +276,8 @@ export default function ProUpgradeModal() {
                 alt="Reader's HUB Official UPI QR Code"
                 width={185}
                 height={277}
-                className="object-contain w-full h-auto rounded-lg"
+                style={{ width: "100%", height: "auto" }}
+                className="object-contain rounded-lg"
                 priority
               />
             </div>
