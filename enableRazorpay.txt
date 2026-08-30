@@ -1,0 +1,782 @@
+READER'S HUB — RE-ENABLE PRO PAYMENT ENFORCEMENT SAFELY
+
+Razorpay Pro payment integration and verification are now ready for production.
+
+Previously, Pro monetization enforcement was temporarily disabled while the UI and donation flow remained active.
+
+NOW:
+
+Re-enable the EXISTING Pro entitlement/payment enforcement.
+
+IMPORTANT:
+Do NOT redesign anything.
+Do NOT rewrite the payment system.
+Do NOT create a new payment architecture.
+
+==================================================
+RE-ENABLE ONLY PRO MONETIZATION
+==================================================
+
+Turn the existing Pro enforcement flag/config back ON.
+
+Restore the existing behavior for:
+
+- Pro entitlement checks
+- translation quotas
+- Pro-only restrictions
+- upgrade prompts
+- Razorpay Pro payment flow
+- entitlement verification
+- successful payment → Pro access
+
+==================================================
+KEEP DONATIONS
+==================================================
+
+Voluntary UPI/QR donation must remain completely independent.
+
+Do NOT disable or modify:
+
+- donation QR
+- UPI ID
+- donation button
+- copy UPI
+- donation UI
+
+DONATION ≠ PRO PAYMENT
+
+==================================================
+EXPECTED FLOW
+==================================================
+
+Free user:
+
+normal free usage
+→ reaches Pro-restricted limit
+→ existing Pro/upgrade UI appears
+→ user can purchase through Razorpay
+
+Successful Razorpay payment
+→ existing entitlement verification
+→ Pro access enabled
+
+Donation:
+
+QR/UPI donation
+→ remains voluntary
+→ does not automatically grant Pro unless existing product rules explicitly define that behavior
+
+==================================================
+PRESERVE
+==================================================
+
+Do NOT modify:
+
+- reader
+- PDF.js
+- translation implementation
+- Firebase Auth
+- Firestore
+- user data isolation
+- Reading Memory
+- Reading Replay
+- bookmarks
+- annotations
+- Collections
+- Reading Paths
+- Knowledge Insights
+- offline/PWA
+- catalog
+- book IDs
+
+Only restore the existing monetization enforcement.
+
+==================================================
+VALIDATION
+==================================================
+
+Test:
+
+1. Free user below limit → works
+2. Free user reaches Pro limit → existing paywall/upgrade appears
+3. Razorpay purchase flow works
+4. Successful payment grants correct user's Pro entitlement
+5. Another Firebase account does not inherit Pro entitlement
+6. Logout/login preserves correct entitlement
+7. UPI/QR donation remains functional
+8. Existing reader/translation behavior remains intact
+
+Then run:
+
+npx tsc --noEmit
+npm run lint
+npm run build
+
+FINAL PRINCIPLE:
+
+RE-ENABLE EXISTING PRO PAYMENT LOGIC.
+DO NOT REWRITE IT.
+KEEP DONATIONS INDEPENDENT AND WORKING.
+NO UNRELATED CHANGES.
+
+# READER'S HUB — FINAL FREE + PRO MONETIZATION PLAN
+# ENABLE ONLY WHEN RAZORPAY IS PRODUCTION-READY
+
+IMPORTANT:
+
+The Reader's HUB application is already stable and production-ready.
+
+Razorpay / Pro monetization is now ready to be enabled.
+
+Implement the monetization model below WITHOUT breaking any existing functionality.
+
+==================================================
+ABSOLUTE RULE — EXTEND, NEVER BREAK
+==================================================
+
+DO NOT:
+
+- redesign the website
+- redesign the Pro UI
+- rewrite Razorpay integration
+- rewrite Firebase Authentication
+- rewrite Firestore
+- rewrite the reader
+- modify PDF.js
+- modify reading modes
+- modify existing user data
+- modify existing book IDs
+- modify catalog structure
+- modify Reading Memory
+- modify Reading Replay
+- modify bookmarks
+- modify annotations
+- modify Reading Progress
+- modify Collections
+- modify Reading Paths
+- modify Knowledge Insights architecture
+- modify offline/PWA architecture
+- modify donation architecture
+
+The existing application behavior is the source of truth.
+
+Only implement the new FREE vs PRO entitlement rules.
+
+==================================================
+PRODUCT PRINCIPLE
+==================================================
+
+READER'S HUB MUST REMAIN:
+
+FREE DIGITAL LIBRARY
++
+OPTIONAL PRO POWER TOOLS
+
+Do NOT paywall the core library.
+
+Users must be able to read public books without purchasing Pro.
+
+Pro should unlock advanced convenience, AI, analytics and higher usage limits.
+
+==================================================
+FREE FOREVER
+==================================================
+
+The following must remain FREE:
+
+1. Public book reading
+2. All currently available public PDFs/books
+3. Open Book mode
+4. Single Page mode
+5. Zoom
+6. Fullscreen
+7. Focus Mode
+8. Global search
+9. Category filtering
+10. Technical subcategory filtering
+11. Resource-type filtering
+12. Reading progress
+13. Resume Reading
+14. Basic bookmarks
+15. Basic annotations/highlights
+16. Favorites
+17. My Shelf
+18. Basic Reading Memory
+19. Basic Reading Streak / Diya
+20. Collections
+21. Reading Paths
+22. Basic Knowledge Insights
+23. Basic Reading Sessions
+24. Basic offline reading where already supported
+25. Basic deterministic recommendations
+26. Basic translation with a reasonable free usage quota
+
+IMPORTANT:
+
+Reading itself must NEVER require Pro.
+
+A user must be able to open and read books without payment.
+
+==================================================
+FREE TRANSLATION
+==================================================
+
+Keep translation available to free users.
+
+Use a reasonable daily/monthly limit.
+
+Example:
+
+FREE:
+Limited translations per day
+
+PRO:
+Unlimited translations
+
+Do NOT hardcode an arbitrary number if the existing product already has a configurable quota.
+
+Use the existing entitlement/quota architecture.
+
+When a free user reaches the translation quota:
+
+→ existing Pro upgrade UI may appear
+
+Do NOT break translation UI.
+
+==================================================
+PRO FEATURES
+==================================================
+
+Pro should unlock advanced/high-value utilities.
+
+PRO includes:
+
+1. UNLIMITED TRANSLATION
+   - no free-user translation quota
+
+2. AI LIBRARY ASSISTANT
+   - higher or unlimited usage based on the existing product architecture
+
+3. ADVANCED READING MEMORY
+   - deeper reading analysis
+   - richer revisit insights
+   - enhanced study history interpretation
+
+4. ADVANCED KNOWLEDGE INSIGHTS
+   - deeper analytics
+   - longer-term trends
+   - advanced reading velocity
+   - detailed category/time analysis
+   - richer historical comparisons
+
+5. ADVANCED RECOMMENDATIONS
+   - more personalized recommendations
+   - deeper reading signatures
+   - stronger related-book discovery
+
+6. ADVANCED READING SESSIONS
+   - extended/custom session options
+   - richer session analytics
+
+7. ADVANCED OFFLINE FEATURES
+   - only if supported safely by the existing architecture
+   - bulk/larger offline capacity where applicable
+
+IMPORTANT:
+
+Do not arbitrarily lock existing core reading functionality.
+
+Pro should feel like an upgrade, not a prerequisite for using the library.
+
+==================================================
+FREE VS PRO ENTITLEMENT MATRIX
+==================================================
+
+Implement the following conceptual model:
+
+FEATURE                         FREE              PRO
+----------------------------------------------------------
+Read Books                      YES               YES
+Open Book                       YES               YES
+Single Page                     YES               YES
+Zoom                            YES               YES
+Fullscreen                      YES               YES
+Focus Mode                      YES               YES
+Search                          YES               YES
+Filters                         YES               YES
+Progress                        YES               YES
+Bookmarks                       YES               YES
+Basic Annotations               YES               YES
+Favorites                       YES               YES
+My Shelf                        YES               YES
+Basic Reading Memory            YES               YES
+Streak / Diya                   YES               YES
+Collections                     YES               YES
+Reading Paths                   YES               YES
+Basic Insights                  YES               YES
+Basic Recommendations           YES               YES
+Basic Sessions                  YES               YES
+Offline                         YES               YES
+Translation                    LIMITED            UNLIMITED
+AI Assistant                   LIMITED            HIGH / UNLIMITED
+Advanced Memory                 NO / LIMITED       YES
+Advanced Insights               NO / LIMITED       YES
+Advanced Recommendations        NO / LIMITED       YES
+Advanced Sessions               NO / LIMITED       YES
+Advanced Offline                NO / LIMITED       YES
+
+IMPORTANT:
+
+Where "LIMITED" is used, preserve the existing product quota architecture rather than inventing unnecessary new restrictions.
+
+==================================================
+DONATION MUST REMAIN INDEPENDENT
+==================================================
+
+CRITICAL:
+
+DONATION ≠ PRO PAYMENT
+
+The existing voluntary UPI / QR donation system must remain fully independent.
+
+KEEP WORKING:
+
+- QR code
+- UPI ID
+- UPI copy button
+- donation amount flow
+- donation UI
+- voluntary donation actions
+
+A user may donate without purchasing Pro.
+
+A user may purchase Pro without donating.
+
+Do NOT automatically merge donation status with Pro entitlement unless the existing product explicitly defines such behavior.
+
+Do NOT let Pro entitlement break the donation system.
+
+==================================================
+RAZORPAY PRO PAYMENT FLOW
+==================================================
+
+Use the EXISTING Razorpay implementation.
+
+Do NOT create a second payment architecture.
+
+Expected flow:
+
+Free User
+→ opens Pro
+→ selects plan
+→ Razorpay checkout
+→ payment succeeds
+→ existing verification
+→ Firebase/Firestore entitlement update
+→ current user's Pro access enabled
+
+The entitlement must belong to the authenticated Firebase UID.
+
+==================================================
+AUTHENTICATED USER ISOLATION
+==================================================
+
+Pro entitlement is USER-SPECIFIC.
+
+Never use global browser storage as the authority for Pro status.
+
+The source of truth must be the existing authenticated Firebase/Firestore entitlement architecture.
+
+Example:
+
+Account A = Pro
+
+Account B = Free
+
+The same browser must NOT allow B to inherit A's Pro state.
+
+Test:
+
+Login A
+→ Pro enabled
+
+Logout
+
+Login B
+→ Free state
+
+Logout
+
+Login A
+→ Pro returns
+
+==================================================
+SUBSCRIPTION / ENTITLEMENT SAFETY
+==================================================
+
+Do NOT trust a client-only boolean such as:
+
+isPro = true
+
+as the authoritative payment source.
+
+Use the existing secure verification flow.
+
+Preserve:
+
+- Razorpay order creation
+- payment verification
+- webhook handling
+- entitlement verification
+- Firebase UID association
+
+Do not bypass successful payment verification.
+
+==================================================
+PRO UI
+==================================================
+
+Keep the existing Pro UI and design.
+
+Do NOT redesign.
+
+Pro modal should clearly communicate:
+
+FREE
+vs
+PRO
+
+but use the existing visual language.
+
+Do NOT introduce excessive marketing claims.
+
+Keep the existing pricing UI.
+
+==================================================
+PRICING
+==================================================
+
+Preserve the current configured pricing unless explicitly changed elsewhere.
+
+Current intended plans:
+
+₹49 / 30 Days
+₹299 / 365 Days
+
+Do NOT hardcode pricing into unrelated components.
+
+Use the existing configuration / payment source.
+
+Annual plan may be visually positioned as best value if the current design already supports that.
+
+==================================================
+PAYWALL BEHAVIOR
+==================================================
+
+Do NOT show a paywall for:
+
+- opening books
+- reading books
+- normal navigation
+- basic reader functionality
+- basic bookmarks
+- basic annotations
+- basic progress
+- basic shelf access
+
+Show Pro upgrade prompts ONLY when a user actually reaches a PRO restriction.
+
+Examples:
+
+Free translation quota reached
+→ Pro upgrade prompt
+
+Free AI quota reached
+→ Pro upgrade prompt
+
+Advanced Pro-only feature opened
+→ Pro explanation / upgrade prompt
+
+==================================================
+GRACEFUL FAILURE
+==================================================
+
+If Razorpay is unavailable:
+
+DO NOT break the library.
+
+The public library must remain usable.
+
+If payment cannot be completed:
+
+- preserve current user's free access
+- preserve donation flow
+- show the existing payment-unavailable behavior where applicable
+- do not corrupt entitlement state
+
+==================================================
+FEATURE FLAG / ACTIVATION
+==================================================
+
+Use the existing monetization feature flag if one exists.
+
+Conceptually:
+
+PRO_ENFORCEMENT_ENABLED = true
+
+Do NOT duplicate the feature-flag system.
+
+The current temporary free bypass should be re-enabled only through the existing controlled entitlement boundary.
+
+==================================================
+IMPORTANT — TRANSLATION
+==================================================
+
+Translation is one of the primary Pro conversion points.
+
+Free:
+limited quota
+
+Pro:
+unlimited
+
+When free quota is exhausted:
+
+1. Do not break translation UI.
+2. Preserve translation history/cache where applicable.
+3. Show existing Pro upgrade UI.
+4. Allow upgrade through existing Razorpay flow.
+5. After successful entitlement verification, translation becomes unlimited for that user.
+
+==================================================
+AI ASSISTANT
+==================================================
+
+Use the existing AI assistant architecture.
+
+Do NOT rewrite the assistant.
+
+Possible model:
+
+FREE:
+limited daily/monthly usage
+
+PRO:
+higher or unlimited usage
+
+Use existing quota/entitlement infrastructure where possible.
+
+==================================================
+ADVANCED FEATURES
+==================================================
+
+Do not lock the following completely if doing so would make the free product feel empty:
+
+- Collections
+- Reading Paths
+- Basic Knowledge Insights
+- Basic Reading Memory
+- Basic Reading Sessions
+
+Keep useful basic functionality free.
+
+Premium should add DEPTH rather than remove the product's core value.
+
+==================================================
+FIREBASE / FIRESTORE
+==================================================
+
+Existing Firebase user-data architecture must remain the authority for:
+
+- Pro entitlement
+- user-specific payment status
+- subscription state
+
+Use:
+
+Firebase Auth UID
+→ existing Firestore entitlement
+→ current user state
+→ Pro gating
+
+Do not use global localStorage as the authoritative Pro state.
+
+Local cache may be used only for performance and must remain UID-safe.
+
+==================================================
+ACCOUNT SWITCH TEST
+==================================================
+
+MANDATORY:
+
+Account A:
+
+- purchase/hold Pro entitlement
+- verify Pro features work
+
+Logout
+
+Account B:
+
+- verify Free state
+- verify B does NOT inherit A's Pro access
+
+Logout
+
+Login A again:
+
+- verify A's Pro state returns
+
+==================================================
+PAYMENT TEST
+==================================================
+
+Test the complete production flow:
+
+1. Free user opens Pro
+2. Selects plan
+3. Razorpay checkout
+4. Payment success
+5. Verification
+6. Firestore entitlement update
+7. Pro unlocked
+8. Logout/login
+9. Pro remains correctly associated with same UID
+
+Also test payment failure/cancellation.
+
+Failed payment must NOT grant Pro.
+
+==================================================
+DONATION TEST
+==================================================
+
+Verify separately:
+
+- QR works
+- UPI ID visible
+- copy works
+- voluntary donation remains available
+- donation does not break Pro
+- Pro does not disable donation
+
+==================================================
+NO DATA LOSS
+==================================================
+
+Do NOT:
+
+- reset reading progress
+- reset Reading Memory
+- reset bookmarks
+- reset annotations
+- reset favorites
+- reset streak
+- reset collections
+- reset reflections
+- reset shelf dismissals
+- reset Knowledge Insights data
+
+==================================================
+NO CATALOG CHANGES
+==================================================
+
+Do NOT modify:
+
+- books.json
+- books.ts
+- existing IDs
+- PDF paths
+- covers
+
+unless absolutely required by an unrelated existing payment issue.
+
+==================================================
+NO UI REDESIGN
+==================================================
+
+Do NOT redesign:
+
+- Home
+- Library
+- Reader
+- My Shelf
+- Book Detail
+- Pro modal
+- donation UI
+
+Only update entitlement behavior and copy where required to reflect FREE vs PRO.
+
+==================================================
+VALIDATION
+==================================================
+
+Run:
+
+npx tsc --noEmit
+
+npm run lint
+
+Then:
+
+npm run build
+
+Build only ONCE at the end.
+
+Also manually test:
+
+- free reading
+- limited translation
+- translation paywall
+- Pro purchase
+- successful entitlement
+- failed payment
+- account switching
+- donation QR
+- UPI copy
+- My Shelf
+- Reading Memory
+- Collections
+- Reading Paths
+- Knowledge Insights
+- offline
+- reader modes
+
+==================================================
+FINAL REPORT
+==================================================
+
+Return:
+
+1. Exact entitlement architecture used
+2. FREE features
+3. PRO features
+4. Translation quota
+5. AI quota
+6. Razorpay flow
+7. Firestore entitlement location
+8. Firebase UID isolation result
+9. Donation verification result
+10. Payment success/failure results
+11. Files changed
+12. Existing files/data preserved
+13. TypeScript result
+14. ESLint result
+15. Production build result
+16. Any deferred/risky items
+
+FINAL PRINCIPLE:
+
+CORE LIBRARY = FREE
+
+PRO = ADVANCED POWER TOOLS
+
+DONATION = INDEPENDENT
+
+RAZORPAY = PRO PAYMENT ONLY
+
+FIREBASE UID = USER BOUNDARY
+
+FIRESTORE = ENTITLEMENT SOURCE OF TRUTH
+
+DO NOT BREAK THE EXISTING PRODUCT.
