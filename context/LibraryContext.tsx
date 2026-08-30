@@ -35,6 +35,13 @@ import {
   clearAllOfflineBooks as purgeAllOfflineBooks,
   factoryResetAllData as purgeFactoryResetAll,
   invalidateAllCaches,
+  ShelfSectionKey,
+  ShelfDismissalsMap,
+  getShelfDismissals,
+  dismissBookFromShelf,
+  restoreBookToShelf,
+  isBookDismissedFromShelf,
+  clearShelfDismissals,
 } from "@/lib/reader-storage";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -86,6 +93,11 @@ interface LibraryContextType {
   clearHistory: () => void;
   toastMessage: string | null;
   showToast: (msg: string) => void;
+  // Shelf Section Dismissals
+  shelfDismissals: ShelfDismissalsMap;
+  dismissFromShelf: (section: ShelfSectionKey, bookId: string) => void;
+  restoreToShelf: (section: ShelfSectionKey, bookId: string) => void;
+  isDismissedFromShelf: (section: ShelfSectionKey, bookId: string) => boolean;
   // Bookmarks & Stats Extensions
   getBookmarks: (bookId: string) => BookmarkItem[];
   addBookmark: (bookId: string, page: number, label?: string) => BookmarkItem;
@@ -143,6 +155,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   const [favorites, setFavorites] = useState<string[]>([]);
   const [readingHistory, setReadingHistory] = useState<ReadingProgressItem[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [shelfDismissals, setShelfDismissals] = useState<ShelfDismissalsMap>({});
   const [activeSession, setActiveSession] = useState<ActiveReadingSession | null>(null);
   const [activeTimeState, setActiveTimeState] = useState<{
     totalActiveSeconds: number;
@@ -171,6 +184,34 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     todayActiveSeconds: 0,
   });
   const [mounted, setMounted] = useState(false);
+
+  const showToast = useCallback((msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => {
+      setToastMessage((prev) => (prev === msg ? null : prev));
+    }, 3200);
+  }, []);
+
+  useEffect(() => {
+    setShelfDismissals(getShelfDismissals());
+  }, []);
+
+  const dismissFromShelf = useCallback((section: ShelfSectionKey, bookId: string) => {
+    dismissBookFromShelf(section, bookId);
+    setShelfDismissals(getShelfDismissals());
+    const book = BOOKS.find((b) => b.id === bookId);
+    const title = book ? book.title : "Book";
+    showToast(`Removed "${title}" from shelf view`);
+  }, [showToast]);
+
+  const restoreToShelf = useCallback((section: ShelfSectionKey, bookId: string) => {
+    restoreBookToShelf(section, bookId);
+    setShelfDismissals(getShelfDismissals());
+  }, []);
+
+  const isDismissedFromShelf = useCallback((section: ShelfSectionKey, bookId: string) => {
+    return Boolean(shelfDismissals[section]?.[bookId]);
+  }, [shelfDismissals]);
 
   const refreshStats = useCallback(() => {
     const calculated = calculateReadingStats();
@@ -326,12 +367,6 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
 
-  const showToast = useCallback((msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => {
-      setToastMessage((prev) => (prev === msg ? null : prev));
-    }, 3200);
-  }, []);
 
   const toggleFavorite = useCallback((bookId: string) => {
     let wasAdded = false;
@@ -411,6 +446,12 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       const updated = [newItem, ...filtered].slice(0, 16);
       return updated;
     });
+
+    if (bookId) {
+      restoreBookToShelf("reading", bookId);
+      restoreBookToShelf("spotlight", bookId);
+      setShelfDismissals(getShelfDismissals());
+    }
 
     if (user) {
       syncReadingProgressToCloud(user.uid, bookId, finalPage, finalTotal);
@@ -591,6 +632,8 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
 
   const factoryReset = useCallback(async () => {
     await purgeFactoryResetAll();
+    clearShelfDismissals();
+    setShelfDismissals({});
     setFavorites([]);
     setReadingHistory([]);
     setStreakData({
@@ -670,6 +713,10 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       clearHistory,
       toastMessage,
       showToast,
+      shelfDismissals,
+      dismissFromShelf,
+      restoreToShelf,
+      isDismissedFromShelf,
       getBookmarks,
       addBookmark,
       removeBookmark,
@@ -716,6 +763,10 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       clearHistory,
       toastMessage,
       showToast,
+      shelfDismissals,
+      dismissFromShelf,
+      restoreToShelf,
+      isDismissedFromShelf,
       getBookmarks,
       addBookmark,
       removeBookmark,

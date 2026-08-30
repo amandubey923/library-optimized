@@ -27,6 +27,10 @@ export default function FavoritesPage() {
     exportData,
     importData,
     showToast,
+    shelfDismissals,
+    dismissFromShelf,
+    restoreToShelf,
+    isDismissedFromShelf,
     removeBookOffline,
     clearAllProgress,
     clearAnnotations,
@@ -121,10 +125,10 @@ export default function FavoritesPage() {
     }
   };
 
-  // 1. Derive In-Progress vs Completed Books from Reading History
+  // 1. Derive In-Progress vs Completed Books from Reading History (Dismissal Aware)
   const currentlyReadingBooks = useMemo(() => {
     return readingHistory
-      .filter((item) => item.progress < 98)
+      .filter((item) => item.progress < 98 && !isDismissedFromShelf("reading", item.bookId))
       .map((item) => {
         const book = BOOKS.find((b) => b.id === item.bookId);
         if (!book) return null;
@@ -137,9 +141,9 @@ export default function FavoritesPage() {
         };
       })
       .filter(Boolean) as (Book & { currentPage: number; totalPages: number | string; progress: number; lastReadAt: number })[];
-  }, [readingHistory]);
+  }, [readingHistory, isDismissedFromShelf]);
 
-  // Spotlight most recent reading book
+  // Spotlight most recent reading book (Dismissal Aware)
   const spotlightBook = useMemo(() => {
     if (currentlyReadingBooks.length === 0) return null;
     return [...currentlyReadingBooks].sort((a, b) => (b.lastReadAt || 0) - (a.lastReadAt || 0))[0];
@@ -152,7 +156,7 @@ export default function FavoritesPage() {
 
   const completedBooks = useMemo(() => {
     return readingHistory
-      .filter((item) => item.progress >= 98 || (item.totalPages && item.page >= item.totalPages))
+      .filter((item) => (item.progress >= 98 || (item.totalPages && item.page >= item.totalPages)) && !isDismissedFromShelf("completed", item.bookId))
       .map((item) => {
         const book = BOOKS.find((b) => b.id === item.bookId);
         if (!book) return null;
@@ -165,11 +169,12 @@ export default function FavoritesPage() {
         };
       })
       .filter((b): b is Book & { currentPage: number; totalPages: number | string; progress: number; lastReadAt: number } => b !== null);
-  }, [readingHistory]);
+  }, [readingHistory, isDismissedFromShelf]);
 
-  // 2. Derive Books with Reading Memory
+  // 2. Derive Books with Reading Memory (Dismissal Aware)
   const memoryBooks = useMemo(() => {
     return readingHistory
+      .filter((item) => !isDismissedFromShelf("memory", item.bookId))
       .map((item) => {
         const book = BOOKS.find((b) => b.id === item.bookId);
         if (!book) return null;
@@ -183,18 +188,27 @@ export default function FavoritesPage() {
         };
       })
       .filter((b): b is Book & { memory: any; currentPage: number; totalPages: number | string; progress: number } => b !== null);
-  }, [readingHistory, getReadingMemory]);
+  }, [readingHistory, getReadingMemory, isDismissedFromShelf]);
 
-  // 3. Derive Categories from saved favorites
+  // 3. Derive Offline Books (Dismissal Aware)
+  const visibleOfflineBooks = useMemo(() => {
+    return offlineBooksList.filter((b) => !isDismissedFromShelf("offline", b.id));
+  }, [offlineBooksList, isDismissedFromShelf]);
+
+  // 4. Derive Categories and Favorites (Dismissal Aware)
+  const nonDismissedFavorites = useMemo(() => {
+    return favoriteBooks.filter((b) => !isDismissedFromShelf("favorites", b.id));
+  }, [favoriteBooks, isDismissedFromShelf]);
+
   const savedCategories = useMemo(() => {
-    const cats = Array.from(new Set(favoriteBooks.map((b) => b.category)));
+    const cats = Array.from(new Set(nonDismissedFavorites.map((b) => b.category)));
     return ["All", ...cats];
-  }, [favoriteBooks]);
+  }, [nonDismissedFavorites]);
 
   const filteredFavorites = useMemo(() => {
-    if (selectedCategory === "All") return favoriteBooks;
-    return favoriteBooks.filter((b) => b.category === selectedCategory);
-  }, [favoriteBooks, selectedCategory]);
+    if (selectedCategory === "All") return nonDismissedFavorites;
+    return nonDismissedFavorites.filter((b) => b.category === selectedCategory);
+  }, [nonDismissedFavorites, selectedCategory]);
 
   // 4. Generate 12-Week Reading Activity Heatmap Grid
   const heatmapWeeks = useMemo(() => {
@@ -281,8 +295,23 @@ export default function FavoritesPage() {
 
       {/* Smart Continue Reading Hero Card */}
       {spotlightBook && (
-        <div className="w-full mb-6 sm:mb-8 p-4 sm:p-7 rounded-2xl sm:rounded-3xl glass-card border border-[var(--accent)]/30 bg-gradient-to-r from-[var(--card)] via-[var(--card)] to-[var(--accent)]/10 shadow-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-6 animate-fade-in min-w-0">
-          <div className="flex items-start sm:items-center gap-3.5 sm:gap-5 min-w-0 w-full sm:w-auto">
+        <div className="w-full mb-6 sm:mb-8 p-4 sm:p-7 rounded-2xl sm:rounded-3xl glass-card border border-[var(--accent)]/30 bg-gradient-to-r from-[var(--card)] via-[var(--card)] to-[var(--accent)]/10 shadow-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-6 animate-fade-in min-w-0 relative group">
+          {/* Subtle Dismiss Button */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              dismissFromShelf("reading", spotlightBook.id);
+            }}
+            className="absolute top-3 right-3 sm:top-4 sm:right-4 w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-[var(--card)]/90 hover:bg-rose-500/20 text-[var(--text-secondary)] hover:text-rose-400 border border-[var(--border)] hover:border-rose-500/40 flex items-center justify-center text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer shadow-xs focus-visible:ring-2 focus-visible:ring-[var(--accent)] z-10"
+            aria-label={`Dismiss ${spotlightBook.title} from Continue Reading`}
+            title="Dismiss from shelf view"
+          >
+            ×
+          </button>
+
+          <div className="flex items-start sm:items-center gap-3.5 sm:gap-5 min-w-0 w-full sm:w-auto pr-7 sm:pr-0">
             <div className="relative w-14 h-20 sm:w-20 sm:h-28 rounded-xl sm:rounded-2xl overflow-hidden book-shadow flex-shrink-0 border border-[var(--border)]">
               <Image src={spotlightBook.cover} alt={spotlightBook.title} fill className="object-cover" sizes="(max-width: 640px) 56px, 80px" />
             </div>
@@ -342,7 +371,7 @@ export default function FavoritesPage() {
           >
             <span>❤️ Favorites</span>
             <span className="px-1.5 py-0.2 rounded-full bg-black/20 text-[10px]">
-              {favoriteBooks.length}
+              {filteredFavorites.length}
             </span>
           </button>
 
@@ -387,7 +416,7 @@ export default function FavoritesPage() {
           >
             <span>📦 Offline Books</span>
             <span className="px-1.5 py-0.2 rounded-full bg-black/20 text-[10px]">
-              {offlineBooksList.length}
+              {visibleOfflineBooks.length}
             </span>
           </button>
 
@@ -423,7 +452,7 @@ export default function FavoritesPage() {
        * ------------------------------------------------------------- */}
       {activeTab === "favorites" && (
         <div className="w-full min-w-0">
-          {favoriteBooks.length === 0 ? (
+          {filteredFavorites.length === 0 ? (
             <div className="w-full max-w-2xl mx-auto text-center py-12 sm:py-20 px-4 sm:px-6 glass-card rounded-2xl sm:rounded-3xl border border-[var(--border)] bg-[var(--card)] shadow-2xl">
               <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-rose-500/10 border border-rose-500/25 text-2xl sm:text-3xl flex items-center justify-center mx-auto mb-3 sm:mb-4 text-rose-400 shadow-inner">
                 ♥
@@ -465,7 +494,12 @@ export default function FavoritesPage() {
 
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-6 w-full min-w-0">
                 {filteredFavorites.map((book) => (
-                  <BookCard key={book.id} book={book} />
+                  <BookCard
+                    key={book.id}
+                    book={book}
+                    onDismiss={() => dismissFromShelf("favorites", book.id)}
+                    dismissAriaLabel={`Remove ${book.title} from Favorites shelf`}
+                  />
                 ))}
               </div>
             </div>
@@ -502,9 +536,24 @@ export default function FavoritesPage() {
               {currentlyReadingBooks.map((book) => (
                 <div
                   key={book.id}
-                  className="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-[var(--border)] bg-[var(--card)] shadow-xl flex flex-col justify-between space-y-3 sm:space-y-4"
+                  className="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-[var(--border)] bg-[var(--card)] shadow-xl flex flex-col justify-between space-y-3 sm:space-y-4 relative group"
                 >
-                  <div className="flex gap-3.5 sm:gap-4">
+                  {/* Subtle Dismiss Button */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      dismissFromShelf("reading", book.id);
+                    }}
+                    className="absolute top-3 right-3 sm:top-4 sm:right-4 w-6 h-6 sm:w-6.5 sm:h-6.5 rounded-full bg-[var(--secondary)]/80 hover:bg-rose-500/20 text-[var(--text-secondary)] hover:text-rose-400 border border-[var(--border)] hover:border-rose-500/40 flex items-center justify-center text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer shadow-xs focus-visible:ring-2 focus-visible:ring-[var(--accent)] z-10"
+                    aria-label={`Remove ${book.title} from In Progress`}
+                    title="Remove from In Progress"
+                  >
+                    ×
+                  </button>
+
+                  <div className="flex gap-3.5 sm:gap-4 pr-6 sm:pr-7">
                     <div className="relative w-14 h-20 sm:w-16 sm:h-24 rounded-xl overflow-hidden book-shadow flex-shrink-0 border border-[var(--border)]">
                       <Image src={book.cover} alt={book.title} fill className="object-cover" sizes="(max-width: 640px) 56px, 64px" />
                     </div>
@@ -573,9 +622,24 @@ export default function FavoritesPage() {
               {completedBooks.map((book) => (
                 <div
                   key={book.id}
-                  className="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-emerald-500/30 bg-[var(--card)] shadow-xl flex flex-col justify-between space-y-3 sm:space-y-4"
+                  className="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-emerald-500/30 bg-[var(--card)] shadow-xl flex flex-col justify-between space-y-3 sm:space-y-4 relative group"
                 >
-                  <div className="flex gap-3.5 sm:gap-4">
+                  {/* Subtle Dismiss Button */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      dismissFromShelf("completed", book.id);
+                    }}
+                    className="absolute top-3 right-3 sm:top-4 sm:right-4 w-6 h-6 sm:w-6.5 sm:h-6.5 rounded-full bg-[var(--secondary)]/80 hover:bg-rose-500/20 text-[var(--text-secondary)] hover:text-rose-400 border border-[var(--border)] hover:border-rose-500/40 flex items-center justify-center text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer shadow-xs focus-visible:ring-2 focus-visible:ring-[var(--accent)] z-10"
+                    aria-label={`Remove ${book.title} from Completed`}
+                    title="Remove from Completed"
+                  >
+                    ×
+                  </button>
+
+                  <div className="flex gap-3.5 sm:gap-4 pr-6 sm:pr-7">
                     <div className="relative w-14 h-20 sm:w-16 sm:h-24 rounded-xl overflow-hidden book-shadow flex-shrink-0 border border-[var(--border)]">
                       <Image src={book.cover} alt={book.title} fill className="object-cover" sizes="(max-width: 640px) 56px, 64px" />
                     </div>
@@ -623,7 +687,7 @@ export default function FavoritesPage() {
                   Offline Library Storage
                 </h3>
                 <p className="text-[11px] sm:text-xs text-[var(--text-secondary)]">
-                  {offlineBooksList.length} book{offlineBooksList.length === 1 ? "" : "s"} cached locally (~{offlineStorageSizeMb} MB on device).
+                  {visibleOfflineBooks.length} book{visibleOfflineBooks.length === 1 ? "" : "s"} cached locally (~{offlineStorageSizeMb} MB on device).
                 </p>
               </div>
             </div>
@@ -637,7 +701,7 @@ export default function FavoritesPage() {
             </button>
           </div>
 
-          {offlineBooksList.length === 0 ? (
+          {visibleOfflineBooks.length === 0 ? (
             <div className="w-full max-w-2xl mx-auto text-center py-12 sm:py-20 px-4 sm:px-6 glass-card rounded-2xl sm:rounded-3xl border border-[var(--border)] bg-[var(--card)] shadow-2xl">
               <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-[var(--secondary)] border border-[var(--border)] text-2xl sm:text-3xl flex items-center justify-center mx-auto mb-3 sm:mb-4 text-[var(--text-secondary)] shadow-inner">
                 📦
@@ -658,12 +722,27 @@ export default function FavoritesPage() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-6 w-full min-w-0">
-              {offlineBooksList.map((book) => (
+              {visibleOfflineBooks.map((book) => (
                 <div
                   key={book.id}
-                  className="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-emerald-500/30 bg-[var(--card)] shadow-xl flex flex-col justify-between space-y-3 sm:space-y-4"
+                  className="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-emerald-500/30 bg-[var(--card)] shadow-xl flex flex-col justify-between space-y-3 sm:space-y-4 relative group"
                 >
-                  <div className="flex gap-3.5 sm:gap-4">
+                  {/* Subtle Dismiss Button */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      dismissFromShelf("offline", book.id);
+                    }}
+                    className="absolute top-3 right-3 sm:top-4 sm:right-4 w-6 h-6 sm:w-6.5 sm:h-6.5 rounded-full bg-[var(--secondary)]/80 hover:bg-rose-500/20 text-[var(--text-secondary)] hover:text-rose-400 border border-[var(--border)] hover:border-rose-500/40 flex items-center justify-center text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer shadow-xs focus-visible:ring-2 focus-visible:ring-[var(--accent)] z-10"
+                    aria-label={`Remove ${book.title} from Offline shelf`}
+                    title="Remove from shelf view"
+                  >
+                    ×
+                  </button>
+
+                  <div className="flex gap-3.5 sm:gap-4 pr-6 sm:pr-7">
                     <div className="relative w-14 h-20 sm:w-16 sm:h-24 rounded-xl overflow-hidden book-shadow flex-shrink-0 border border-[var(--border)]">
                       <Image src={book.cover} alt={book.title} fill className="object-cover" sizes="(max-width: 640px) 56px, 64px" />
                     </div>
@@ -693,7 +772,7 @@ export default function FavoritesPage() {
                         await refreshOfflineBooks();
                       }}
                       className="px-3 py-2 rounded-xl bg-[var(--secondary)] hover:bg-rose-500/20 hover:text-rose-400 text-[var(--text-secondary)] text-xs border border-[var(--border)] cursor-pointer"
-                      title="Remove Offline Copy"
+                      title="Remove Offline Copy from Device Cache"
                     >
                       🗑️
                     </button>
@@ -734,9 +813,24 @@ export default function FavoritesPage() {
               {memoryBooks.map((book) => (
                 <div
                   key={book.id}
-                  className="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-[var(--border)] bg-[var(--card)] shadow-xl flex flex-col justify-between space-y-3 sm:space-y-4"
+                  className="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-[var(--border)] bg-[var(--card)] shadow-xl flex flex-col justify-between space-y-3 sm:space-y-4 relative group"
                 >
-                  <div className="flex gap-3.5 sm:gap-4">
+                  {/* Subtle Dismiss Button */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      dismissFromShelf("memory", book.id);
+                    }}
+                    className="absolute top-3 right-3 sm:top-4 sm:right-4 w-6 h-6 sm:w-6.5 sm:h-6.5 rounded-full bg-[var(--secondary)]/80 hover:bg-rose-500/20 text-[var(--text-secondary)] hover:text-rose-400 border border-[var(--border)] hover:border-rose-500/40 flex items-center justify-center text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer shadow-xs focus-visible:ring-2 focus-visible:ring-[var(--accent)] z-10"
+                    aria-label={`Remove ${book.title} from Reading Memory`}
+                    title="Remove from Reading Memory"
+                  >
+                    ×
+                  </button>
+
+                  <div className="flex gap-3.5 sm:gap-4 pr-6 sm:pr-7">
                     <div className="relative w-14 h-20 sm:w-16 sm:h-24 rounded-xl overflow-hidden book-shadow flex-shrink-0 border border-[var(--border)]">
                       <Image src={book.cover} alt={book.title} fill className="object-cover" sizes="(max-width: 640px) 56px, 64px" />
                     </div>

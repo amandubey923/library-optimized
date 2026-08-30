@@ -10,9 +10,11 @@ import CardTilt from "./visual/CardTilt";
 interface BookCardProps {
   book: Book;
   compact?: boolean;
+  onDismiss?: () => void;
+  dismissAriaLabel?: string;
 }
 
-function BookCardComponent({ book, compact = false }: BookCardProps) {
+function BookCardComponent({ book, compact = false, onDismiss, dismissAriaLabel }: BookCardProps) {
   const { isFavorite, toggleFavorite, recordReading } = useLibrary();
   const favorited = isFavorite(book.id);
 
@@ -25,7 +27,7 @@ function BookCardComponent({ book, compact = false }: BookCardProps) {
           style={{ transitionDuration: "1000ms" }}
         />
 
-        {/* Category Pill & Favorite Button Bar */}
+        {/* Category Pill & Favorite / Dismiss Button Bar */}
         <div className="flex items-center justify-between gap-1 sm:gap-2 mb-2 sm:mb-3 relative z-10">
           <div className="flex items-center gap-1 sm:gap-1.5 min-w-0 flex-1">
             <span className="text-[8.5px] sm:text-[10px] font-bold uppercase tracking-wider px-1.5 sm:px-2 py-0.5 rounded-full bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/20 truncate">
@@ -43,19 +45,36 @@ function BookCardComponent({ book, compact = false }: BookCardProps) {
               </span>
             )}
           </div>
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              toggleFavorite(book.id);
-            }}
-            className={`p-1 sm:p-1.5 rounded-full border transition-all cursor-pointer shrink-0 ${
-              favorited
-                ? "bg-rose-500/20 text-rose-400 border-rose-500/40 shadow-[0_0_10px_rgba(244,63,94,0.3)]"
-                : "bg-[var(--card)] text-[var(--text-secondary)] border-[var(--border)] hover:text-[var(--foreground)] hover:border-[var(--accent)]/50"
-            }`}
-            aria-label={favorited ? `Remove ${book.title} from favorites` : `Add ${book.title} to favorites`}
-          >
+
+          <div className="flex items-center gap-1 shrink-0">
+            {onDismiss && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onDismiss();
+                }}
+                className="w-5.5 h-5.5 sm:w-6 sm:h-6 rounded-full bg-[var(--card)]/80 hover:bg-rose-500/20 text-[var(--text-secondary)] hover:text-rose-400 border border-[var(--border)] hover:border-rose-500/40 flex items-center justify-center text-xs sm:text-sm font-bold transition-all cursor-pointer shadow-xs focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+                aria-label={dismissAriaLabel || `Remove ${book.title} from shelf`}
+                title="Remove from shelf view"
+              >
+                ×
+              </button>
+            )}
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                toggleFavorite(book.id);
+              }}
+              className={`p-1 sm:p-1.5 rounded-full border transition-all cursor-pointer shrink-0 ${
+                favorited
+                  ? "bg-rose-500/20 text-rose-400 border-rose-500/40 shadow-[0_0_10px_rgba(244,63,94,0.3)]"
+                  : "bg-[var(--card)] text-[var(--text-secondary)] border-[var(--border)] hover:text-[var(--foreground)] hover:border-[var(--accent)]/50"
+              }`}
+              aria-label={favorited ? `Remove ${book.title} from favorites` : `Add ${book.title} to favorites`}
+            >
             <svg
               className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current transition-transform active:scale-125"
               viewBox="0 0 24 24"
@@ -63,15 +82,16 @@ function BookCardComponent({ book, compact = false }: BookCardProps) {
               {favorited ? (
                 <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
               ) : (
-                <path
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
-                />
-              )}
-            </svg>
-          </button>
+                  <path
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+                  />
+                )}
+              </svg>
+            </button>
+          </div>
         </div>
 
         {/* Book Cover Container */}

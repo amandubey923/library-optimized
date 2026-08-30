@@ -164,6 +164,10 @@ const ACTIVE_TIME_KEY = "readershub:active-time:v1";
 const FAVORITES_KEY = "readers_hub_favorites_v2";
 const HISTORY_KEY = "readers_hub_reading_progress_v2";
 const OFFLINE_CACHE_NAME = "readershub-offline-books-v1";
+const SHELF_DISMISSALS_KEY = "readershub:shelf-dismissals:v1";
+
+export type ShelfSectionKey = "reading" | "completed" | "offline" | "memory" | "favorites" | "spotlight";
+export type ShelfDismissalsMap = Record<string, Record<string, boolean>>;
 
 // High-speed in-memory caches to reduce redundant JSON parsing & LocalStorage overhead
 const progressCache = new Map<string, ReadingProgressData>();
@@ -171,6 +175,69 @@ const annotationsCache = new Map<string, BookAnnotations>();
 const bookmarksCache = new Map<string, BookmarkItem[]>();
 const memoryCache = new Map<string, BookReadingMemory>();
 let activeTimeCache: WebsiteActiveTimeData | null = null;
+let shelfDismissalsCache: ShelfDismissalsMap | null = null;
+
+export function getShelfDismissals(): ShelfDismissalsMap {
+  if (typeof window === "undefined") return {};
+  if (shelfDismissalsCache) return shelfDismissalsCache;
+  try {
+    const raw = localStorage.getItem(SHELF_DISMISSALS_KEY);
+    if (!raw) {
+      shelfDismissalsCache = {};
+      return {};
+    }
+    shelfDismissalsCache = JSON.parse(raw);
+    return shelfDismissalsCache || {};
+  } catch {
+    return {};
+  }
+}
+
+export function dismissBookFromShelf(section: ShelfSectionKey, bookId: string): void {
+  if (typeof window === "undefined" || !bookId) return;
+  try {
+    const current = { ...getShelfDismissals() };
+    if (!current[section]) {
+      current[section] = {};
+    } else {
+      current[section] = { ...current[section] };
+    }
+    current[section][bookId] = true;
+    shelfDismissalsCache = current;
+    localStorage.setItem(SHELF_DISMISSALS_KEY, JSON.stringify(current));
+  } catch (e) {
+    console.warn("[ReaderStorage] Failed to dismiss book from shelf:", e);
+  }
+}
+
+export function restoreBookToShelf(section: ShelfSectionKey, bookId: string): void {
+  if (typeof window === "undefined" || !bookId) return;
+  try {
+    const current = { ...getShelfDismissals() };
+    if (current[section] && current[section][bookId]) {
+      current[section] = { ...current[section] };
+      delete current[section][bookId];
+      shelfDismissalsCache = current;
+      localStorage.setItem(SHELF_DISMISSALS_KEY, JSON.stringify(current));
+    }
+  } catch (e) {
+    console.warn("[ReaderStorage] Failed to restore book to shelf:", e);
+  }
+}
+
+export function isBookDismissedFromShelf(section: ShelfSectionKey, bookId: string): boolean {
+  if (typeof window === "undefined" || !bookId) return false;
+  const dismissals = getShelfDismissals();
+  return Boolean(dismissals[section]?.[bookId]);
+}
+
+export function clearShelfDismissals(): void {
+  if (typeof window === "undefined") return;
+  shelfDismissalsCache = {};
+  try {
+    localStorage.removeItem(SHELF_DISMISSALS_KEY);
+  } catch {}
+}
 
 export const DAILY_READING_GOAL_SECONDS = 15 * 60; // 15 minutes = 900 seconds
 
@@ -1258,6 +1325,7 @@ export function invalidateAllCaches(): void {
   bookmarksCache.clear();
   memoryCache.clear();
   activeTimeCache = null;
+  shelfDismissalsCache = null;
 }
 
 export function exportAllStorageDataForSync(): {
