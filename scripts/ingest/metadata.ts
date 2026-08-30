@@ -196,7 +196,9 @@ export async function extractPdfMetadata(filePath: string, filename: string): Pr
 
   // Non-Osho author extraction heuristics if still default
   if (!isOsho && (author === "Reader's HUB" || author === "Unknown")) {
-    if (/bertrand\s*russell/i.test(filename) || /bertrand\s*russell/i.test(extractedText)) {
+    if (/clean\s*code/i.test(filename) || /robert\s*c\.?\s*martin/i.test(filename) || /robert\s*c\.?\s*martin/i.test(extractedText) || /uncle\s*bob/i.test(extractedText)) {
+      author = "Robert C. Martin";
+    } else if (/bertrand\s*russell/i.test(filename) || /bertrand\s*russell/i.test(extractedText)) {
       author = "Bertrand Russell";
     } else if (/nietzsche/i.test(filename) || /nietzsche/i.test(extractedText)) {
       author = "Friedrich Nietzsche";
@@ -273,7 +275,9 @@ export async function extractPdfMetadata(filePath: string, filename: string): Pr
     }
     if (metaTitle && metaTitle.trim().length > 3 && !metaTitle.includes("Untitled") && !metaTitle.includes(".pdf")) {
       let cleanMetaTitle = metaTitle.trim();
-      if (/beyond\s*good\s*and\s*evil/i.test(cleanMetaTitle)) {
+      if (/clean\s*code/i.test(cleanMetaTitle)) {
+        cleanMetaTitle = "Clean Code: A Handbook of Agile Software Craftsmanship";
+      } else if (/beyond\s*good\s*and\s*evil/i.test(cleanMetaTitle)) {
         cleanMetaTitle = "Beyond Good and Evil";
       } else if (/denial\s*of\s*death/i.test(cleanMetaTitle)) {
         cleanMetaTitle = "The Denial of Death";

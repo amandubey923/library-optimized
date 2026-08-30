@@ -8456,5 +8456,30 @@
     ],
     "excerpt": "The intelligent investor is a realist who sells to optimists and buys from pessimists.",
     "fileHash": "2fca98ab2511938ca6f9b4e024e7bd6e456c9d41c46ac16c99da38912f876f33"
+  },
+  {
+    "id": "clean-code",
+    "title": "Clean Code: A Handbook of Agile Software Craftsmanship",
+    "author": "Robert C. Martin",
+    "category": "Technical Knowledge",
+    "resourceType": "Book",
+    "cover": "/images/books/clean-code.webp",
+    "pdf": "/pdfs/CleanCode.pdf",
+    "description": "Comprehensive high-yield study material covering core concepts, patterns, and practical reference.",
+    "year": 2026,
+    "pages": 462,
+    "language": "English",
+    "rating": 4.8,
+    "featured": false,
+    "tags": [
+      "Clean Code",
+      "Software Craftsmanship",
+      "OOP",
+      "Refactoring",
+      "Design Patterns",
+      "Technical Knowledge"
+    ],
+    "excerpt": "Master essential principles and practical patterns with clear structured notes.",
+    "fileHash": "cfa635c52082259b9f126107f3f2275c0574e1d41ce770a6905ca5bb3c9acafb"
   }
 ]
