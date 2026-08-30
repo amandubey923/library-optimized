@@ -7,6 +7,9 @@ import { Book, BOOKS } from "@/data/books";
 import { useLibrary } from "@/context/LibraryContext";
 import dynamic from "next/dynamic";
 import BookCard from "@/components/BookCard";
+import AddToCollectionModal from "@/components/collections/AddToCollectionModal";
+import BookReflectionModal from "@/components/reader/BookReflectionModal";
+import { getRelatedBooks } from "@/lib/recommendations";
 import { getBookAnnotations } from "@/lib/reader-storage";
 import { getAffiliateInfoForBook } from "@/lib/affiliate-config";
 import AdPlaceholder from "@/components/monetization/AdPlaceholder";
@@ -32,6 +35,7 @@ const BookReadingMemory = dynamic(() => import("@/components/memory/BookReadingM
   ssr: false,
 });
 
+
 interface BookDetailClientProps {
   book: Book;
   relatedBooks: Book[];
@@ -50,16 +54,24 @@ export default function BookDetailClient({
     saveBookOffline,
     removeBookOffline,
     showToast,
+    getReflection,
   } = useLibrary();
 
   const favorited = isFavorite(book.id);
   const readerRef = useRef<HTMLDivElement>(null);
   const [isMemoryOpen, setIsMemoryOpen] = useState(false);
   const [isOfflineSaved, setIsOfflineSaved] = useState(false);
+  const [isCollectionModalOpen, setIsCollectionModalOpen] = useState(false);
+  const [isReflectionModalOpen, setIsReflectionModalOpen] = useState(false);
 
   const progress = getReadingProgress(book.id);
   const annotations = useMemo(() => getBookAnnotations(book.id), [book.id]);
   const affiliateInfo = useMemo(() => getAffiliateInfoForBook(book), [book]);
+  const userReflection = getReflection(book.id);
+  const smartRelatedBooks = useMemo(() => {
+    if (relatedBooks && relatedBooks.length > 0) return relatedBooks;
+    return getRelatedBooks(book, BOOKS, 4);
+  }, [book, relatedBooks]);
 
   useEffect(() => {
     recordReading(book.id);
@@ -211,20 +223,39 @@ export default function BookDetailClient({
                   <span>↓</span>
                 </a>
               </div>
+
+              {/* Add to Collection & Log Reflection Buttons */}
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={() => setIsCollectionModalOpen(true)}
+                  className="flex-1 py-2 sm:py-2.5 px-2.5 sm:px-3 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] border border-[var(--border)] text-[11px] sm:text-xs font-semibold text-center transition-all flex items-center justify-center gap-1 sm:gap-1.5 shadow-xs cursor-pointer"
+                >
+                  <span>📚</span>
+                  <span>Collection</span>
+                </button>
+
+                <button
+                  onClick={() => setIsReflectionModalOpen(true)}
+                  className="flex-1 py-2 sm:py-2.5 px-2.5 sm:px-3 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] border border-[var(--border)] text-[11px] sm:text-xs font-semibold text-center transition-all flex items-center justify-center gap-1 sm:gap-1.5 shadow-xs cursor-pointer"
+                >
+                  <span>✍️</span>
+                  <span>Reflect</span>
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Right Column: Title, Metadata, Synopsis, Excerpt */}
-          <div className="lg:col-span-8 flex flex-col justify-between min-w-0">
+          {/* Right Column: Book Metadata & Summary */}
+          <div className="lg:col-span-8 flex flex-col justify-between">
             <div>
-              {/* Category & Badge Header */}
-              <div className="flex flex-wrap items-center justify-between gap-2.5 sm:gap-3 mb-3">
-                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                  <span className="text-[11px] sm:text-xs font-bold px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-full bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/30">
+              {/* Category, Rating, and Action Row */}
+              <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="px-3 py-1 rounded-full bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/20 text-xs font-bold uppercase tracking-wider">
                     {book.category}
                   </span>
-                  <span className="text-[11px] sm:text-xs text-[var(--text-secondary)] font-medium">
-                    {book.language} Edition
+                  <span className="text-xs text-[var(--text-secondary)]">
+                    {book.language === "hi" ? "हिंदी" : "English"}
                   </span>
                 </div>
 
@@ -321,10 +352,10 @@ export default function BookDetailClient({
 
               {/* Synopsis */}
               <div className="space-y-1.5 sm:space-y-2">
-                <h3 className="text-[11px] sm:text-xs font-bold text-[var(--foreground)] uppercase tracking-wider font-serif">
-                  About this book
+                <h3 className="text-xs sm:text-sm font-semibold uppercase tracking-wider text-[var(--text-secondary)] font-serif">
+                  Synopsis
                 </h3>
-                <p className="text-xs sm:text-sm md:text-base text-[var(--text-secondary)] leading-relaxed font-normal">
+                <p className="text-xs sm:text-sm text-[var(--text-secondary)] leading-relaxed font-normal">
                   {book.description}
                 </p>
               </div>
@@ -333,6 +364,24 @@ export default function BookDetailClient({
               {book.excerpt && (
                 <div className="mt-4 sm:mt-6 p-3.5 sm:p-5 rounded-2xl bg-[var(--secondary)]/60 border-l-4 border-[var(--accent)] text-xs sm:text-sm text-[var(--foreground)] italic font-serif leading-relaxed">
                   &ldquo;{book.excerpt}&rdquo;
+                </div>
+              )}
+
+              {/* Personal Reflection Quote if written */}
+              {userReflection && (
+                <div className="mt-4 sm:mt-6 p-4 rounded-2xl bg-violet-500/10 border border-violet-500/25 space-y-1.5 animate-fade-in">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-violet-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <span>📝</span>
+                      <span>Your Reflection &amp; Realization</span>
+                    </span>
+                    <span className="text-amber-400 font-bold">
+                      {"★".repeat(userReflection.rating || 5)}
+                    </span>
+                  </div>
+                  <p className="text-xs sm:text-sm text-[var(--foreground)] italic font-serif leading-relaxed">
+                    &ldquo;{userReflection.reflection}&rdquo;
+                  </p>
                 </div>
               )}
 
@@ -408,7 +457,7 @@ export default function BookDetailClient({
       )}
 
       {/* Related Books Section */}
-      {relatedBooks.length > 0 && (
+      {smartRelatedBooks.length > 0 && (
         <section className="w-full min-w-0">
           <div className="flex items-center justify-between mb-4 sm:mb-6">
             <h3 className="text-lg sm:text-xl md:text-2xl font-bold font-serif text-[var(--foreground)]">
@@ -422,7 +471,7 @@ export default function BookDetailClient({
             </Link>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-6 w-full min-w-0">
-            {relatedBooks.map((b) => (
+            {smartRelatedBooks.map((b) => (
               <BookCard key={b.id} book={b} />
             ))}
           </div>
@@ -430,6 +479,20 @@ export default function BookDetailClient({
       )}
 
       {/* Book Reading Memory Modal */}
+      {/* Add To Collection Modal */}
+      <AddToCollectionModal
+        book={book}
+        isOpen={isCollectionModalOpen}
+        onClose={() => setIsCollectionModalOpen(false)}
+      />
+
+      {/* Book Reflection Modal */}
+      <BookReflectionModal
+        book={book}
+        isOpen={isReflectionModalOpen}
+        onClose={() => setIsReflectionModalOpen(false)}
+      />
+
       <BookReadingMemory
         book={book}
         isOpen={isMemoryOpen}
