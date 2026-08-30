@@ -1274,6 +1274,7 @@ export function calculateReadingStats(): ReadingStats {
       booksCompleted = completedIds.length;
 
       for (const item of parsed) {
+        const mem = getBookReadingMemory(item.bookId);
         const mem = allMemories[item.bookId] || getBookReadingMemory(item.bookId);
         const bookSecs = mem?.totalSeconds || 0;
         const hasGenuineReading = bookSecs >= 30;
@@ -1286,6 +1287,14 @@ export function calculateReadingStats(): ReadingStats {
         // Pages read is bounded by plausible reading time on this book
         if (hasGenuineReading) {
           pagesRead += Math.max(1, Math.min(item.page || 1, Math.floor(bookSecs / 45)));
+        }
+
+        // Completed only if finished progress AND meaningful genuine study time on this book
+        if (
+          (item.progress >= 95 || (item.totalPages && item.page >= item.totalPages)) &&
+          bookSecs >= 180
+        ) {
+          booksCompleted += 1;
         }
       }
     }

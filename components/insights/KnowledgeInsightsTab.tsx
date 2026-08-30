@@ -7,9 +7,12 @@ import Link from "next/link";
 import Image from "next/image";
 
 export default function KnowledgeInsightsTab() {
+  const { readingHistory, favorites, streakData, reflections, readingMemories, annotations } = useLibrary();
   const { readingHistory, favorites, streakData, reflections, readingMemories, annotations, stats } = useLibrary();
 
   const insights = useMemo(() => {
+    return generateKnowledgeInsights(readingHistory, favorites, streakData, reflections, readingMemories, annotations);
+  }, [readingHistory, favorites, streakData, reflections, readingMemories, annotations]);
     return generateKnowledgeInsights(readingHistory, favorites, streakData, reflections, readingMemories, annotations, stats);
   }, [readingHistory, favorites, streakData, reflections, readingMemories, annotations, stats]);
 
