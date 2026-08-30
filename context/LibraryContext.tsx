@@ -21,8 +21,8 @@ import {
   DAILY_READING_GOAL_SECONDS,
   ReadingStats,
   ReadingStreakData,
-  WebsiteActiveTimeData,
   BookReadingMemory,
+  BookAnnotations,
   ReadingTimelineEvent,
   getBookReadingMemory,
   recordReadingMemorySession,
@@ -34,7 +34,6 @@ import {
   clearStreakData as purgeStreakData,
   clearAllOfflineBooks as purgeAllOfflineBooks,
   factoryResetAllData as purgeFactoryResetAll,
-  invalidateAllCaches,
   ShelfSectionKey,
   ShelfDismissalsMap,
   getShelfDismissals,
@@ -42,6 +41,22 @@ import {
   restoreBookToShelf,
   isBookDismissedFromShelf,
   clearShelfDismissals,
+  ReadingCollection,
+  BookReflection,
+  getReadingCollections,
+  createReadingCollection as createCollStorage,
+  updateReadingCollection as updateCollStorage,
+  deleteReadingCollection as deleteCollStorage,
+  addBookToCollection as addCollStorage,
+  removeBookFromCollection as removeCollStorage,
+  getCollectionsForBook as getCollsForBookStorage,
+  clearAllCollections,
+  getBookReflections,
+  getBookReflection,
+  saveBookReflection,
+  removeBookReflection,
+  clearAllReflections,
+  clearAllUserDataOnLogout,
 } from "@/lib/reader-storage";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -52,6 +67,9 @@ import {
   syncActiveTimeToCloud,
   syncReadingMemoryToCloud,
   syncFavoriteToCloud,
+  syncCollectionsToCloud,
+  syncReflectionsToCloud,
+  syncShelfDismissalsToCloud,
   cancelAllPendingSyncTimers,
   flushPendingActivitySyncs,
 } from "@/lib/firestore-sync";
@@ -98,6 +116,19 @@ interface LibraryContextType {
   dismissFromShelf: (section: ShelfSectionKey, bookId: string) => void;
   restoreToShelf: (section: ShelfSectionKey, bookId: string) => void;
   isDismissedFromShelf: (section: ShelfSectionKey, bookId: string) => boolean;
+  // Smart Reading Collections (Isolated: readershub:collections:v1)
+  collections: ReadingCollection[];
+  createCollection: (name: string, description?: string, color?: string) => ReadingCollection;
+  updateCollection: (id: string, updates: Partial<Pick<ReadingCollection, "name" | "description" | "color">>) => void;
+  deleteCollection: (id: string) => void;
+  addBookToCollection: (collectionId: string, bookId: string) => void;
+  removeBookFromCollection: (collectionId: string, bookId: string) => void;
+  getCollectionsForBook: (bookId: string) => ReadingCollection[];
+  // Post-Completion Reflections (Isolated: readershub:reflections:v1)
+  reflections: Record<string, BookReflection>;
+  getReflection: (bookId: string) => BookReflection | null;
+  saveReflection: (bookId: string, reflection: string, rating?: number) => void;
+  removeReflection: (bookId: string) => void;
   // Bookmarks & Stats Extensions
   getBookmarks: (bookId: string) => BookmarkItem[];
   addBookmark: (bookId: string, page: number, label?: string) => BookmarkItem;
@@ -124,6 +155,8 @@ interface LibraryContextType {
     currentStreak: number;
   };
   // Reading Memory & Structured Sessions
+  readingMemories: Record<string, BookReadingMemory>;
+  annotations: Record<string, BookAnnotations>;
   getReadingMemory: (bookId: string) => BookReadingMemory;
   recordSessionEvent: (event: Omit<ReadingTimelineEvent, "id">) => void;
   activeSession: ActiveReadingSession | null;
@@ -133,6 +166,7 @@ interface LibraryContextType {
   checkOfflineStatus: (bookId: string, pdfUrl: string) => Promise<boolean>;
   saveBookOffline: (bookId: string, pdfUrl: string) => Promise<boolean>;
   removeBookOffline: (bookId: string, pdfUrl: string) => Promise<boolean>;
+
   // Granular Reset & Recovery
   clearAllProgress: () => void;
   clearAnnotations: () => void;
@@ -150,12 +184,18 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const pathname = usePathname();
   const pathnameRef = useRef(pathname);
-  pathnameRef.current = pathname;
+  useEffect(() => {
+    pathnameRef.current = pathname;
+  }, [pathname]);
 
   const [favorites, setFavorites] = useState<string[]>([]);
   const [readingHistory, setReadingHistory] = useState<ReadingProgressItem[]>([]);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [shelfDismissals, setShelfDismissals] = useState<ShelfDismissalsMap>({});
+  const [collections, setCollections] = useState<ReadingCollection[]>([]);
+  const [reflections, setReflections] = useState<Record<string, BookReflection>>({});
+  const [readingMemories, setReadingMemories] = useState<Record<string, BookReadingMemory>>({});
+  const [annotations, setAnnotationsState] = useState<Record<string, BookAnnotations>>({});
   const [activeSession, setActiveSession] = useState<ActiveReadingSession | null>(null);
   const [activeTimeState, setActiveTimeState] = useState<{
     totalActiveSeconds: number;
@@ -194,20 +234,110 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setShelfDismissals(getShelfDismissals());
+    setCollections(getReadingCollections());
+    setReflections(getBookReflections());
   }, []);
 
   const dismissFromShelf = useCallback((section: ShelfSectionKey, bookId: string) => {
     dismissBookFromShelf(section, bookId);
-    setShelfDismissals(getShelfDismissals());
+    const updated = getShelfDismissals();
+    setShelfDismissals(updated);
+    if (user) {
+      syncShelfDismissalsToCloud(user.uid, updated);
+    }
     const book = BOOKS.find((b) => b.id === bookId);
     const title = book ? book.title : "Book";
     showToast(`Removed "${title}" from shelf view`);
-  }, [showToast]);
+  }, [showToast, user]);
 
   const restoreToShelf = useCallback((section: ShelfSectionKey, bookId: string) => {
     restoreBookToShelf(section, bookId);
-    setShelfDismissals(getShelfDismissals());
+    const updated = getShelfDismissals();
+    setShelfDismissals(updated);
+    if (user) {
+      syncShelfDismissalsToCloud(user.uid, updated);
+    }
+  }, [user]);
+
+
+  const createCollection = useCallback((name: string, description?: string, color?: string) => {
+    const newCol = createCollStorage(name, description, color);
+    const updated = getReadingCollections();
+    setCollections(updated);
+    if (user) {
+      syncCollectionsToCloud(user.uid, updated);
+    }
+    showToast(`Created collection "${newCol.name}"`);
+    return newCol;
+  }, [showToast, user]);
+
+  const updateCollection = useCallback((id: string, updates: Partial<Pick<ReadingCollection, "name" | "description" | "color">>) => {
+    updateCollStorage(id, updates);
+    const updated = getReadingCollections();
+    setCollections(updated);
+    if (user) {
+      syncCollectionsToCloud(user.uid, updated);
+    }
+  }, [user]);
+
+  const deleteCollection = useCallback((id: string) => {
+    deleteCollStorage(id);
+    const updated = getReadingCollections();
+    setCollections(updated);
+    if (user) {
+      syncCollectionsToCloud(user.uid, updated);
+    }
+    showToast("Collection removed");
+  }, [showToast, user]);
+
+  const addBookToCollection = useCallback((collectionId: string, bookId: string) => {
+    addCollStorage(collectionId, bookId);
+    const updated = getReadingCollections();
+    setCollections(updated);
+    if (user) {
+      syncCollectionsToCloud(user.uid, updated);
+    }
+    const book = BOOKS.find((b) => b.id === bookId);
+    const col = updated.find((c) => c.id === collectionId);
+    showToast(`Added ${book ? `"${book.title}"` : "book"} to ${col ? col.name : "collection"}`);
+  }, [showToast, user]);
+
+  const removeBookFromCollection = useCallback((collectionId: string, bookId: string) => {
+    removeCollStorage(collectionId, bookId);
+    const updated = getReadingCollections();
+    setCollections(updated);
+    if (user) {
+      syncCollectionsToCloud(user.uid, updated);
+    }
+    showToast("Removed from collection");
+  }, [showToast, user]);
+
+  const getCollectionsForBookHandler = useCallback((bookId: string) => {
+    return getCollsForBookStorage(bookId);
   }, []);
+
+  const getReflection = useCallback((bookId: string) => {
+    return getBookReflection(bookId);
+  }, []);
+
+  const saveReflection = useCallback((bookId: string, reflection: string, rating?: number) => {
+    saveBookReflection(bookId, reflection, rating);
+    const updated = getBookReflections();
+    setReflections(updated);
+    if (user) {
+      syncReflectionsToCloud(user.uid, updated);
+    }
+    showToast("Reading reflection saved! 📝");
+  }, [showToast, user]);
+
+  const removeReflection = useCallback((bookId: string) => {
+    removeBookReflection(bookId);
+    const updated = getBookReflections();
+    setReflections(updated);
+    if (user) {
+      syncReflectionsToCloud(user.uid, updated);
+    }
+  }, [user]);
 
   const isDismissedFromShelf = useCallback((section: ShelfSectionKey, bookId: string) => {
     return Boolean(shelfDismissals[section]?.[bookId]);
@@ -239,6 +369,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     };
 
     const events = ["pointerdown", "keydown", "scroll", "touchstart", "wheel"];
+    events.forEach((ev) => window.removeEventListener(ev, registerSiteActivity));
     events.forEach((ev) => window.addEventListener(ev, registerSiteActivity, { passive: true }));
 
     const flushSiteActiveTime = () => {
@@ -318,11 +449,16 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!user) {
       if (prevUserRef.current !== null) {
-        // User logged out: abort in-flight debounce timers, clear session caches and reset state to guest defaults
+        // User logged out: abort in-flight debounce timers, clear session caches and reset state to pristine guest defaults
         cancelAllPendingSyncTimers();
-        invalidateAllCaches();
+        clearAllUserDataOnLogout();
         setFavorites([]);
         setReadingHistory([]);
+        setCollections([]);
+        setReflections({});
+        setShelfDismissals({});
+        setReadingMemories({});
+        setAnnotationsState({});
         setStreakData({
           daily: {},
           currentStreak: 0,
@@ -350,6 +486,11 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       setFavorites(cloudData.favorites);
       setReadingHistory(cloudData.readingHistory);
       setStreakData(cloudData.readingActivity);
+      setCollections(cloudData.collections || []);
+      setReflections(cloudData.reflections || {});
+      setShelfDismissals(cloudData.shelfDismissals || {});
+      setReadingMemories(cloudData.readingMemories || {});
+      setAnnotationsState(cloudData.annotations || {});
 
       const todayKey = getLocalDateKey();
       setActiveTimeState({
@@ -365,8 +506,6 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       isCancelled = true;
     };
   }, [user]);
-
-
 
   const toggleFavorite = useCallback((bookId: string) => {
     let wasAdded = false;
@@ -633,6 +772,10 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   const factoryReset = useCallback(async () => {
     await purgeFactoryResetAll();
     clearShelfDismissals();
+    clearAllCollections();
+    clearAllReflections();
+    setCollections([]);
+    setReflections({});
     setShelfDismissals({});
     setFavorites([]);
     setReadingHistory([]);
@@ -725,8 +868,8 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       refreshStats,
       exportData,
       importData: handleImportData,
-      globalActiveSeconds: Math.max(activeTimeState.totalActiveSeconds || 0, globalReadingSeconds),
-      todayActiveSeconds: Math.max(activeTimeState.todayActiveSeconds || 0, todaySeconds),
+      globalActiveSeconds: activeTimeState.totalActiveSeconds,
+      todayActiveSeconds: activeTimeState.todayActiveSeconds,
       globalReadingSeconds,
       recordWebsiteActiveTime,
       addBookReadingTime,
@@ -735,6 +878,8 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       isTodayQualified,
       recordActiveReading,
       getReadingMemory,
+      readingMemories,
+      annotations,
       recordSessionEvent,
       activeSession,
       startReadingSession,
@@ -747,6 +892,17 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       clearStreak,
       clearOfflineStorage,
       factoryReset,
+      collections,
+      createCollection,
+      updateCollection,
+      deleteCollection,
+      addBookToCollection,
+      removeBookFromCollection,
+      getCollectionsForBook: getCollectionsForBookHandler,
+      reflections,
+      getReflection,
+      saveReflection,
+      removeReflection,
     }),
     [
       favorites,
@@ -785,6 +941,8 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       isTodayQualified,
       recordActiveReading,
       getReadingMemory,
+      readingMemories,
+      annotations,
       recordSessionEvent,
       activeSession,
       startReadingSession,
@@ -797,6 +955,17 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       clearStreak,
       clearOfflineStorage,
       factoryReset,
+      collections,
+      createCollection,
+      updateCollection,
+      deleteCollection,
+      addBookToCollection,
+      removeBookFromCollection,
+      getCollectionsForBookHandler,
+      reflections,
+      getReflection,
+      saveReflection,
+      removeReflection,
     ]
   );
 

@@ -1,4 +1,4 @@
-# Reader's HUB — MASTER REUSABLE PDF INGESTION PROMPT
+# 📚 READER’S HUB — MASTER REUSABLE PDF INGESTION PROMPT
 
 I have added a NEW batch of PDF files to:
 
@@ -257,7 +257,7 @@ Once created, keep it stable.
 
 ---
 
-# 12. COVERS
+# 12. COVERS — UNIQUE, BOOK-SPECIFIC, PROFESSIONAL
 
 Use the existing cover-generation engine.
 
@@ -267,13 +267,213 @@ Generate the standard:
 
 cover.
 
-Preserve the current Reader's HUB visual style.
+Preserve the overall Reader's HUB visual quality and branding.
 
-Do NOT redesign the card or cover system.
+## CRITICAL COVER UNIQUENESS RULE
+
+Do NOT generate every book using the exact same visual template.
+
+Each NEW book cover must feel:
+
+- visually distinct
+- book-specific
+- professionally designed
+- intentionally composed
+- recognizable at thumbnail size
+
+The cover-generation process must use the actual book's identity to decide its visual direction.
+
+Consider:
+
+- title
+- author
+- subject
+- category
+- subcategory
+- genre
+- era
+- tone
+- themes
+- language
+- literary / philosophical / technical nature
+
+The goal is:
+
+`SAME READER'S HUB BRAND FAMILY + DIFFERENT BOOK PERSONALITY`
+
+NOT:
+
+`SAME TEMPLATE + DIFFERENT TITLE`
+
+## CONTROLLED VISUAL VARIATION
+
+Vary where appropriate:
+
+- background composition
+- color palette
+- accent colors
+- title typography treatment
+- author typography treatment
+- title placement
+- author placement
+- border treatment
+- decorative motifs
+- abstract vs illustrated composition
+- geometric structure
+- texture
+- lighting
+- symbolic imagery
+- editorial layout
+- negative space
+- visual hierarchy
+
+The variation must be controlled and intentional.
+
+Do NOT make covers look random or unrelated.
+
+## CATEGORY-AWARE VISUAL DIRECTION
+
+Use the subject to guide the cover's visual personality.
+
+### Philosophy / Spirituality
+Prefer combinations of:
+- contemplative imagery
+- symbolism
+- classical motifs
+- abstract conceptual compositions
+- restrained editorial layouts
+
+Avoid making every philosophy book look identical.
+
+### Technical Knowledge
+Prefer:
+- modern editorial layouts
+- subtle diagrams
+- geometric motifs
+- structured visual compositions
+- code/system inspired abstraction where appropriate
+
+Avoid making every technical book look like the same generic tech template.
+
+### Romance
+Prefer:
+- elegant
+- emotional
+- atmospheric
+- literary compositions
+- restrained romantic symbolism
+
+Avoid generic stock-looking romance covers.
+
+### Hindi Literature
+Prefer:
+- refined literary styling
+- culturally appropriate motifs
+- classical/editorial aesthetics
+- language-aware typography
+
+Avoid making all Hindi books use identical motifs.
+
+### Poetry
+Prefer:
+- artistic
+- expressive
+- minimal
+- metaphorical
+- strong use of negative space
+
+### Finance / Business
+Prefer:
+- restrained
+- analytical
+- editorial
+- sophisticated compositions
+
+### History
+Prefer:
+- archival
+- historical
+- classical
+- period-inspired visual elements
+
+### Psychology / Self-Development
+Prefer:
+- thoughtful
+- modern
+- minimal
+- conceptual compositions
+
+## ANTI-REPETITION CHECK
+
+Before generating a new cover:
+
+1. Inspect the existing cover patterns where feasible.
+2. Detect repeated visual structures.
+3. Avoid repeatedly using the exact same:
+   - background layout
+   - dominant color combination
+   - decorative motif
+   - title placement
+   - typography treatment
+   - border design
+   - illustration style
+
+4. When the previous few newly generated covers look too similar, deliberately choose a different visual direction.
+
+Do NOT regenerate existing covers to accomplish this.
+
+Only newly generated covers should receive this variation.
+
+## TITLE / AUTHOR LEGIBILITY
+
+Every generated cover must keep:
+
+- title clearly readable
+- author clearly readable
+- strong contrast
+- good hierarchy
+- no overlapping important text
+- no cropped title
+- no unreadable decorative typography
+
+The cover must still work when displayed as a small library card.
+
+## QUALITY CONTROL
+
+Every new cover must be:
+
+- exactly `600 × 900`
+- WebP
+- sharp
+- balanced
+- professionally composed
+- visually coherent
+- readable
+- appropriate for the book
+- consistent with Reader's HUB overall identity
+
+Avoid:
+
+- generic stock imagery
+- random AI-looking visual noise
+- excessive ornaments
+- unreadable typography
+- excessive text
+- cluttered compositions
+- inconsistent branding
+- near-duplicate covers
+
+## COVER FAILURE HANDLING
 
 If cover generation fails:
 
-report the item and continue with the rest of the batch where safe.
+- do NOT abort the whole batch
+- report the affected item
+- continue safely with other valid PDFs
+
+Do NOT regenerate old covers unnecessarily.
+
+Do NOT redesign the existing cover catalog.
 
 ---
 
@@ -394,6 +594,7 @@ streak
 offline system
 technical taxonomy unless a genuinely new category is required
 existing project features
+
 20. BUILD VALIDATION
 
 After successful ingestion:
@@ -411,6 +612,7 @@ If build fails:
 protect the last known-good catalog
 report exact error
 do not continue unrelated modifications
+
 21. FINAL BATCH REPORT
 
 Return:
@@ -441,7 +643,7 @@ Old → New
 
 Covers
 
-Generated count
+Generated count + for each new cover briefly mention the chosen visual direction/style
 
 Catalog
 
@@ -469,22 +671,43 @@ FINAL WORKFLOW
 
 Future usage should be:
 
-Drop 20–30 new PDFs into public/pdfs/
+Drop 20–30 new PDFs into:
+
+public/pdfs/
+
 Run:
 
 npm run ingest-batch -- --dry-run
 
 Review
+
 Run:
 
 npm run ingest-batch
 
 Build/test
+
 Stop
+
 FINAL PRINCIPLE
+
 DELTA ONLY.
 NEW PDFs ONLY.
 EXISTING DATA PROTECTED.
 NO DUPLICATES.
 NO UNRELATED CHANGES.
 SAFE + IDEMPOTENT + MODULAR INGESTION.
+
+COVER PRINCIPLE:
+
+SAME READER'S HUB BRAND
++
+UNIQUE BOOK-SPECIFIC VISUAL IDENTITY
++
+CONTROLLED VARIATION
++
+NO REPETITIVE TEMPLATES
++
+PROFESSIONAL 600 × 900 WEBP
++
+NO UNNECESSARY REGENERATION OF EXISTING COVERS
