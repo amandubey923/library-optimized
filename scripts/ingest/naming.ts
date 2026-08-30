@@ -57,6 +57,41 @@ export function resolveCanonicalFilename(
     return `${pascal}ByOsho.pdf`;
   }
 
+  // Clean special book mappings
+  if (/kurukshetra/i.test(currentBase) || /kurukshetra/i.test(title)) {
+    return "KurukshetraByRamdhariSinghDinkar.pdf";
+  }
+  if (/tyag.*patra/i.test(currentBase) || /tyagpatra/i.test(title)) {
+    return "Tyagpatra.pdf";
+  }
+  if (/sekhar|shekhar/i.test(currentBase) || /shekhar/i.test(title)) {
+    return "ShekharEkJeevaniVividhAayam.pdf";
+  }
+  if (/clean.*architecture.*realms/i.test(currentBase) || /clean.*architecture.*z/i.test(currentBase)) {
+    return "CleanArchitectureBeginnersGuide.pdf";
+  }
+  if (/clean.*architecture.*principles/i.test(currentBase) || /clean.*architecture.*understand/i.test(currentBase)) {
+    return "CleanArchitecturePrinciplesAndPatterns.pdf";
+  }
+  if (/pragmatic.*programmer/i.test(currentBase) || /pragmatic.*programmer/i.test(title)) {
+    return "ThePragmaticProgrammer.pdf";
+  }
+  if (/refactoring/i.test(currentBase) || /refactoring/i.test(title)) {
+    return "RefactoringImprovingTheDesignOfExistingCode.pdf";
+  }
+  if (/me.*before.*you/i.test(currentBase) || /me.*before.*you/i.test(title)) {
+    return "MeBeforeYou.pdf";
+  }
+  if (/the.*notebook/i.test(currentBase) || /the.*notebook/i.test(title)) {
+    return "TheNotebook.pdf";
+  }
+  if (/time.*traveler/i.test(currentBase) || /time.*traveler/i.test(title)) {
+    return "TheTimeTravelersWife.pdf";
+  }
+  if (/jane.*eyre/i.test(currentBase) || /jane.*eyre/i.test(title)) {
+    return "JaneEyre.pdf";
+  }
+
   // Generic Non-Osho PascalCase
   if (isAlreadyPascal && !currentBase.includes(" ") && !currentBase.includes("_")) {
     return currentFilename;
@@ -71,6 +106,19 @@ export function resolveCanonicalFilename(
  * Deterministic Slug generator for stable IDs.
  */
 export function generateStableId(title: string, author?: string): string {
+  // Specific slug mappings for canonical IDs
+  if (/kurukshetra/i.test(title)) return "kurukshetra";
+  if (/tyagpatra|tyag-patra/i.test(title)) return "tyagpatra";
+  if (/shekhar|sekhar/i.test(title)) return "shekhar-ek-jeevani-vividh-aayam";
+  if (/clean.*architecture.*from\s*a\s*to\s*z|clean.*architecture.*beginner/i.test(title)) return "clean-architecture-beginners-guide";
+  if (/clean.*architecture.*principles|clean.*architecture.*understand/i.test(title)) return "clean-architecture-principles-and-patterns";
+  if (/pragmatic.*programmer/i.test(title)) return "the-pragmatic-programmer";
+  if (/refactoring/i.test(title)) return "refactoring-improving-the-design-of-existing-code";
+  if (/me.*before.*you/i.test(title)) return "me-before-you";
+  if (/the.*notebook/i.test(title)) return "the-notebook";
+  if (/time.*traveler/i.test(title)) return "the-time-travelers-wife";
+  if (/jane.*eyre/i.test(title)) return "jane-eyre";
+
   // Strip Devanagari parentheses for English slug
   let clean = title.replace(/\(.*?\)/g, " ").trim();
   clean = clean
