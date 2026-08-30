@@ -8,7 +8,7 @@ import { useLibrary } from "@/context/LibraryContext";
 import dynamic from "next/dynamic";
 import { Book, BOOKS } from "@/data/books";
 import BookCard from "@/components/BookCard";
-import { getLocalDateKey, getPreviousDateKey, DAILY_READING_GOAL_SECONDS } from "@/lib/reader-storage";
+import { getLocalDateKey, getPreviousDateKey, DAILY_READING_GOAL_SECONDS, getGenuinelyCompletedBookIds } from "@/lib/reader-storage";
 import AuthGuard from "@/components/auth/AuthGuard";
 import CollectionsTab from "@/components/collections/CollectionsTab";
 import ReadingPathsTab from "@/components/paths/ReadingPathsTab";
@@ -160,8 +160,9 @@ export default function FavoritesPage() {
   }, [spotlightBook, getReadingMemory]);
 
   const completedBooks = useMemo(() => {
+    const completedSet = new Set(getGenuinelyCompletedBookIds(readingHistory));
     return readingHistory
-      .filter((item) => (item.progress >= 98 || (item.totalPages && item.page >= item.totalPages)) && !isDismissedFromShelf("completed", item.bookId))
+      .filter((item) => completedSet.has(item.bookId) && !isDismissedFromShelf("completed", item.bookId))
       .map((item) => {
         const book = BOOKS.find((b) => b.id === item.bookId);
         if (!book) return null;

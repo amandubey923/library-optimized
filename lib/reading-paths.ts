@@ -3,7 +3,7 @@
  * Curated sequential curricula connecting real catalog masterworks.
  */
 
-import { ReadingProgressItem } from "@/lib/reader-storage";
+import { ReadingProgressItem, getGenuinelyCompletedBookIds } from "@/lib/reader-storage";
 
 export interface ReadingPathStep {
   stepNumber: number;
@@ -195,6 +195,7 @@ export function getPathProgress(
   path: ReadingPath,
   readingHistory: ReadingProgressItem[] = []
 ): PathProgressSummary {
+  const completedIds = new Set(getGenuinelyCompletedBookIds(readingHistory));
   const historyMap = new Map(readingHistory.map((h) => [h.bookId, h]));
   let completed = 0;
   let inProgress = 0;
@@ -203,7 +204,7 @@ export function getPathProgress(
   path.steps.forEach((step) => {
     if (step.bookId && historyMap.has(step.bookId)) {
       const item = historyMap.get(step.bookId)!;
-      if (item.progress >= 95) {
+      if (completedIds.has(step.bookId)) {
         completed += 1;
       } else if (item.progress > 0) {
         inProgress += 1;
