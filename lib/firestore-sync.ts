@@ -5,7 +5,6 @@ import {
   getDoc,
   collection,
   getDocs,
-  writeBatch,
   serverTimestamp,
 } from "firebase/firestore";
 import { db, getFirebaseDb } from "./firebase";
@@ -15,10 +14,10 @@ import {
   WebsiteActiveTimeData,
   BookReadingMemory,
   BookAnnotations,
-  DailyReadingActivity,
-  calculateStreak,
-  exportAllStorageDataForSync,
   hydrateStorageFromCloudData,
+  ReadingCollection,
+  BookReflection,
+  ShelfDismissalsMap,
 } from "./reader-storage";
 import { UserEntitlement, DEFAULT_FREE_ENTITLEMENT } from "./entitlements";
 
@@ -29,6 +28,9 @@ export interface CloudFullUserData {
   activeTime: WebsiteActiveTimeData;
   readingMemories: Record<string, BookReadingMemory>;
   annotations: Record<string, BookAnnotations>;
+  collections: ReadingCollection[];
+  reflections: Record<string, BookReflection>;
+  shelfDismissals: ShelfDismissalsMap;
   entitlement?: UserEntitlement;
 }
 
@@ -37,6 +39,9 @@ const progressDebounceTimers: Record<string, NodeJS.Timeout> = {};
 const activityDebounceTimers: Record<string, NodeJS.Timeout> = {};
 const activeTimeDebounceTimers: Record<string, NodeJS.Timeout> = {};
 const memoryDebounceTimers: Record<string, NodeJS.Timeout> = {};
+const collectionsDebounceTimers: Record<string, NodeJS.Timeout> = {};
+const reflectionsDebounceTimers: Record<string, NodeJS.Timeout> = {};
+const dismissalsDebounceTimers: Record<string, NodeJS.Timeout> = {};
 
 /**
  * Cancel and clear all pending debounced background synchronization timers.
@@ -47,11 +52,17 @@ export function cancelAllPendingSyncTimers(): void {
   Object.values(activityDebounceTimers).forEach(clearTimeout);
   Object.values(activeTimeDebounceTimers).forEach(clearTimeout);
   Object.values(memoryDebounceTimers).forEach(clearTimeout);
+  Object.values(collectionsDebounceTimers).forEach(clearTimeout);
+  Object.values(reflectionsDebounceTimers).forEach(clearTimeout);
+  Object.values(dismissalsDebounceTimers).forEach(clearTimeout);
 
   for (const k of Object.keys(progressDebounceTimers)) delete progressDebounceTimers[k];
   for (const k of Object.keys(activityDebounceTimers)) delete activityDebounceTimers[k];
   for (const k of Object.keys(activeTimeDebounceTimers)) delete activeTimeDebounceTimers[k];
   for (const k of Object.keys(memoryDebounceTimers)) delete memoryDebounceTimers[k];
+  for (const k of Object.keys(collectionsDebounceTimers)) delete collectionsDebounceTimers[k];
+  for (const k of Object.keys(reflectionsDebounceTimers)) delete reflectionsDebounceTimers[k];
+  for (const k of Object.keys(dismissalsDebounceTimers)) delete dismissalsDebounceTimers[k];
 }
 
 /**
@@ -127,6 +138,9 @@ export async function fetchFullCloudUserData(uid: string): Promise<CloudFullUser
     activeTime: { totalActiveSeconds: 0, daily: {}, lastUpdated: Date.now() },
     readingMemories: {},
     annotations: {},
+    collections: [],
+    reflections: {},
+    shelfDismissals: {},
   };
 
   const currentDb = getFirebaseDb() || db;
@@ -205,7 +219,37 @@ export async function fetchFullCloudUserData(uid: string): Promise<CloudFullUser
       }
     }
 
-    // 7. Fetch Cloud Entitlement
+    // 7. Fetch Cloud Collections
+    const colDocRef = doc(currentDb, "users", uid, "data", "collections");
+    const colDocSnap = await getDoc(colDocRef);
+    if (colDocSnap.exists()) {
+      const colData = colDocSnap.data();
+      if (colData && Array.isArray(colData.collections)) {
+        defaultResult.collections = colData.collections;
+      }
+    }
+
+    // 8. Fetch Cloud Reflections
+    const refDocRef = doc(currentDb, "users", uid, "data", "reflections");
+    const refDocSnap = await getDoc(refDocRef);
+    if (refDocSnap.exists()) {
+      const refData = refDocSnap.data();
+      if (refData && refData.reflections) {
+        defaultResult.reflections = refData.reflections;
+      }
+    }
+
+    // 9. Fetch Cloud Shelf Dismissals
+    const dismDocRef = doc(currentDb, "users", uid, "data", "shelf_dismissals");
+    const dismDocSnap = await getDoc(dismDocRef);
+    if (dismDocSnap.exists()) {
+      const dismData = dismDocSnap.data();
+      if (dismData && dismData.dismissals) {
+        defaultResult.shelfDismissals = dismData.dismissals;
+      }
+    }
+
+    // 10. Fetch Cloud Entitlement
     const entitlementDocRef = doc(currentDb, "users", uid, "data", "entitlement");
     const entitlementDocSnap = await getDoc(entitlementDocRef);
     if (entitlementDocSnap.exists()) {
@@ -252,6 +296,9 @@ export async function reconcileAndSyncAllUserData(user: User): Promise<CloudFull
     activeTime: { totalActiveSeconds: 0, daily: {}, lastUpdated: Date.now() },
     readingMemories: {},
     annotations: {},
+    collections: [],
+    reflections: {},
+    shelfDismissals: {},
     entitlement: DEFAULT_FREE_ENTITLEMENT,
   };
 
@@ -437,6 +484,90 @@ export async function syncFavoriteToCloud(
   } catch (err) {
     console.warn(`[Firestore] Failed to sync favorite for ${bookId}:`, err);
   }
+}
+
+/**
+ * Debounced sync for reading collections to /users/{uid}/data/collections
+ */
+export function syncCollectionsToCloud(
+  uid: string,
+  collections: ReadingCollection[]
+): void {
+  const currentDb = getFirebaseDb() || db;
+  if (!currentDb || !uid || !collections) return;
+
+  const key = `${uid}_collections`;
+  if (collectionsDebounceTimers[key]) {
+    clearTimeout(collectionsDebounceTimers[key]);
+  }
+
+  collectionsDebounceTimers[key] = setTimeout(async () => {
+    delete collectionsDebounceTimers[key];
+    try {
+      const activeDb = getFirebaseDb() || db;
+      if (!activeDb) return;
+      const docRef = doc(activeDb, "users", uid, "data", "collections");
+      await setDoc(docRef, { collections }, { merge: true });
+    } catch (err) {
+      console.warn("[Firestore] Failed to sync collections to cloud:", err);
+    }
+  }, 1000);
+}
+
+/**
+ * Debounced sync for book reflections to /users/{uid}/data/reflections
+ */
+export function syncReflectionsToCloud(
+  uid: string,
+  reflections: Record<string, BookReflection>
+): void {
+  const currentDb = getFirebaseDb() || db;
+  if (!currentDb || !uid || !reflections) return;
+
+  const key = `${uid}_reflections`;
+  if (reflectionsDebounceTimers[key]) {
+    clearTimeout(reflectionsDebounceTimers[key]);
+  }
+
+  reflectionsDebounceTimers[key] = setTimeout(async () => {
+    delete reflectionsDebounceTimers[key];
+    try {
+      const activeDb = getFirebaseDb() || db;
+      if (!activeDb) return;
+      const docRef = doc(activeDb, "users", uid, "data", "reflections");
+      await setDoc(docRef, { reflections }, { merge: true });
+    } catch (err) {
+      console.warn("[Firestore] Failed to sync reflections to cloud:", err);
+    }
+  }, 1000);
+}
+
+/**
+ * Debounced sync for shelf dismissals to /users/{uid}/data/shelf_dismissals
+ */
+export function syncShelfDismissalsToCloud(
+  uid: string,
+  dismissals: ShelfDismissalsMap
+): void {
+  const currentDb = getFirebaseDb() || db;
+  if (!currentDb || !uid || !dismissals) return;
+
+  const key = `${uid}_dismissals`;
+  if (dismissalsDebounceTimers[key]) {
+    clearTimeout(dismissalsDebounceTimers[key]);
+  }
+
+  dismissalsDebounceTimers[key] = setTimeout(async () => {
+    delete dismissalsDebounceTimers[key];
+    try {
+      const activeDb = getFirebaseDb() || db;
+      if (!activeDb) return;
+      const docRef = doc(activeDb, "users", uid, "data", "shelf_dismissals");
+      await setDoc(docRef, { dismissals }, { merge: true });
+    } catch (err) {
+      console.warn("[Firestore] Failed to sync shelf dismissals to cloud:", err);
+    }
+  }, 1000);
 }
 
 /**
