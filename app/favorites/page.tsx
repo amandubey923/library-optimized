@@ -772,18 +772,18 @@ export default function FavoritesPage() {
               </p>
               <Link
                 href="/library"
-                className="inline-flex items-center gap-2 px-6 sm:px-8 py-3 sm:py-3.5 rounded-xl bg-[var(--primary)] text-[var(--primary-foreground)] font-bold text-xs shadow-xl hover:scale-105 transition-all"
+                className="inline-flex items-center gap-2 px-6 sm:px-8 py-3 sm:py-3.5 rounded-xl bg-gradient-to-r from-[var(--primary)] to-[var(--accent)] text-[var(--primary-foreground)] font-bold text-xs shadow-xl hover:scale-105 transition-all"
               >
                 <span>Start Reading</span>
                 <span>→</span>
               </Link>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5 sm:gap-6 w-full min-w-0">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-5 w-full min-w-0">
               {memoryBooks.map((book) => (
                 <div
                   key={book.id}
-                  className="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-[var(--border)] bg-[var(--card)] shadow-xl flex flex-col justify-between space-y-3 sm:space-y-4 relative group"
+                  className="rounded-2xl bg-[var(--card)] border border-[var(--border)] p-4 sm:p-5 shadow-xs hover:border-[var(--accent)]/40 hover:shadow-md transition-all flex flex-col justify-between space-y-3 sm:space-y-4 relative group"
                 >
                   {/* Subtle Dismiss Button */}
                   <button
@@ -793,7 +793,7 @@ export default function FavoritesPage() {
                       e.stopPropagation();
                       dismissFromShelf("memory", book.id);
                     }}
-                    className="absolute top-3 right-3 sm:top-4 sm:right-4 w-6 h-6 sm:w-6.5 sm:h-6.5 rounded-full bg-[var(--secondary)]/80 hover:bg-rose-500/20 text-[var(--text-secondary)] hover:text-rose-400 border border-[var(--border)] hover:border-rose-500/40 flex items-center justify-center text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer shadow-xs focus-visible:ring-2 focus-visible:ring-[var(--accent)] z-10"
+                    className="absolute top-3.5 right-3.5 w-6 h-6 rounded-full bg-[var(--secondary)] hover:bg-rose-500/20 text-[var(--text-secondary)] hover:text-rose-400 border border-[var(--border)] hover:border-rose-500/40 flex items-center justify-center text-xs font-bold transition-all duration-200 cursor-pointer shadow-xs focus-visible:ring-2 focus-visible:ring-[var(--accent)] z-10"
                     aria-label={`Remove ${book.title} from Reading Memory`}
                     title="Remove from Reading Memory"
                   >
@@ -801,33 +801,33 @@ export default function FavoritesPage() {
                   </button>
 
                   <div className="flex gap-3.5 sm:gap-4 pr-6 sm:pr-7">
-                    <div className="relative w-14 h-20 sm:w-16 sm:h-24 rounded-xl overflow-hidden book-shadow flex-shrink-0 border border-[var(--border)]">
-                      <Image src={book.cover} alt={book.title} fill className="object-cover" sizes="(max-width: 640px) 56px, 64px" />
+                    <div className="relative w-15 h-22 sm:w-17 sm:h-25 rounded-xl overflow-hidden book-shadow flex-shrink-0 border border-[var(--border)]">
+                      <Image src={book.cover} alt={book.title} fill className="object-cover" sizes="(max-width: 640px) 60px, 68px" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-[var(--secondary)] text-[var(--accent)] font-semibold border border-[var(--border)] truncate inline-block max-w-full">
+                      <span className="text-[9.5px] sm:text-[10px] px-2 py-0.5 rounded-full bg-[var(--accent)]/15 text-[var(--accent)] font-bold border border-[var(--accent)]/25 truncate inline-block max-w-full">
                         {book.category}
                       </span>
-                      <h4 className="font-serif font-bold text-xs sm:text-sm text-[var(--foreground)] truncate mt-1">
+                      <h4 className="font-serif font-black text-sm sm:text-base text-[var(--foreground)] truncate mt-1 leading-snug">
                         {book.title}
                       </h4>
-                      <p className="text-[11px] sm:text-xs text-[var(--text-secondary)] truncate">
+                      <p className="text-[11px] sm:text-xs text-[var(--text-secondary)] font-medium truncate">
                         by {book.author}
                       </p>
-                      <div className="mt-1.5 sm:mt-2 text-[10px] sm:text-[11px] text-[var(--text-secondary)] space-y-0.5">
-                        <span className="block font-medium">
-                          Page {book.currentPage} / {book.totalPages} ({book.progress}%)
+                      <div className="mt-2 text-[11px] space-y-0.5">
+                        <span className="block font-bold text-[var(--foreground)]">
+                          Page {book.currentPage} of {book.totalPages} <span className="text-[var(--accent)]">({book.progress}%)</span>
                         </span>
-                        <span className="block text-[10px] opacity-80">
-                          {Math.floor((book.memory?.totalSeconds || 0) / 60)} min read • {book.memory?.timeline?.length || 0} sessions
+                        <span className="block text-[10px] text-[var(--text-secondary)] font-medium">
+                          {Math.floor((book.memory?.totalSeconds || 0) / 60)}m read • {book.memory?.timeline?.length || 0} sessions
                         </span>
                       </div>
                     </div>
                   </div>
 
-                  <div className="w-full h-1.5 rounded-full bg-[var(--secondary)] overflow-hidden">
+                  <div className="w-full h-2 rounded-full bg-[var(--secondary)] overflow-hidden shadow-inner">
                     <div
-                      className="h-full rounded-full bg-gradient-to-r from-[var(--primary)] to-[var(--accent)]"
+                      className="h-full rounded-full bg-gradient-to-r from-[var(--primary)] to-[var(--accent)] transition-all duration-500"
                       style={{ width: `${book.progress}%` }}
                     />
                   </div>
@@ -835,13 +835,13 @@ export default function FavoritesPage() {
                   <div className="grid grid-cols-2 gap-2 pt-1">
                     <Link
                       href={`/book/${book.id}`}
-                      className="w-full py-2 sm:py-2.5 rounded-xl bg-[var(--primary)] text-[var(--primary-foreground)] text-xs font-bold text-center block shadow-md hover:scale-102 transition-transform truncate"
+                      className="w-full py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-[var(--primary)] to-[var(--accent)] text-[var(--primary-foreground)] text-xs sm:text-[13px] font-extrabold text-center block shadow-sm hover:shadow-md hover:scale-[1.02] transition-all truncate"
                     >
                       Resume →
                     </Link>
                     <button
                       onClick={() => setSelectedMemoryBook(book)}
-                      className="w-full py-2 sm:py-2.5 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer shadow-xs truncate"
+                      className="w-full py-2 sm:py-2.5 rounded-xl bg-[var(--secondary)] hover:bg-[var(--secondary)]/80 text-[var(--foreground)] text-xs sm:text-[13px] font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-[var(--border)] hover:border-[var(--accent)]/40 shadow-xs truncate"
                       title="View deep study analytics and memory replay"
                     >
                       <span>🧠 Memory</span>
@@ -858,7 +858,109 @@ export default function FavoritesPage() {
        * Tab 6: Reading Stats, Goals & Local Data Backup
        * ------------------------------------------------------------- */}
       {activeTab === "stats" && (
-        <div className="w-full space-y-6 sm:space-y-8 min-w-0">
+        <div className="w-full space-y-4 sm:space-y-6 min-w-0">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full min-w-0">
+            <div
+              className="p-4 sm:p-5 rounded-2xl bg-[var(--card)] border border-[var(--border)] shadow-xs hover:border-[var(--accent)]/40 hover:shadow-md transition-all flex items-center justify-between gap-4"
+              title="Time you actively spent exploring, searching, and studying on Reader's HUB."
+            >
+              <div className="space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)] flex items-center gap-1.5">
+                    <span>⚡</span> Website Active Time
+                  </span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 font-bold border border-emerald-500/25">
+                    Total
+                  </span>
+                </div>
+                <h4 className="text-2xl sm:text-3xl font-black font-serif text-emerald-400 font-mono mt-1">
+                  {Math.floor((stats.totalActiveSeconds || 0) / 60) >= 60
+                    ? `${Math.floor((stats.totalActiveSeconds || 0) / 3600)}h ${Math.floor(((stats.totalActiveSeconds || 0) % 3600) / 60)}m`
+                    : `${Math.floor((stats.totalActiveSeconds || 0) / 60)}m`}
+                </h4>
+                <p className="text-[11px] text-[var(--text-secondary)] font-medium">
+                  Meaningful time spent using Reader&apos;s HUB
+                </p>
+              </div>
+              <div className="w-11 h-11 sm:w-13 sm:h-13 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 flex items-center justify-center text-xl flex-shrink-0 shadow-inner">
+                ⚡
+              </div>
+            </div>
+
+            <div
+              className="p-4 sm:p-5 rounded-2xl bg-[var(--card)] border border-[var(--border)] shadow-xs hover:border-[var(--accent)]/40 hover:shadow-md transition-all flex items-center justify-between gap-4"
+              title="Actual active book-reading time used by your Diya and reading streak."
+            >
+              <div className="space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)] flex items-center gap-1.5">
+                    <span>📖</span> Genuine Reading Time
+                  </span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--accent)]/15 text-[var(--accent)] font-bold border border-[var(--accent)]/25">
+                    PDF Focus
+                  </span>
+                </div>
+                <h4 className="text-2xl sm:text-3xl font-black font-serif text-[var(--accent)] font-mono mt-1">
+                  {Math.floor((stats.totalReadingSeconds || 0) / 60) >= 60
+                    ? `${Math.floor((stats.totalReadingSeconds || 0) / 3600)}h ${Math.floor(((stats.totalReadingSeconds || 0) % 3600) / 60)}m`
+                    : `${Math.floor((stats.totalReadingSeconds || 0) / 60)}m`}
+                </h4>
+                <p className="text-[11px] text-[var(--text-secondary)] font-medium">
+                  Actual active time spent reading books
+                </p>
+              </div>
+              <div className="w-11 h-11 sm:w-13 sm:h-13 rounded-2xl bg-[var(--accent)]/10 border border-[var(--accent)]/25 text-[var(--accent)] flex items-center justify-center text-xl flex-shrink-0 shadow-inner">
+                🪔
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 sm:gap-4 w-full min-w-0">
+            <div className="p-4 sm:p-5 rounded-2xl bg-[var(--card)] border border-[var(--border)] shadow-xs hover:border-[var(--accent)]/40 hover:shadow-md transition-all text-center space-y-1.5 flex flex-col justify-between">
+              <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+                <span>📖 Explored</span>
+                <span className="text-[9.5px] px-1.5 py-0.2 rounded-full bg-[var(--secondary)] text-[var(--foreground)] font-bold">Catalog</span>
+              </div>
+              <h4 className="text-2xl sm:text-3xl font-black font-serif text-[var(--foreground)] my-1">
+                {stats.booksStarted}
+              </h4>
+              <p className="text-[11px] text-[var(--text-secondary)] font-medium">Books Explored</p>
+            </div>
+
+            <div className="p-4 sm:p-5 rounded-2xl bg-[var(--card)] border border-[var(--border)] shadow-xs hover:border-[var(--accent)]/40 hover:shadow-md transition-all text-center space-y-1.5 flex flex-col justify-between">
+              <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+                <span>🏆 Finished</span>
+                <span className="text-[9.5px] px-1.5 py-0.2 rounded-full bg-emerald-500/15 text-emerald-400 font-bold border border-emerald-500/25">100%</span>
+              </div>
+              <h4 className="text-2xl sm:text-3xl font-black font-serif text-emerald-400 my-1">
+                {stats.booksCompleted}
+              </h4>
+              <p className="text-[11px] text-[var(--text-secondary)] font-medium">Books Finished</p>
+            </div>
+
+            <div className="p-4 sm:p-5 rounded-2xl bg-[var(--card)] border border-[var(--border)] shadow-xs hover:border-[var(--accent)]/40 hover:shadow-md transition-all text-center space-y-1.5 flex flex-col justify-between">
+              <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+                <span>📑 Progress</span>
+                <span className="text-[9.5px] px-1.5 py-0.2 rounded-full bg-[var(--accent)]/15 text-[var(--accent)] font-bold border border-[var(--accent)]/25">Pages</span>
+              </div>
+              <h4 className="text-2xl sm:text-3xl font-black font-serif text-[var(--accent)] my-1">
+                {stats.pagesRead}
+              </h4>
+              <p className="text-[11px] text-[var(--text-secondary)] font-medium">Pages Read</p>
+            </div>
+
+            <div className="p-4 sm:p-5 rounded-2xl bg-[var(--card)] border border-[var(--border)] shadow-xs hover:border-[var(--accent)]/40 hover:shadow-md transition-all text-center space-y-1.5 flex flex-col justify-between">
+              <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+                <span>✏️ Marks</span>
+                <span className="text-[9.5px] px-1.5 py-0.2 rounded-full bg-amber-500/15 text-amber-400 font-bold border border-amber-500/25">Study</span>
+              </div>
+              <h4 className="text-2xl sm:text-3xl font-black font-serif text-amber-400 my-1">
+                {stats.totalHighlights + stats.totalNotes + stats.totalDrawings}
+              </h4>
+              <p className="text-[11px] text-[var(--text-secondary)] font-medium">Study Markings</p>
+            </div>
+          </div>
+
           {/* Daily Reading Streak & Habit Banner */}
           <div className="w-full glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-7 border border-[var(--border)] bg-gradient-to-r from-[var(--card)] via-[var(--card)] to-amber-500/5 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-6 min-w-0">
             <div className="flex items-center gap-3.5 sm:gap-4 text-left w-full sm:w-auto">

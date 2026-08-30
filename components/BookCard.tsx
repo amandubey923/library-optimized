@@ -110,8 +110,8 @@ function BookCardComponent({ book, compact = false, onDismiss, dismissAriaLabel 
           />
 
           {/* Quick Read Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/30 to-transparent opacity-0 group-hover/cover:opacity-100 transition-opacity duration-300 flex items-end p-2 sm:p-3">
-            <span className="w-full py-1.5 sm:py-2 rounded-md sm:rounded-lg bg-[var(--primary)] text-[var(--primary-foreground)] text-center text-[10px] sm:text-xs font-bold shadow-lg flex items-center justify-center gap-1">
+          <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent opacity-0 group-hover/cover:opacity-100 transition-opacity duration-300 flex items-end p-2 sm:p-3">
+            <span className="w-full py-2 sm:py-2.5 rounded-lg sm:rounded-xl bg-gradient-to-r from-[var(--primary)] to-[var(--accent)] text-[var(--primary-foreground)] text-center text-xs sm:text-[13px] font-extrabold shadow-xl flex items-center justify-center gap-1.5 hover:scale-[1.02] transition-transform">
               <span>Read Now</span>
               <span>→</span>
             </span>
@@ -126,35 +126,36 @@ function BookCardComponent({ book, compact = false, onDismiss, dismissAriaLabel 
               onClick={() => recordReading(book.id)}
               className="block group/title"
             >
-              <h3 className="font-serif font-bold text-xs sm:text-base text-[var(--foreground)] group-hover/title:text-[var(--accent)] transition-colors line-clamp-1">
+              <h3 className="font-serif font-black text-[13px] sm:text-[16px] text-[var(--foreground)] group-hover/title:text-[var(--accent)] transition-colors line-clamp-1 leading-snug">
                 {book.title}
               </h3>
             </Link>
-            <p className="text-[10px] sm:text-xs text-[var(--text-secondary)] font-medium mt-0.5 line-clamp-1">
-              by <span className="text-[var(--foreground)]/90">{book.author}</span>
+            <p className="text-[11px] sm:text-xs text-[var(--text-secondary)] font-semibold mt-1 line-clamp-1">
+              by <span className="text-[var(--foreground)] font-bold">{book.author}</span>
             </p>
 
             {!compact && (
-              <p className="hidden sm:block text-xs text-[var(--text-secondary)] mt-2 line-clamp-2 leading-relaxed">
+              <p className="hidden sm:block text-[12px] text-[var(--text-secondary)] mt-2 line-clamp-2 leading-relaxed font-normal">
                 {book.excerpt || book.description}
               </p>
             )}
           </div>
 
           {/* Meta Bar & CTA */}
-          <div className="mt-2.5 sm:mt-4 pt-2 sm:pt-3 border-t border-[var(--border)] flex items-center justify-between gap-1 flex-nowrap">
-            <div className="flex items-center gap-1 text-[10px] sm:text-xs text-[var(--accent)] font-semibold truncate">
+          <div className="mt-3 sm:mt-4 pt-2 sm:pt-3 border-t border-[var(--border)] flex items-center justify-between gap-1.5 flex-nowrap">
+            <div className="flex items-center gap-1 text-[11px] sm:text-xs text-[var(--accent)] font-bold truncate">
               <span>★</span>
-              <span className="text-[var(--foreground)] font-bold">{book.rating.toFixed(1)}</span>
-              <span className="text-[var(--text-secondary)] font-normal text-[9px] sm:text-[11px]">({book.year})</span>
+              <span className="text-[var(--foreground)] font-extrabold">{book.rating.toFixed(1)}</span>
+              <span className="text-[var(--text-secondary)] font-medium text-[10px] sm:text-[11px]">({book.year})</span>
             </div>
 
             <Link
               href={`/book/${book.id}`}
               onClick={() => recordReading(book.id)}
-              className="px-2 sm:px-3 py-1 sm:py-1.5 rounded-md sm:rounded-lg bg-[var(--accent)]/10 hover:bg-[var(--primary)] text-[var(--accent)] hover:text-[var(--primary-foreground)] border border-[var(--accent)]/30 font-semibold text-[10px] sm:text-xs transition-all shadow-xs shrink-0"
+              className="px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-lg sm:rounded-xl bg-gradient-to-r from-[var(--primary)] to-[var(--accent)] hover:opacity-95 text-[var(--primary-foreground)] font-bold text-[11px] sm:text-xs transition-all shadow-sm hover:shadow-md hover:scale-105 shrink-0 flex items-center gap-1"
             >
-              Read ↗
+              <span>Read</span>
+              <span>↗</span>
             </Link>
           </div>
         </div>

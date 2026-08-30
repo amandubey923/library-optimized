@@ -175,7 +175,7 @@ export default function BookDetailClient({
             <div className="w-full max-w-sm flex flex-col gap-2 sm:gap-2.5">
               <button
                 onClick={handleScrollToReader}
-                className="w-full py-3 sm:py-3.5 px-4 rounded-xl bg-gradient-to-r from-[var(--primary)] to-[var(--accent-secondary)] hover:opacity-95 text-[var(--primary-foreground)] font-bold text-xs sm:text-sm shadow-xl hover:shadow-[0_0_20px_var(--theme-glow)] hover:scale-[1.02] transition-all cursor-pointer flex items-center justify-center gap-2"
+                className="w-full py-3 px-4 rounded-xl sm:rounded-2xl bg-gradient-to-r from-[var(--primary)] to-[var(--accent)] text-[var(--primary-foreground)] text-xs sm:text-[13px] font-extrabold text-center shadow-lg hover:shadow-[0_0_20px_var(--theme-glow)] hover:scale-[1.02] transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
                 <span>Read in Embedded Viewer</span>
                 <span>↓</span>
@@ -184,10 +184,10 @@ export default function BookDetailClient({
               <div className="flex gap-2">
                 <button
                   onClick={handleToggleOffline}
-                  className={`flex-1 py-2 sm:py-2.5 px-2.5 sm:px-3 rounded-xl border text-[11px] sm:text-xs font-semibold text-center transition-all flex items-center justify-center gap-1 sm:gap-1.5 shadow-xs cursor-pointer truncate ${
+                  className={`flex-1 py-2.5 px-3 rounded-xl border text-[11px] sm:text-xs font-bold text-center transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer truncate ${
                     isOfflineSaved
-                      ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
-                      : "bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] border-[var(--border)]"
+                      ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/35 shadow-xs"
+                      : "bg-[var(--secondary)] hover:bg-[var(--secondary)]/80 text-[var(--foreground)] border-[var(--border)] hover:border-[var(--accent)]/40"
                   }`}
                 >
                   <span>{isOfflineSaved ? "✓" : "📦"}</span>
@@ -196,7 +196,7 @@ export default function BookDetailClient({
 
                 <button
                   onClick={() => setIsMemoryOpen(true)}
-                  className="flex-1 py-2 sm:py-2.5 px-2.5 sm:px-3 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] border border-[var(--border)] text-[11px] sm:text-xs font-semibold text-center transition-all flex items-center justify-center gap-1 sm:gap-1.5 shadow-xs cursor-pointer"
+                  className="flex-1 py-2.5 px-3 rounded-xl bg-[var(--secondary)] hover:bg-[var(--secondary)]/80 text-[var(--foreground)] border border-[var(--border)] hover:border-[var(--accent)]/40 text-[11px] sm:text-xs font-bold text-center transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
                 >
                   <span>🧠</span>
                   <span>Memory</span>
@@ -208,7 +208,7 @@ export default function BookDetailClient({
                   href={book.pdf}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex-1 py-2 px-2.5 sm:px-3 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)] text-[11px] sm:text-xs font-medium text-center transition-all flex items-center justify-center gap-1"
+                  className="flex-1 py-2 px-3 rounded-xl bg-[var(--secondary)] hover:bg-[var(--secondary)]/80 text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)] text-[11px] sm:text-xs font-semibold text-center transition-all flex items-center justify-center gap-1 shadow-xs"
                 >
                   <span>Open PDF</span>
                   <span>↗</span>
@@ -217,7 +217,7 @@ export default function BookDetailClient({
                 <a
                   href={book.pdf}
                   download={`${book.title.replace(/\s+/g, "_")}.pdf`}
-                  className="flex-1 py-2 px-2.5 sm:px-3 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)] text-[11px] sm:text-xs font-medium text-center transition-all flex items-center justify-center gap-1"
+                  className="flex-1 py-2 px-3 rounded-xl bg-[var(--secondary)] hover:bg-[var(--secondary)]/80 text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)] text-[11px] sm:text-xs font-semibold text-center transition-all flex items-center justify-center gap-1 shadow-xs"
                 >
                   <span>Download</span>
                   <span>↓</span>
@@ -228,7 +228,7 @@ export default function BookDetailClient({
               <div className="flex gap-2 pt-1">
                 <button
                   onClick={() => setIsCollectionModalOpen(true)}
-                  className="flex-1 py-2 sm:py-2.5 px-2.5 sm:px-3 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] border border-[var(--border)] text-[11px] sm:text-xs font-semibold text-center transition-all flex items-center justify-center gap-1 sm:gap-1.5 shadow-xs cursor-pointer"
+                  className="flex-1 py-2.5 px-3 rounded-xl bg-[var(--secondary)] hover:bg-[var(--secondary)]/80 text-[var(--foreground)] border border-[var(--border)] hover:border-[var(--accent)]/40 text-[11px] sm:text-xs font-bold text-center transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
                 >
                   <span>📚</span>
                   <span>Collection</span>
@@ -236,7 +236,7 @@ export default function BookDetailClient({
 
                 <button
                   onClick={() => setIsReflectionModalOpen(true)}
-                  className="flex-1 py-2 sm:py-2.5 px-2.5 sm:px-3 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] border border-[var(--border)] text-[11px] sm:text-xs font-semibold text-center transition-all flex items-center justify-center gap-1 sm:gap-1.5 shadow-xs cursor-pointer"
+                  className="flex-1 py-2.5 px-3 rounded-xl bg-[var(--secondary)] hover:bg-[var(--secondary)]/80 text-[var(--foreground)] border border-[var(--border)] hover:border-[var(--accent)]/40 text-[11px] sm:text-xs font-bold text-center transition-all flex items-center justify-center gap-1.5 shadow-xs cursor-pointer"
                 >
                   <span>✍️</span>
                   <span>Reflect</span>
@@ -251,10 +251,10 @@ export default function BookDetailClient({
               {/* Category, Rating, and Action Row */}
               <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
                 <div className="flex items-center gap-2">
-                  <span className="px-3 py-1 rounded-full bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/20 text-xs font-bold uppercase tracking-wider">
+                  <span className="px-3 py-1 rounded-full bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/30 text-[11px] font-extrabold uppercase tracking-wider">
                     {book.category}
                   </span>
-                  <span className="text-xs text-[var(--text-secondary)]">
+                  <span className="text-xs text-[var(--text-secondary)] font-medium">
                     {book.language === "hi" ? "हिंदी" : "English"}
                   </span>
                 </div>
@@ -262,10 +262,10 @@ export default function BookDetailClient({
                 <div className="flex items-center gap-1.5 sm:gap-2">
                   <button
                     onClick={() => toggleFavorite(book.id)}
-                    className={`px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-xl border text-[11px] sm:text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
+                    className={`px-3.5 py-1.5 rounded-xl border text-[11px] sm:text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
                       favorited
-                        ? "bg-rose-500/20 text-rose-400 border-rose-500/40 shadow-[0_0_10px_rgba(244,63,94,0.25)]"
-                        : "bg-[var(--card)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border-[var(--border)]"
+                        ? "bg-rose-500/20 text-rose-400 border-rose-500/40 shadow-[0_0_12px_rgba(244,63,94,0.3)]"
+                        : "bg-[var(--card)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border-[var(--border)] hover:border-[var(--accent)]/40 shadow-xs"
                     }`}
                   >
                     <svg
@@ -286,7 +286,7 @@ export default function BookDetailClient({
 
                   <button
                     onClick={handleShare}
-                    className="p-1 px-2.5 sm:px-3 rounded-xl bg-[var(--card)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)] text-[11px] sm:text-xs font-medium transition-all cursor-pointer flex items-center gap-1"
+                    className="p-1 px-3 py-1.5 rounded-xl bg-[var(--card)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)] hover:border-[var(--accent)]/40 text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shadow-xs"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />

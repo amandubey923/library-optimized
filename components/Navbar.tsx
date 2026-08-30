@@ -68,29 +68,29 @@ export default function Navbar() {
             : "bg-[var(--background)]/80 backdrop-blur-md border-b border-[var(--border)]/50"
         }`}
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2 sm:gap-4">
-          {/* Brand & Original Logo */}
-          <Link href="/" className="flex items-center gap-3 group select-none">
-            <Logo size={38} showWordmark={true} />
+        <div className="max-w-7xl mx-auto px-3 sm:px-5 lg:px-7 h-16 flex items-center justify-between gap-2 sm:gap-4">
+          {/* Brand & Original Logo (Shifted slightly left) */}
+          <Link href="/" className="flex items-center gap-2.5 group select-none -ml-1 sm:-ml-2.5">
+            <Logo size={39} showWordmark={true} />
           </Link>
 
           {/* Desktop Navigation Links */}
-          <nav className="hidden md:flex items-center gap-1 lg:gap-2">
+          <nav className="hidden md:flex items-center gap-1.5 lg:gap-2.5">
             {navLinks.map((link) => {
               const isActive = pathname === link.href;
               return (
                 <Link
                   key={link.name}
                   href={link.href}
-                  className={`relative px-3 py-1.5 rounded-xl text-xs font-semibold tracking-wide transition-all ${
+                  className={`relative px-3.5 py-2 rounded-xl text-xs sm:text-[13px] font-bold tracking-wide transition-all ${
                     isActive
-                      ? "text-[var(--foreground)] bg-[var(--card)] shadow-xs border border-[var(--border)]"
+                      ? "text-[var(--foreground)] bg-gradient-to-r from-[var(--card)] to-[var(--secondary)]/80 shadow-xs border border-[var(--border)]"
                       : "text-[var(--text-secondary)] hover:text-[var(--foreground)] hover:bg-[var(--secondary)]/60"
                   }`}
                 >
                   <span>{link.name}</span>
                   {link.count !== undefined && link.count > 0 && (
-                    <span className="ml-1.5 px-1.5 py-0.2 rounded-full text-[10px] bg-[var(--accent)] text-[var(--accent-foreground)] font-bold">
+                    <span className="ml-1.5 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] bg-[var(--accent)] text-[var(--accent-foreground)] font-extrabold shadow-xs">
                       {link.count}
                     </span>
                   )}
@@ -107,7 +107,7 @@ export default function Navbar() {
             {/* Quick Search */}
             <button
               onClick={() => setIsSearchOpen(true)}
-              className="flex items-center gap-2 bg-[var(--card)] hover:bg-[var(--secondary)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)] hover:border-[var(--accent)]/40 px-3 py-2 rounded-xl text-xs font-medium shadow-sm transition-all cursor-pointer group"
+              className="flex items-center gap-2 bg-[var(--card)] hover:bg-[var(--secondary)] text-[var(--foreground)] border border-[var(--border)] hover:border-[var(--accent)]/50 px-3.5 py-2 rounded-xl text-xs sm:text-[13px] font-bold shadow-xs transition-all cursor-pointer group"
               aria-label="Search books"
             >
               <svg
@@ -119,12 +119,12 @@ export default function Navbar() {
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
-                  strokeWidth={2}
+                  strokeWidth={2.2}
                   d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                 />
               </svg>
-              <span className="hidden sm:inline text-[var(--foreground)]">Search</span>
-              <kbd className="hidden lg:inline-block px-1.5 py-0.5 text-[10px] bg-[var(--background)] text-[var(--text-secondary)] rounded border border-[var(--border)]">
+              <span className="hidden sm:inline font-bold">Search</span>
+              <kbd className="hidden lg:inline-block px-1.5 py-0.5 text-[10px] font-mono bg-[var(--background)] text-[var(--text-secondary)] rounded border border-[var(--border)] font-bold">
                 ⌘K
               </kbd>
             </button>
@@ -144,7 +144,7 @@ export default function Navbar() {
             {!isPro && (
               <button
                 onClick={() => openProModal()}
-                className="hidden sm:inline-flex items-center gap-1 px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl bg-gradient-to-r from-amber-500/15 via-amber-500/25 to-orange-500/15 hover:from-amber-500/30 hover:to-orange-500/30 text-amber-300 hover:text-amber-200 border border-amber-500/40 text-xs font-bold shadow-xs transition-all hover:scale-105 cursor-pointer select-none"
+                className="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gradient-to-r from-amber-500/20 via-amber-500/30 to-orange-500/20 hover:from-amber-500/35 hover:to-orange-500/35 text-amber-300 hover:text-amber-200 border border-amber-500/50 text-xs sm:text-[13px] font-extrabold shadow-sm transition-all hover:scale-105 cursor-pointer select-none"
                 title="Upgrade to Reader Pro"
                 aria-label="Reader Pro"
               >
@@ -153,25 +153,14 @@ export default function Navbar() {
               </button>
             )}
 
-            {/* Read Catalog Direct CTA */}
-            <Link
-              href="/library"
-              className="hidden lg:flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-[var(--primary)] to-[var(--accent-secondary)] hover:opacity-95 text-[var(--primary-foreground)] font-semibold text-xs shadow-md transition-all hover:shadow-[0_0_15px_var(--theme-glow)] hover:scale-[1.02]"
-            >
-              <span>Explore</span>
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-              </svg>
-            </Link>
-
-            {/* User Reading Profile / Google Auth Box */}
+            {/* User Reading Profile / Google Auth Box (Enlarged & Polished) */}
             {user ? (
               <Link
                 href="/profile"
-                className={`group relative flex items-center justify-center w-[38px] h-[38px] sm:w-[42px] sm:h-[42px] rounded-xl sm:rounded-2xl p-[1.5px] overflow-hidden transition-all duration-300 cursor-pointer ${
+                className={`group relative flex items-center justify-center w-[42px] h-[42px] sm:w-[46px] sm:h-[46px] rounded-xl sm:rounded-2xl p-[1.5px] overflow-hidden transition-all duration-300 cursor-pointer ${
                   pathname === "/profile"
-                    ? "shadow-[0_0_16px_var(--theme-glow)] ring-2 ring-[var(--accent)]/40 scale-105"
-                    : "shadow-xs hover:shadow-[0_0_15px_var(--theme-glow)]/40 hover:scale-[1.04]"
+                    ? "shadow-[0_0_18px_var(--theme-glow)] ring-2 ring-[var(--accent)]/50 scale-105"
+                    : "shadow-xs hover:shadow-[0_0_18px_var(--theme-glow)]/50 hover:scale-[1.05]"
                 }`}
                 aria-label="Reading Profile & Analytics"
                 title={`Profile: ${user.displayName || user.email}`}
@@ -183,7 +172,7 @@ export default function Navbar() {
 
                 {/* Inner Avatar Body */}
                 <span
-                  className={`relative z-10 w-full h-full rounded-[10px] sm:rounded-[13px] flex items-center justify-center overflow-hidden transition-all duration-200 ${
+                  className={`relative z-10 w-full h-full rounded-[11px] sm:rounded-[14px] flex items-center justify-center overflow-hidden transition-all duration-200 ${
                     pathname === "/profile"
                       ? "bg-gradient-to-tr from-[var(--primary)] via-[var(--primary)] to-[var(--accent)] text-[var(--primary-foreground)]"
                       : "bg-[var(--card)] group-hover:bg-[var(--secondary)] text-[var(--text-secondary)] group-hover:text-[var(--foreground)]"
@@ -194,12 +183,12 @@ export default function Navbar() {
                       src={user.photoURL}
                       alt={user.displayName || "User"}
                       fill
-                      sizes="42px"
+                      sizes="46px"
                       referrerPolicy="no-referrer"
-                      className="object-cover rounded-[10px] sm:rounded-[13px]"
+                      className="object-cover rounded-[11px] sm:rounded-[14px]"
                     />
                   ) : (
-                    <span className="font-bold text-xs sm:text-sm text-[var(--accent)] font-serif">
+                    <span className="font-extrabold text-sm sm:text-base text-[var(--accent)] font-serif">
                       {user.displayName?.charAt(0) || "U"}
                     </span>
                   )}
@@ -208,7 +197,7 @@ export default function Navbar() {
             ) : (
               <button
                 onClick={() => setIsAuthModalOpen(true)}
-                className="group relative flex items-center justify-center w-[38px] h-[38px] sm:w-[42px] sm:h-[42px] rounded-xl sm:rounded-2xl p-[1.5px] overflow-hidden transition-all duration-300 cursor-pointer shadow-xs hover:shadow-[0_0_15px_var(--theme-glow)]/50 hover:scale-[1.04]"
+                className="group relative flex items-center justify-center w-[42px] h-[42px] sm:w-[46px] sm:h-[46px] rounded-xl sm:rounded-2xl p-[1.5px] overflow-hidden transition-all duration-300 cursor-pointer shadow-xs hover:shadow-[0_0_18px_var(--theme-glow)]/60 hover:scale-[1.05]"
                 aria-label="Sign In with Google"
                 title="Sign In with Google to Sync Library"
               >
@@ -218,9 +207,9 @@ export default function Navbar() {
                 />
 
                 {/* Inner Button Body */}
-                <span className="relative z-10 w-full h-full rounded-[10px] sm:rounded-[13px] bg-[var(--card)] group-hover:bg-[var(--secondary)] text-[var(--accent)] flex items-center justify-center transition-all duration-200">
+                <span className="relative z-10 w-full h-full rounded-[11px] sm:rounded-[14px] bg-[var(--card)] group-hover:bg-[var(--secondary)] text-[var(--accent)] flex items-center justify-center transition-all duration-200">
                   <svg
-                    className="w-4 h-4 sm:w-5 sm:h-5 transition-all duration-300 group-hover:scale-110 group-hover:drop-shadow-[0_0_8px_var(--theme-glow)]"
+                    className="w-5 h-5 sm:w-5.5 sm:h-5.5 transition-all duration-300 group-hover:scale-110 group-hover:drop-shadow-[0_0_8px_var(--theme-glow)]"
                     viewBox="0 0 24 24"
                     fill="none"
                     xmlns="http://www.w3.org/2000/svg"
@@ -230,14 +219,14 @@ export default function Navbar() {
                       cy="7.5"
                       r="4"
                       stroke="currentColor"
-                      strokeWidth="1.85"
+                      strokeWidth="2"
                       strokeLinecap="round"
                       strokeLinejoin="round"
                     />
                     <path
                       d="M4.5 19.25C4.5 15.9363 7.85786 13.25 12 13.25C16.1421 13.25 19.5 15.9363 19.5 19.25"
                       stroke="currentColor"
-                      strokeWidth="1.85"
+                      strokeWidth="2"
                       strokeLinecap="round"
                       strokeLinejoin="round"
                     />

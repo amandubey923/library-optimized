@@ -92,15 +92,15 @@ export default function ContactPage() {
       {/* -------------------------------------------------------------
        * Hero Section
        * ------------------------------------------------------------- */}
-      <div className="max-w-3xl mb-12 sm:mb-16 space-y-3">
-        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[var(--accent)]/10 border border-[var(--accent)]/30 text-[var(--accent)] text-xs font-bold uppercase tracking-widest shadow-xs">
+      <div className="max-w-3xl mb-10 sm:mb-14 space-y-3.5">
+        <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[var(--accent)]/15 border border-[var(--accent)]/30 text-[var(--accent)] text-[11px] font-bold uppercase tracking-widest shadow-xs">
           <span className="w-1.5 h-1.5 rounded-full bg-[var(--accent)] animate-pulse" />
           <span>Connect &amp; Collaborate</span>
         </div>
-        <h1 className="text-3xl sm:text-5xl lg:text-6xl font-bold font-serif text-[var(--foreground)] tracking-tight">
-          Let&apos;s Build Better Literature Experiences.
+        <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black font-serif text-[var(--foreground)] tracking-tight leading-tight">
+          Let&apos;s Build Better <span className="bg-gradient-to-r from-[var(--accent)] to-[var(--accent-secondary)] bg-clip-text text-transparent">Literature</span> Experiences.
         </h1>
-        <p className="text-sm sm:text-base text-[var(--text-secondary)] leading-relaxed font-normal">
+        <p className="text-xs sm:text-sm text-[var(--text-secondary)] leading-relaxed font-normal max-w-2xl">
           Have a rare book recommendation, translation suggestion, partnership inquiry, or technical feedback for Reader&apos;s HUB? Reach out directly.
         </p>
       </div>
@@ -108,64 +108,80 @@ export default function ContactPage() {
       {/* -------------------------------------------------------------
        * Two-Column Layout (Desktop) / Single-Column (Mobile)
        * ------------------------------------------------------------- */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-10 items-start">
         {/* =========================================================
          * LEFT COLUMN: Direct Contact & Portfolio Showcase
          * ========================================================= */}
-        <div className="lg:col-span-5 space-y-6">
+        <div className="lg:col-span-5 space-y-4 sm:space-y-5">
           {/* Developer Card */}
-          <div className="glass-card rounded-3xl p-6 sm:p-7 border border-[var(--border)] bg-[var(--card)] shadow-xl relative overflow-hidden group">
+          <div className="rounded-2xl p-5 sm:p-6 border border-[var(--border)] bg-[var(--card)] shadow-xs hover:border-[var(--accent)]/40 hover:shadow-md transition-all relative overflow-hidden group flex flex-col justify-between">
             {/* Ambient Background Glow */}
             <div
-              className="absolute -top-12 -right-12 w-40 h-40 rounded-full blur-[80px] opacity-20 pointer-events-none group-hover:opacity-40 transition-opacity"
+              className="absolute -top-12 -right-12 w-40 h-40 rounded-full blur-[80px] opacity-15 pointer-events-none group-hover:opacity-35 transition-opacity"
               style={{ background: "var(--accent)" }}
             />
 
-            <div className="space-y-4 relative z-10">
-              <div className="flex items-center gap-3.5">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[var(--primary)] to-[var(--accent-secondary)] text-[var(--primary-foreground)] font-serif font-bold text-xl flex items-center justify-center shadow-md">
+            <div className="space-y-3.5 relative z-10">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)] flex items-center gap-1.5">
+                  <span>👨‍💻</span> Creator
+                </span>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 font-bold border border-emerald-500/25 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  Online &amp; Active
+                </span>
+              </div>
+
+              <div className="flex items-center gap-3.5 pt-1">
+                <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-[var(--primary)] to-[var(--accent)] text-[var(--primary-foreground)] font-serif font-black text-xl flex items-center justify-center shadow-md shrink-0">
                   AD
                 </div>
-                <div>
-                  <h3 className="font-serif font-bold text-base text-[var(--foreground)]">
+                <div className="min-w-0">
+                  <h3 className="font-serif font-black text-base sm:text-lg text-[var(--foreground)] truncate">
                     Aman Dubey
                   </h3>
-                  <p className="text-xs text-[var(--text-secondary)] font-medium">
-                    Creator &amp; Sole Developer of Reader&apos;s HUB
+                  <p className="text-[11px] text-[var(--accent)] font-bold truncate">
+                    Sole Developer &amp; Architect of Reader&apos;s HUB
                   </p>
                 </div>
               </div>
 
               <p className="text-xs text-[var(--text-secondary)] leading-relaxed font-normal">
-                Passionate about high-performance web engineering, digital publishing, and crafting frictionless reading tools.
+                Passionate about high-performance web engineering, digital publishing, and crafting frictionless offline-first reading tools.
               </p>
 
-              <div className="pt-2 border-t border-[var(--border)]/60 flex items-center justify-between text-[11px] text-[var(--text-secondary)] font-medium">
+              <div className="pt-3 border-t border-[var(--border)]/60 flex items-center justify-between text-[11px] text-[var(--text-secondary)] font-medium">
                 <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>Response Time: &lt; 24h</span>
+                  <span className="text-emerald-400 font-bold">⚡ Response:</span> &lt; 24 hours
                 </span>
-                <span>Bengaluru / Global 🌐</span>
+                <span className="px-2 py-0.5 rounded bg-[var(--secondary)] text-[10px] font-bold text-[var(--foreground)] border border-[var(--border)]">
+                  Chandigarh 🌐
+                </span>
               </div>
             </div>
           </div>
 
           {/* Interactive Direct Email Card */}
-          <div className="glass-card rounded-3xl p-6 border border-[var(--border)] bg-[var(--card)] shadow-xl hover:border-[var(--accent)]/50 transition-all group">
-            <div className="flex items-start gap-4">
+          <div className="rounded-2xl p-5 border border-[var(--border)] bg-[var(--card)] shadow-xs hover:border-[var(--accent)]/40 hover:shadow-md transition-all group">
+            <div className="flex items-start justify-between gap-2 mb-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)] flex items-center gap-1.5">
+                <span>✉️</span> Direct Contact
+              </span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--accent)]/15 text-[var(--accent)] font-bold border border-[var(--accent)]/25">
+                Direct Inbox
+              </span>
+            </div>
+            <div className="flex items-center gap-3.5 mt-2">
               <div className="w-10 h-10 rounded-xl bg-[var(--secondary)] text-[var(--accent)] flex items-center justify-center text-lg border border-[var(--border)] flex-shrink-0 group-hover:scale-110 transition-transform">
                 ✉️
               </div>
               <div className="min-w-0 flex-1">
-                <span className="text-[10px] uppercase tracking-wider font-bold text-[var(--text-secondary)]">
-                  Direct Email
-                </span>
-                <h4 className="text-sm font-bold text-[var(--foreground)] truncate mt-0.5">
+                <h4 className="text-xs sm:text-sm font-mono font-bold text-[var(--foreground)] truncate">
                   kumaraman19137@gmail.com
                 </h4>
                 <a
                   href="mailto:kumaraman19137@gmail.com"
-                  className="inline-flex items-center gap-1 text-xs text-[var(--accent)] font-semibold mt-2 hover:underline"
+                  className="inline-flex items-center gap-1 text-[11px] text-[var(--accent)] font-bold mt-1 hover:underline"
                 >
                   <span>Open in Mail Client</span>
                   <span>↗</span>
@@ -175,47 +191,51 @@ export default function ContactPage() {
           </div>
 
           {/* Interactive 3D Portfolio Card */}
-          <div className="glass-card rounded-3xl p-6 sm:p-7 border border-[var(--border)] bg-[var(--card)] shadow-xl hover:border-[var(--accent)]/50 transition-all relative overflow-hidden group">
-            <div className="space-y-3">
-              <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded-lg bg-[var(--secondary)] text-[var(--accent)] text-[10px] font-bold uppercase tracking-wider border border-[var(--border)]">
-                <span>⚡</span>
-                <span>Personal Showcase</span>
-              </div>
-              <h3 className="font-serif font-bold text-lg text-[var(--foreground)] group-hover:text-[var(--accent)] transition-colors">
-                Interactive Portfolio
-              </h3>
-              <p className="text-xs text-[var(--text-secondary)] leading-relaxed font-normal">
-                Explore more of my full-stack projects, real-time architectures, and interactive 3D web experiences.
-              </p>
-
-              <a
-                href="https://aman-portfolio-next.netlify.app"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center justify-between w-full p-3 rounded-2xl bg-gradient-to-r from-[var(--primary)] to-[var(--accent-secondary)] hover:opacity-95 text-[var(--primary-foreground)] font-bold text-xs shadow-lg hover:shadow-[0_0_18px_var(--theme-glow)] transition-all hover:scale-[1.02] cursor-pointer"
-              >
-                <span>Explore my Portfolio</span>
-                <span className="text-sm font-mono">→</span>
-              </a>
+          <div className="rounded-2xl p-5 sm:p-6 border border-[var(--border)] bg-[var(--card)] shadow-xs hover:border-[var(--accent)]/40 hover:shadow-md transition-all relative overflow-hidden group space-y-3.5">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)] flex items-center gap-1.5">
+                <span>⚡</span> Personal Showcase
+              </span>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/15 text-violet-400 font-bold border border-violet-500/25">
+                3D Web Portfolio
+              </span>
             </div>
+
+            <h3 className="font-serif font-black text-base sm:text-lg text-[var(--foreground)] group-hover:text-[var(--accent)] transition-colors">
+              Interactive 3D Portfolio
+            </h3>
+            <p className="text-xs text-[var(--text-secondary)] leading-relaxed font-normal">
+              Explore more of my full-stack projects, real-time architectures, and interactive 3D web experiences.
+            </p>
+
+            <a
+              href="https://aman-portfolio-next.netlify.app"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-between w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-[var(--primary)] to-[var(--accent)] hover:opacity-95 text-[var(--primary-foreground)] font-extrabold text-xs shadow-sm hover:shadow-md transition-all hover:scale-[1.02] cursor-pointer"
+            >
+              <span>Explore My Portfolio</span>
+              <span className="text-sm font-mono">→</span>
+            </a>
           </div>
 
           {/* Quick FAQ / Topics Guide */}
-          <div className="p-5 rounded-3xl bg-[var(--secondary)]/40 border border-[var(--border)]/70 text-xs space-y-2">
-            <h5 className="font-bold font-serif text-[var(--foreground)] text-xs uppercase tracking-wider">
-              Common Reasons to Reach Out:
-            </h5>
-            <ul className="space-y-1.5 text-[var(--text-secondary)] text-[11px]">
+          <div className="p-4 sm:p-5 rounded-2xl bg-[var(--secondary)]/40 border border-[var(--border)]/70 text-xs space-y-2.5">
+            <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+              <span>💡 Common Reasons to Connect</span>
+              <span className="text-[9.5px] px-1.5 py-0.2 rounded-full bg-[var(--secondary)] text-[var(--foreground)] font-bold">Topics</span>
+            </div>
+            <ul className="space-y-2 text-[var(--text-secondary)] text-[11.5px]">
               <li className="flex items-center gap-2">
-                <span className="text-[var(--accent)]">📚</span>
-                <span>Suggesting books for our upcoming public domain ingestion</span>
+                <span className="text-[var(--accent)] font-bold">📚</span>
+                <span>Suggesting books for public domain ingestion</span>
               </li>
               <li className="flex items-center gap-2">
-                <span className="text-[var(--accent)]">🇮🇳</span>
+                <span className="text-[var(--accent)] font-bold">🇮🇳</span>
                 <span>Hindi literature curation and OCR quality feedback</span>
               </li>
               <li className="flex items-center gap-2">
-                <span className="text-[var(--accent)]">🛠️</span>
+                <span className="text-[var(--accent)] font-bold">🛠️</span>
                 <span>Reporting reading glitches or broken PDF coordinates</span>
               </li>
             </ul>
@@ -226,23 +246,23 @@ export default function ContactPage() {
          * RIGHT COLUMN: Polished Contact Form
          * ========================================================= */}
         <div className="lg:col-span-7">
-          <div className="glass-card rounded-3xl p-6 sm:p-10 border border-[var(--border)] shadow-2xl bg-[var(--card)] relative">
+          <div className="rounded-2xl p-5 sm:p-8 border border-[var(--border)] shadow-xs bg-[var(--card)] relative">
             {submitted ? (
               /* Verified Delivery Confirmation Card */
-              <div className="text-center py-12 space-y-4 animate-scale-up">
-                <div className="w-16 h-16 rounded-3xl bg-emerald-500/10 border border-emerald-500/25 text-3xl flex items-center justify-center mx-auto text-emerald-400 shadow-inner">
+              <div className="text-center py-10 space-y-4 animate-scale-up">
+                <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 border border-emerald-500/25 text-2xl flex items-center justify-center mx-auto text-emerald-400 shadow-inner">
                   ✓
                 </div>
-                <h2 className="text-2xl sm:text-3xl font-bold font-serif text-[var(--foreground)]">
+                <h2 className="text-xl sm:text-2xl font-black font-serif text-[var(--foreground)]">
                   Message Sent Successfully!
                 </h2>
-                <p className="text-sm text-[var(--text-secondary)] max-w-md mx-auto leading-relaxed font-normal">
-                  Your message has been delivered to <strong className="text-[var(--foreground)]">Aman Dubey</strong> (kumaraman19137@gmail.com). I&apos;ll get back to you soon!
+                <p className="text-xs sm:text-sm text-[var(--text-secondary)] max-w-md mx-auto leading-relaxed font-normal">
+                  Your message has been delivered to <strong className="text-[var(--foreground)] font-bold">Aman Dubey</strong> (kumaraman19137@gmail.com). I&apos;ll get back to you soon!
                 </p>
-                <div className="pt-4">
+                <div className="pt-3">
                   <button
                     onClick={() => setSubmitted(false)}
-                    className="px-6 py-3 rounded-xl bg-[var(--primary)] text-[var(--primary-foreground)] text-xs font-bold shadow-md hover:scale-105 transition-transform cursor-pointer"
+                    className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-[var(--primary)] to-[var(--accent)] text-[var(--primary-foreground)] text-xs font-bold shadow-md hover:scale-105 transition-transform cursor-pointer"
                   >
                     Send Another Message →
                   </button>
@@ -250,14 +270,19 @@ export default function ContactPage() {
               </div>
             ) : (
               /* Interactive Contact Form */
-              <form onSubmit={handleSubmit} noValidate className="space-y-6">
-                <div>
-                  <h3 className="font-serif font-bold text-xl text-[var(--foreground)]">
-                    Send a Direct Note
-                  </h3>
-                  <p className="text-xs text-[var(--text-secondary)] mt-1 font-normal">
-                    Fill in the details below. Messages are routed straight to kumaraman19137@gmail.com.
-                  </p>
+              <form onSubmit={handleSubmit} noValidate className="space-y-5">
+                <div className="flex items-center justify-between gap-2 border-b border-[var(--border)]/60 pb-3">
+                  <div>
+                    <h3 className="font-serif font-black text-lg sm:text-xl text-[var(--foreground)]">
+                      Send a Direct Note
+                    </h3>
+                    <p className="text-[11px] text-[var(--text-secondary)] mt-0.5 font-normal">
+                      Messages are routed straight to kumaraman19137@gmail.com.
+                    </p>
+                  </div>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--accent)]/15 text-[var(--accent)] font-bold border border-[var(--accent)]/25">
+                    Fast Route
+                  </span>
                 </div>
 
                 {/* Error Notice (Preserves Input) */}
@@ -282,10 +307,10 @@ export default function ContactPage() {
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {/* Name Input */}
                   <div>
-                    <label className="block text-xs font-semibold text-[var(--foreground)] mb-2">
+                    <label className="block text-xs font-bold text-[var(--foreground)] mb-1.5">
                       Your Name <span className="text-[var(--accent)]">*</span>
                     </label>
                     <input
@@ -297,7 +322,7 @@ export default function ContactPage() {
                       }}
                       placeholder="e.g. Rahul Sharma"
                       disabled={isSubmitting}
-                      className={`w-full bg-[var(--background)] border rounded-2xl px-4 py-3 text-xs sm:text-sm text-[var(--foreground)] placeholder-[var(--text-secondary)] transition-all focus:outline-none ${
+                      className={`w-full bg-[var(--background)] border rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-[var(--foreground)] placeholder-[var(--text-secondary)] transition-all focus:outline-none ${
                         errors.name
                           ? "border-rose-500 focus:border-rose-500 ring-1 ring-rose-500/30"
                           : "border-[var(--border)] focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]/30"
@@ -312,7 +337,7 @@ export default function ContactPage() {
 
                   {/* Email Input */}
                   <div>
-                    <label className="block text-xs font-semibold text-[var(--foreground)] mb-2">
+                    <label className="block text-xs font-bold text-[var(--foreground)] mb-1.5">
                       Email Address <span className="text-[var(--accent)]">*</span>
                     </label>
                     <input
@@ -324,7 +349,7 @@ export default function ContactPage() {
                       }}
                       placeholder="name@example.com"
                       disabled={isSubmitting}
-                      className={`w-full bg-[var(--background)] border rounded-2xl px-4 py-3 text-xs sm:text-sm text-[var(--foreground)] placeholder-[var(--text-secondary)] transition-all focus:outline-none ${
+                      className={`w-full bg-[var(--background)] border rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-[var(--foreground)] placeholder-[var(--text-secondary)] transition-all focus:outline-none ${
                         errors.email
                           ? "border-rose-500 focus:border-rose-500 ring-1 ring-rose-500/30"
                           : "border-[var(--border)] focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]/30"
@@ -340,7 +365,7 @@ export default function ContactPage() {
 
                 {/* Topic / Subject Select */}
                 <div>
-                  <label className="block text-xs font-semibold text-[var(--foreground)] mb-2">
+                  <label className="block text-xs font-bold text-[var(--foreground)] mb-1.5">
                     Inquiry Topic
                   </label>
                   <select
@@ -349,7 +374,7 @@ export default function ContactPage() {
                       setFormData({ ...formData, subject: e.target.value })
                     }
                     disabled={isSubmitting}
-                    className="w-full bg-[var(--background)] border border-[var(--border)] rounded-2xl px-4 py-3 text-xs sm:text-sm text-[var(--foreground)] focus:outline-none focus:border-[var(--accent)] cursor-pointer"
+                    className="w-full bg-[var(--background)] border border-[var(--border)] rounded-xl px-3.5 py-2.5 text-xs sm:text-sm text-[var(--foreground)] focus:outline-none focus:border-[var(--accent)] cursor-pointer"
                   >
                     <option value="Book Recommendation">📚 Suggest a Rare / Classic Book</option>
                     <option value="Hindi Literature Feedback">🇮🇳 Hindi Literature &amp; OCR Quality</option>
@@ -362,11 +387,11 @@ export default function ContactPage() {
 
                 {/* Message Body */}
                 <div>
-                  <label className="block text-xs font-semibold text-[var(--foreground)] mb-2">
+                  <label className="block text-xs font-bold text-[var(--foreground)] mb-1.5">
                     Message <span className="text-[var(--accent)]">*</span>
                   </label>
                   <textarea
-                    rows={5}
+                    rows={4}
                     value={formData.message}
                     onChange={(e) => {
                       setFormData({ ...formData, message: e.target.value });
@@ -374,7 +399,7 @@ export default function ContactPage() {
                     }}
                     placeholder="Tell us which books you would love to see added, share translation ideas, or send your thoughts..."
                     disabled={isSubmitting}
-                    className={`w-full bg-[var(--background)] border rounded-2xl p-4 text-xs sm:text-sm text-[var(--foreground)] placeholder-[var(--text-secondary)] transition-all focus:outline-none resize-y ${
+                    className={`w-full bg-[var(--background)] border rounded-xl p-3.5 text-xs sm:text-sm text-[var(--foreground)] placeholder-[var(--text-secondary)] transition-all focus:outline-none resize-y ${
                       errors.message
                         ? "border-rose-500 focus:border-rose-500 ring-1 ring-rose-500/30"
                         : "border-[var(--border)] focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]/30"
@@ -388,8 +413,8 @@ export default function ContactPage() {
                 </div>
 
                 {/* Form Footer & Submit Button */}
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
-                  <span className="text-[11px] text-[var(--text-secondary)] flex items-center gap-1.5">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
+                  <span className="text-[11px] text-[var(--text-secondary)] flex items-center gap-1.5 font-medium">
                     <span>🔒</span>
                     <span>Delivered to kumaraman19137@gmail.com</span>
                   </span>
@@ -397,10 +422,10 @@ export default function ContactPage() {
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className={`w-full sm:w-auto px-8 py-3.5 rounded-2xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-2 shadow-xl ${
+                    className={`w-full sm:w-auto px-7 py-3 rounded-xl text-xs sm:text-[13px] font-extrabold transition-all cursor-pointer flex items-center justify-center gap-2 shadow-md ${
                       isSubmitting
                         ? "bg-[var(--muted)] text-[var(--text-secondary)] opacity-60 cursor-not-allowed"
-                        : "bg-gradient-to-r from-[var(--primary)] to-[var(--accent-secondary)] hover:opacity-95 text-[var(--primary-foreground)] hover:shadow-[0_0_20px_var(--theme-glow)] hover:scale-105"
+                        : "bg-gradient-to-r from-[var(--primary)] to-[var(--accent)] hover:opacity-95 text-[var(--primary-foreground)] hover:shadow-lg hover:scale-[1.02]"
                     }`}
                   >
                     {isSubmitting ? (

@@ -119,30 +119,30 @@ export default function ReadingPathsTab() {
                     {isRead ? "✓" : step.stepNumber}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-[10px] uppercase font-bold text-[var(--accent)] tracking-wider">
+                    <div className="flex items-center gap-2 flex-wrap mb-1">
+                      <span className="text-[10px] uppercase font-bold text-[var(--accent)] tracking-wider px-2 py-0.5 rounded-full bg-[var(--accent)]/15 border border-[var(--accent)]/25">
                         {step.topic}
                       </span>
                       {isRead && (
-                        <span className="text-[9px] px-2 py-0.2 rounded-full bg-emerald-500/20 text-emerald-400 font-bold">
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 font-bold border border-emerald-500/25">
                           Finished ✓
                         </span>
                       )}
                       {inProgress && (
-                        <span className="text-[9px] px-2 py-0.2 rounded-full bg-amber-500/20 text-amber-400 font-bold">
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 font-bold border border-amber-500/25">
                           In Progress
                         </span>
                       )}
                       {!step.isAvailable && (
-                        <span className="text-[9px] px-2 py-0.2 rounded-full bg-[var(--secondary)] text-[var(--text-secondary)] font-medium">
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--secondary)] text-[var(--text-secondary)] font-medium">
                           Coming in Next Catalog Update
                         </span>
                       )}
                     </div>
-                    <h4 className="font-serif font-bold text-sm text-[var(--foreground)] mt-0.5">
+                    <h4 className="font-serif font-black text-sm sm:text-base text-[var(--foreground)] mt-1">
                       {step.title}
                     </h4>
-                    <p className="text-xs text-[var(--text-secondary)] mt-1">
+                    <p className="text-xs text-[var(--text-secondary)] font-normal mt-1 leading-relaxed">
                       {step.notes}
                     </p>
                   </div>
@@ -151,9 +151,9 @@ export default function ReadingPathsTab() {
                 {step.isAvailable && step.bookId && (
                   <Link
                     href={`/book/${step.bookId}`}
-                    className="w-full sm:w-auto px-4 py-2 rounded-xl bg-[var(--primary)] text-[var(--primary-foreground)] text-xs font-bold text-center shadow-md hover:scale-102 transition-transform flex-shrink-0"
+                    className="w-full sm:w-auto px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-[var(--primary)] to-[var(--accent)] text-[var(--primary-foreground)] text-xs sm:text-[13px] font-extrabold text-center shadow-sm hover:shadow-md hover:scale-[1.02] transition-all flex-shrink-0"
                   >
-                    {isRead ? "Re-read Book" : inProgress ? "Resume Study" : "Start Volume →"}
+                    {isRead ? "Re-read Book" : inProgress ? "Resume Study →" : "Start Volume →"}
                   </Link>
                 )}
               </div>

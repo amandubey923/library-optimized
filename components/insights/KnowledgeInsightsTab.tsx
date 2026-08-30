@@ -28,53 +28,65 @@ export default function KnowledgeInsightsTab() {
       </div>
 
       {/* Top 4 Metrics Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-        <div className="p-4 rounded-2xl border border-[var(--border)] bg-[var(--card)] space-y-1">
-          <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] tracking-wider">
-            Books Explored
-          </span>
-          <div className="text-2xl sm:text-3xl font-serif font-bold text-[var(--foreground)]">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 sm:gap-4">
+        <div className="p-4 sm:p-5 rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-xs hover:border-[var(--accent)]/40 hover:shadow-md transition-all flex flex-col justify-between">
+          <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+            <span>📖 Explored</span>
+            <span className="text-[9.5px] px-1.5 py-0.2 rounded-full bg-emerald-500/15 text-emerald-400 font-bold border border-emerald-500/25">
+              {insights.totalCompleted} Finished ✓
+            </span>
+          </div>
+          <div className="text-2xl sm:text-3xl font-serif font-black text-[var(--foreground)] my-1">
             {insights.totalBooksEngaged}
           </div>
-          <span className="text-[10px] text-emerald-400 font-semibold block">
-            {insights.totalCompleted} Finished ✓
+          <span className="text-[11px] text-[var(--text-secondary)] font-medium">
+            Volumes started
           </span>
         </div>
 
-        <div className="p-4 rounded-2xl border border-[var(--border)] bg-[var(--card)] space-y-1">
-          <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] tracking-wider">
-            Study Hours
-          </span>
-          <div className="text-2xl sm:text-3xl font-serif font-bold text-[var(--accent)]">
+        <div className="p-4 sm:p-5 rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-xs hover:border-[var(--accent)]/40 hover:shadow-md transition-all flex flex-col justify-between">
+          <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+            <span>⏱️ Study Time</span>
+            <span className="text-[9.5px] px-1.5 py-0.2 rounded-full bg-[var(--accent)]/15 text-[var(--accent)] font-bold border border-[var(--accent)]/25">
+              Active
+            </span>
+          </div>
+          <div className="text-2xl sm:text-3xl font-serif font-black text-[var(--accent)] my-1">
             {studyHours}h
           </div>
-          <span className="text-[10px] text-[var(--text-secondary)] block">
+          <span className="text-[11px] text-[var(--text-secondary)] font-medium">
             {insights.totalStudyMinutes} active minutes
           </span>
         </div>
 
-        <div className="p-4 rounded-2xl border border-[var(--border)] bg-[var(--card)] space-y-1">
-          <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] tracking-wider">
-            Study Density
-          </span>
-          <div className="text-2xl sm:text-3xl font-serif font-bold text-violet-400">
+        <div className="p-4 sm:p-5 rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-xs hover:border-[var(--accent)]/40 hover:shadow-md transition-all flex flex-col justify-between">
+          <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+            <span>✏️ Density</span>
+            <span className="text-[9.5px] px-1.5 py-0.2 rounded-full bg-violet-500/15 text-violet-400 font-bold border border-violet-500/25">
+              Study
+            </span>
+          </div>
+          <div className="text-2xl sm:text-3xl font-serif font-black text-violet-400 my-1">
             {insights.studyDensity.densityPer100Pages}
           </div>
-          <span className="text-[10px] text-[var(--text-secondary)] block">
-            notes &amp; highlights / 100 pages
+          <span className="text-[11px] text-[var(--text-secondary)] font-medium">
+            marks / 100 pages
           </span>
         </div>
 
-        <div className="p-4 rounded-2xl border border-[var(--border)] bg-[var(--card)] space-y-1">
-          <span className="text-[10px] uppercase font-bold text-[var(--text-secondary)] tracking-wider">
-            Consistency Score
-          </span>
-          <div className="text-2xl sm:text-3xl font-serif font-bold text-amber-400">
+        <div className="p-4 sm:p-5 rounded-2xl border border-[var(--border)] bg-[var(--card)] shadow-xs hover:border-[var(--accent)]/40 hover:shadow-md transition-all flex flex-col justify-between">
+          <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+            <span>🔥 Streak</span>
+            <span className="text-[9.5px] px-1.5 py-0.2 rounded-full bg-amber-500/15 text-amber-400 font-bold border border-amber-500/25">
+              {streakData.currentStreak}d Streak
+            </span>
+          </div>
+          <div className="text-2xl sm:text-3xl font-serif font-black text-amber-400 my-1">
             {insights.consistencyScore}
             <span className="text-xs text-[var(--text-secondary)] font-normal">/100</span>
           </div>
-          <span className="text-[10px] text-amber-400 block font-semibold">
-            {streakData.currentStreak} day streak 🔥
+          <span className="text-[11px] text-amber-400 font-bold">
+            Consistency score
           </span>
         </div>
       </div>

@@ -461,83 +461,113 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5 sm:gap-4">
             {/* Total Reading Time */}
-            <div className="p-4 rounded-2xl bg-[var(--card)] border border-[var(--border)] shadow-sm">
-              <div className="text-xs font-medium text-[var(--text-secondary)] flex items-center gap-1">
-                <span>📖</span> Total Reading
+            <div className="p-4 rounded-2xl bg-[var(--card)] border border-[var(--border)] shadow-xs hover:border-[var(--accent)]/40 hover:shadow-md transition-all flex flex-col justify-between">
+              <div className="flex items-center justify-between gap-1 text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+                <span className="flex items-center gap-1">
+                  <span>📖</span> Reading
+                </span>
+                <span className="text-[9.5px] px-1.5 py-0.2 rounded-full bg-[var(--accent)]/15 text-[var(--accent)] font-bold border border-[var(--accent)]/25">
+                  PDF
+                </span>
               </div>
-              <div className="text-lg sm:text-xl font-black text-[var(--accent)] mt-1.5 truncate">
+              <div className="text-base sm:text-xl font-black text-[var(--accent)] mt-2 truncate">
                 {formatAnalyticsDuration(coreStats.totalReadingSeconds)}
               </div>
-              <div className="text-[11px] text-[var(--text-secondary)] mt-1">
-                Actual PDF reading
+              <div className="text-[11px] text-[var(--text-secondary)] font-medium mt-1">
+                Pure book focus
               </div>
             </div>
 
             {/* Total Active Time */}
-            <div className="p-4 rounded-2xl bg-[var(--card)] border border-[var(--border)] shadow-sm">
-              <div className="text-xs font-medium text-[var(--text-secondary)] flex items-center gap-1">
-                <span>⚡</span> Total Active
+            <div className="p-4 rounded-2xl bg-[var(--card)] border border-[var(--border)] shadow-xs hover:border-[var(--accent)]/40 hover:shadow-md transition-all flex flex-col justify-between">
+              <div className="flex items-center justify-between gap-1 text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+                <span className="flex items-center gap-1">
+                  <span>⚡</span> Active
+                </span>
+                <span className="text-[9.5px] px-1.5 py-0.2 rounded-full bg-emerald-500/15 text-emerald-400 font-bold border border-emerald-500/25">
+                  Total
+                </span>
               </div>
-              <div className="text-lg sm:text-xl font-black text-[var(--foreground)] mt-1.5 truncate">
+              <div className="text-base sm:text-xl font-black text-[var(--foreground)] mt-2 truncate">
                 {formatAnalyticsDuration(coreStats.totalActiveSeconds)}
               </div>
-              <div className="text-[11px] text-[var(--text-secondary)] mt-1">
-                Reading + site usage
+              <div className="text-[11px] text-[var(--text-secondary)] font-medium mt-1">
+                Reading + exploration
               </div>
             </div>
 
             {/* Total Reading Days */}
-            <div className="p-4 rounded-2xl bg-[var(--card)] border border-[var(--border)] shadow-sm">
-              <div className="text-xs font-medium text-[var(--text-secondary)] flex items-center gap-1">
-                <span>📅</span> Reading Days
+            <div className="p-4 rounded-2xl bg-[var(--card)] border border-[var(--border)] shadow-xs hover:border-[var(--accent)]/40 hover:shadow-md transition-all flex flex-col justify-between">
+              <div className="flex items-center justify-between gap-1 text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+                <span className="flex items-center gap-1">
+                  <span>📅</span> Days
+                </span>
+                <span className="text-[9.5px] px-1.5 py-0.2 rounded-full bg-[var(--secondary)] text-[var(--foreground)] font-bold">
+                  Active
+                </span>
               </div>
-              <div className="text-lg sm:text-xl font-black text-[var(--foreground)] mt-1.5">
-                {coreStats.totalReadingDays}
+              <div className="text-base sm:text-xl font-black text-[var(--foreground)] mt-2">
+                {coreStats.totalReadingDays} <span className="text-xs font-semibold text-[var(--text-secondary)]">days</span>
               </div>
-              <div className="text-[11px] text-[var(--text-secondary)] mt-1">
-                Days with &gt; 0m read
+              <div className="text-[11px] text-[var(--text-secondary)] font-medium mt-1">
+                Recorded calendar
               </div>
             </div>
 
             {/* Books Engaged */}
-            <div className="p-4 rounded-2xl bg-[var(--card)] border border-[var(--border)] shadow-sm">
-              <div className="text-xs font-medium text-[var(--text-secondary)] flex items-center gap-1">
-                <span>📚</span> Books Engaged
+            <div className="p-4 rounded-2xl bg-[var(--card)] border border-[var(--border)] shadow-xs hover:border-[var(--accent)]/40 hover:shadow-md transition-all flex flex-col justify-between">
+              <div className="flex items-center justify-between gap-1 text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+                <span className="flex items-center gap-1">
+                  <span>📚</span> Books
+                </span>
+                <span className="text-[9.5px] px-1.5 py-0.2 rounded-full bg-[var(--secondary)] text-[var(--foreground)] font-bold">
+                  Engaged
+                </span>
               </div>
-              <div className="text-lg sm:text-xl font-black text-[var(--foreground)] mt-1.5">
-                {profileHeader.totalBooksEngaged}
+              <div className="text-base sm:text-xl font-black text-[var(--foreground)] mt-2">
+                {profileHeader.totalBooksEngaged} <span className="text-xs font-semibold text-[var(--text-secondary)]">books</span>
               </div>
-              <div className="text-[11px] text-[var(--text-secondary)] mt-1">
-                Read or favorited
+              <div className="text-[11px] text-[var(--text-secondary)] font-medium mt-1">
+                Read &amp; saved
               </div>
             </div>
 
             {/* Avg Daily Reading */}
-            <div className="p-4 rounded-2xl bg-[var(--card)] border border-[var(--border)] shadow-sm">
-              <div className="text-xs font-medium text-[var(--text-secondary)] flex items-center gap-1">
-                <span>⏱️</span> Avg / Read Day
+            <div className="p-4 rounded-2xl bg-[var(--card)] border border-[var(--border)] shadow-xs hover:border-[var(--accent)]/40 hover:shadow-md transition-all flex flex-col justify-between">
+              <div className="flex items-center justify-between gap-1 text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+                <span className="flex items-center gap-1">
+                  <span>⏱️</span> Avg / Day
+                </span>
+                <span className="text-[9.5px] px-1.5 py-0.2 rounded-full bg-[var(--secondary)] text-[var(--foreground)] font-bold">
+                  Daily
+                </span>
               </div>
-              <div className="text-lg sm:text-xl font-black text-[var(--foreground)] mt-1.5 truncate">
+              <div className="text-base sm:text-xl font-black text-[var(--foreground)] mt-2 truncate">
                 {formatAnalyticsDuration(coreStats.avgReadingSecondsPerDay)}
               </div>
-              <div className="text-[11px] text-[var(--text-secondary)] mt-1">
-                On reading days
+              <div className="text-[11px] text-[var(--text-secondary)] font-medium mt-1">
+                Per active day
               </div>
             </div>
 
             {/* Highest Day */}
-            <div className="p-4 rounded-2xl bg-[var(--card)] border border-[var(--border)] shadow-sm">
-              <div className="text-xs font-medium text-[var(--text-secondary)] flex items-center gap-1">
-                <span>🏆</span> Best Day
+            <div className="p-4 rounded-2xl bg-[var(--card)] border border-[var(--border)] shadow-xs hover:border-[var(--accent)]/40 hover:shadow-md transition-all flex flex-col justify-between">
+              <div className="flex items-center justify-between gap-1 text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
+                <span className="flex items-center gap-1">
+                  <span>🏆</span> Best Day
+                </span>
+                <span className="text-[9.5px] px-1.5 py-0.2 rounded-full bg-amber-500/15 text-amber-400 font-bold border border-amber-500/25">
+                  Peak
+                </span>
               </div>
-              <div className="text-lg sm:text-xl font-black text-[var(--accent)] mt-1.5 truncate">
+              <div className="text-base sm:text-xl font-black text-[var(--accent)] mt-2 truncate">
                 {coreStats.highestSingleDayReadingSeconds > 0
                   ? formatAnalyticsDuration(coreStats.highestSingleDayReadingSeconds)
                   : "0m"}
               </div>
-              <div className="text-[11px] text-[var(--text-secondary)] mt-1 truncate">
+              <div className="text-[11px] text-[var(--text-secondary)] font-medium mt-1 truncate">
                 {coreStats.bestReadingDay ? coreStats.bestReadingDay.formattedDate : "No records"}
               </div>
             </div>
@@ -653,112 +683,131 @@ export default function ProfilePage() {
             5. READING INSIGHTS (Favorite Genre, Most Productive Day, Session Avg)
            ========================================================================= */}
         <section aria-label="Reading Insights">
-          <h2 className="text-lg font-bold text-[var(--foreground)] mb-4 flex items-center gap-2">
+          <h2 className="text-base sm:text-lg font-bold text-[var(--foreground)] mb-3.5 flex items-center gap-2">
             <span>✨</span> Reading Habits &amp; Insights
           </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-5">
             
             {/* Favorite Genre */}
-            <div className="rounded-3xl bg-[var(--card)] border border-[var(--border)] p-6 shadow-md flex flex-col justify-between">
+            <div className="rounded-2xl bg-[var(--card)] border border-[var(--border)] p-4 sm:p-5 shadow-xs flex flex-col justify-between hover:border-[var(--accent)]/40 transition-all">
               <div>
-                <div className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] flex items-center gap-1.5 mb-2">
-                  <span>❤️</span> Favorite Genre
+                <div className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)] flex items-center justify-between mb-2">
+                  <span className="flex items-center gap-1.5">
+                    <span>❤️</span> Favorite Genre
+                  </span>
+                  {favoriteGenre && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--accent)]/15 text-[var(--accent)] font-bold border border-[var(--accent)]/25">
+                      Top Pick
+                    </span>
+                  )}
                 </div>
                 {favoriteGenre ? (
                   <>
-                    <h3 className="text-xl font-bold text-[var(--accent)]">
+                    <h3 className="text-base sm:text-lg font-extrabold text-[var(--accent)] truncate">
                       {favoriteGenre.category}
                     </h3>
-                    <p className="text-sm text-[var(--foreground)] font-semibold mt-1">
+                    <p className="text-xs sm:text-sm text-[var(--foreground)] font-bold mt-1">
                       {formatAnalyticsDuration(favoriteGenre.readingSeconds, { verbose: true })} read
                     </p>
-                    <p className="text-xs text-[var(--text-secondary)] mt-0.5">
-                      {favoriteGenre.percentOfTotal}% of your total reading time ({favoriteGenre.booksCount} {favoriteGenre.booksCount === 1 ? "book" : "books"})
+                    <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">
+                      {favoriteGenre.percentOfTotal}% of all reading time ({favoriteGenre.booksCount} {favoriteGenre.booksCount === 1 ? "book" : "books"})
                     </p>
                   </>
                 ) : (
-                  <div className="py-3 text-xs text-[var(--text-secondary)]">
+                  <div className="py-2 text-xs text-[var(--text-secondary)]">
                     Explore books in the Library to uncover your favorite genre!
                   </div>
                 )}
               </div>
 
-              {genreBreakdown.length > 1 && (
-                <div className="mt-4 pt-3 border-t border-[var(--border)]/60 space-y-1.5">
-                  <div className="text-[11px] font-semibold text-[var(--text-secondary)]">
-                    Other categories:
-                  </div>
-                  {genreBreakdown.slice(1, 4).map((g) => (
-                    <div key={g.category} className="flex items-center justify-between text-xs">
-                      <span className="text-[var(--text-secondary)] truncate max-w-[160px]">{g.category}</span>
-                      <span className="font-medium text-[var(--foreground)]">{formatAnalyticsDuration(g.readingSeconds, { compact: true })}</span>
-                    </div>
+              <div className="mt-3 pt-2.5 border-t border-[var(--border)]/60 flex items-center justify-between text-[11px]">
+                <span className="text-[var(--text-secondary)] font-medium">Top categories</span>
+                <div className="flex items-center gap-1 truncate max-w-[170px]">
+                  {genreBreakdown.slice(0, 2).map((g) => (
+                    <span key={g.category} className="px-1.5 py-0.5 rounded bg-[var(--secondary)] text-[10px] text-[var(--foreground)] font-semibold truncate max-w-[80px]">
+                      {g.category}
+                    </span>
                   ))}
                 </div>
-              )}
+              </div>
             </div>
 
             {/* Most Productive Day */}
-            <div className="rounded-3xl bg-[var(--card)] border border-[var(--border)] p-6 shadow-md flex flex-col justify-between">
+            <div className="rounded-2xl bg-[var(--card)] border border-[var(--border)] p-4 sm:p-5 shadow-xs flex flex-col justify-between hover:border-[var(--accent)]/40 transition-all">
               <div>
-                <div className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] flex items-center gap-1.5 mb-2">
-                  <span>📈</span> Peak Reading Day
+                <div className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)] flex items-center justify-between mb-2">
+                  <span className="flex items-center gap-1.5">
+                    <span>📈</span> Peak Reading Day
+                  </span>
+                  {readingHabits.mostProductiveDayOfWeek && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 font-bold border border-emerald-500/25">
+                      Peak
+                    </span>
+                  )}
                 </div>
                 {readingHabits.mostProductiveDayOfWeek ? (
                   <>
-                    <h3 className="text-xl font-bold text-[var(--foreground)]">
+                    <h3 className="text-base sm:text-lg font-extrabold text-[var(--foreground)] truncate">
                       {readingHabits.mostProductiveDayOfWeek.dayName}s
                     </h3>
-                    <p className="text-sm text-[var(--accent)] font-semibold mt-1">
-                      {formatAnalyticsDuration(readingHabits.mostProductiveDayOfWeek.readingSeconds, { verbose: true })} total
+                    <p className="text-xs sm:text-sm text-[var(--accent)] font-bold mt-1">
+                      {formatAnalyticsDuration(readingHabits.mostProductiveDayOfWeek.readingSeconds, { verbose: true })} read
                     </p>
-                    <p className="text-xs text-[var(--text-secondary)] mt-0.5">
-                      {readingHabits.mostProductiveDayOfWeek.percentOfTotal}% of all time read occurs on this day
+                    <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">
+                      {readingHabits.mostProductiveDayOfWeek.percentOfTotal}% of total reading occurs on this day
                     </p>
                   </>
                 ) : (
-                  <div className="py-3 text-xs text-[var(--text-secondary)]">
+                  <div className="py-2 text-xs text-[var(--text-secondary)]">
                     Read on different days to discover your peak reading habits.
                   </div>
                 )}
               </div>
 
-              <div className="mt-4 pt-3 border-t border-[var(--border)]/60 text-xs text-[var(--text-secondary)]">
-                <span>Consistency builds strong habits over time.</span>
+              <div className="mt-3 pt-2.5 border-t border-[var(--border)]/60 flex items-center justify-between text-[11px]">
+                <span className="text-[var(--text-secondary)] font-medium">Habit Consistency</span>
+                <span className="px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 font-bold text-[10px] border border-emerald-500/20">
+                  Building Momentum ✨
+                </span>
               </div>
             </div>
 
             {/* Session Habits */}
-            <div className="rounded-3xl bg-[var(--card)] border border-[var(--border)] p-6 shadow-md flex flex-col justify-between">
+            <div className="rounded-2xl bg-[var(--card)] border border-[var(--border)] p-4 sm:p-5 shadow-xs flex flex-col justify-between hover:border-[var(--accent)]/40 transition-all">
               <div>
-                <div className="text-xs font-bold uppercase tracking-wider text-[var(--text-secondary)] flex items-center gap-1.5 mb-2">
-                  <span>⏱️</span> Reading Sessions
+                <div className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)] flex items-center justify-between mb-2">
+                  <span className="flex items-center gap-1.5">
+                    <span>⏱️</span> Reading Sessions
+                  </span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-[var(--secondary)] text-[var(--foreground)] font-bold">
+                    {readingHabits.totalRecordedSessions} Total
+                  </span>
                 </div>
                 {readingHabits.avgSessionDurationSeconds ? (
                   <>
-                    <h3 className="text-xl font-bold text-[var(--foreground)]">
+                    <h3 className="text-base sm:text-lg font-extrabold text-[var(--foreground)] truncate">
                       {formatAnalyticsDuration(readingHabits.avgSessionDurationSeconds, { verbose: true })}
                     </h3>
-                    <p className="text-xs text-[var(--text-secondary)] mt-1">
-                      Average duration per focused reading session
+                    <p className="text-xs sm:text-sm text-[var(--foreground)] font-bold mt-1">
+                      Average per reading session
                     </p>
-                    {readingHabits.longestSessionSeconds && (
-                      <p className="text-xs text-[var(--accent)] font-medium mt-1">
-                        Longest session: <strong>{formatAnalyticsDuration(readingHabits.longestSessionSeconds)}</strong>
-                      </p>
-                    )}
+                    <p className="text-[11px] text-[var(--text-secondary)] mt-0.5">
+                      Longest session: <strong className="text-[var(--accent)] font-semibold">{formatAnalyticsDuration(readingHabits.longestSessionSeconds || readingHabits.avgSessionDurationSeconds)}</strong>
+                    </p>
                   </>
                 ) : (
-                  <div className="py-3 text-xs text-[var(--text-secondary)]">
+                  <div className="py-2 text-xs text-[var(--text-secondary)]">
                     Use Focus Mode sessions in the reader to track detailed session duration.
                   </div>
                 )}
               </div>
 
-              <div className="mt-4 pt-3 border-t border-[var(--border)]/60 text-xs text-[var(--text-secondary)] flex items-center justify-between">
-                <span>Total Recorded Sessions</span>
-                <span className="font-bold text-[var(--foreground)]">{readingHabits.totalRecordedSessions}</span>
+              <div className="mt-3 pt-2.5 border-t border-[var(--border)]/60 flex items-center justify-between text-[11px]">
+                <span className="text-[var(--text-secondary)] font-medium">Study Focus</span>
+                <span className="font-bold text-[var(--foreground)] px-2 py-0.5 rounded bg-[var(--secondary)] text-[10px] border border-[var(--border)]">
+                  {readingHabits.totalRecordedSessions} Session{readingHabits.totalRecordedSessions === 1 ? "" : "s"}
+                </span>
               </div>
             </div>
 
