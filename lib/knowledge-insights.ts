@@ -7,12 +7,14 @@ import { Book, BOOKS } from "@/data/books";
 import {
   ReadingProgressItem,
   ReadingStreakData,
+  ReadingStats,
   BookReflection,
   BookReadingMemory,
   BookAnnotations,
   getAllReadingMemories,
   getAllBookAnnotations,
   getBookReflections,
+  getGenuinelyCompletedBookIds,
 } from "@/lib/reader-storage";
 
 export interface CategoryDistribution {
@@ -74,7 +76,8 @@ export function generateKnowledgeInsights(
   streakData: ReadingStreakData = { daily: {}, currentStreak: 0, longestStreak: 0, lastQualifiedDate: null },
   reflectionsData?: Record<string, BookReflection>,
   memoriesData?: Record<string, BookReadingMemory>,
-  annotationsData?: Record<string, BookAnnotations>
+  annotationsData?: Record<string, BookAnnotations>,
+  stats?: ReadingStats
 ): KnowledgeInsightsResult {
   // Authoritative Total Genuine Reading Time derived strictly from streak/activity data
   let totalStudySeconds = 0;
@@ -85,6 +88,10 @@ export function generateKnowledgeInsights(
   const allMemories = memoriesData && Object.keys(memoriesData).length > 0 ? memoriesData : getAllReadingMemories();
   const allAnnotations = annotationsData && Object.keys(annotationsData).length > 0 ? annotationsData : getAllBookAnnotations();
   const allReflections = reflectionsData || getBookReflections();
+
+  // Authoritative Finished Books — SAME shared definition and data source as Stats & Goals
+  const genuinelyCompletedIds = new Set(getGenuinelyCompletedBookIds(history, allMemories));
+  const totalCompleted = typeof stats?.booksCompleted === "number" ? stats.booksCompleted : genuinelyCompletedIds.size;
 
   // Books Explored: ONLY books with genuine reading activity, reflections, or notes/annotations
   const engagedBookIds = new Set<string>();
@@ -101,7 +108,7 @@ export function generateKnowledgeInsights(
     );
 
     // A book is genuinely explored only if active reading occurred on it, or user wrote reflection/notes
-    if (memSecs >= 30 || hasReflection || hasAnnotations) {
+    if (memSecs >= 30 || hasReflection || hasAnnotations || genuinelyCompletedIds.has(h.bookId)) {
       engagedBookIds.add(h.bookId);
     }
   });
@@ -119,7 +126,6 @@ export function generateKnowledgeInsights(
   }
 
   const historyMap = new Map(history.map((h) => [h.bookId, h]));
-  let totalCompleted = 0;
   let rawPagesSum = 0;
 
   const categoryCounts: Record<string, number> = {};
@@ -135,14 +141,10 @@ export function generateKnowledgeInsights(
     const ref = allReflections[bookId];
     const memSeconds = mem?.totalSeconds || 0;
 
-    const progress = hist ? hist.progress : (ref ? 100 : 0);
+    const isCompleted = genuinelyCompletedIds.has(bookId);
+    const progress = hist ? hist.progress : (isCompleted ? 100 : 0);
     const pages = hist ? hist.page : 0;
     rawPagesSum += pages;
-
-    // Completed only if progress >= 95% AND meaningful study time or has a written reflection
-    if ((progress >= 95 && (memSeconds >= 180 || totalStudySeconds >= 300)) || (ref && ref.reflection)) {
-      totalCompleted += 1;
-    }
 
     // Category distribution
     const cat = book.category || "General";

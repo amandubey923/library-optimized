@@ -1169,6 +1169,47 @@ export function clearPageDrawings(bookId: string, page: number): void {
   saveBookAnnotations(bookId, current);
 }
 
+/**
+ * Shared authoritative calculation for genuinely finished / completed books.
+ * Single source of truth across:
+ * - Stats & Goals (booksCompleted)
+ * - Knowledge Insights (totalCompleted / Books Finished)
+ * - My Shelf (Completed tab)
+ * 
+ * Rules:
+ * 1. Progress completion condition: progress >= 95% OR current page >= totalPages.
+ * 2. Genuine active reading time requirement: >= 180 seconds (3 min) of active logged study on that book.
+ */
+export function getGenuinelyCompletedBookIds(
+  history?: ReadingProgressItem[],
+  memories?: Record<string, BookReadingMemory>
+): string[] {
+  let historyList = history;
+  if (!historyList && typeof window !== "undefined") {
+    try {
+      const raw = localStorage.getItem(HISTORY_KEY);
+      if (raw) historyList = JSON.parse(raw);
+    } catch {}
+  }
+  if (!historyList) historyList = [];
+
+  const allMemories = memories || (typeof window !== "undefined" ? getAllReadingMemories() : {});
+  const completedIds: string[] = [];
+
+  for (const item of historyList) {
+    if (!item?.bookId) continue;
+    const mem = allMemories[item.bookId] || (typeof window !== "undefined" ? getBookReadingMemory(item.bookId) : undefined);
+    const bookSecs = mem?.totalSeconds || 0;
+    const isProgressCompleted = item.progress >= 95 || Boolean(item.totalPages && item.page >= item.totalPages);
+
+    if (isProgressCompleted && bookSecs >= 180) {
+      completedIds.push(item.bookId);
+    }
+  }
+
+  return completedIds;
+}
+
 // -------------------------------------------------------------
 // Genuine Local Reading Statistics Calculator
 // -------------------------------------------------------------
@@ -1228,8 +1269,12 @@ export function calculateReadingStats(): ReadingStats {
     const history = localStorage.getItem(HISTORY_KEY);
     if (history) {
       const parsed: ReadingProgressItem[] = JSON.parse(history);
+      const allMemories = getAllReadingMemories();
+      const completedIds = getGenuinelyCompletedBookIds(parsed, allMemories);
+      booksCompleted = completedIds.length;
+
       for (const item of parsed) {
-        const mem = getBookReadingMemory(item.bookId);
+        const mem = allMemories[item.bookId] || getBookReadingMemory(item.bookId);
         const bookSecs = mem?.totalSeconds || 0;
         const hasGenuineReading = bookSecs >= 30;
 
@@ -1241,14 +1286,6 @@ export function calculateReadingStats(): ReadingStats {
         // Pages read is bounded by plausible reading time on this book
         if (hasGenuineReading) {
           pagesRead += Math.max(1, Math.min(item.page || 1, Math.floor(bookSecs / 45)));
-        }
-
-        // Completed only if finished progress AND meaningful genuine study time on this book
-        if (
-          (item.progress >= 95 || (item.totalPages && item.page >= item.totalPages)) &&
-          bookSecs >= 180
-        ) {
-          booksCompleted += 1;
         }
       }
     }
