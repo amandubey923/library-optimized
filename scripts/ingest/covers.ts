@@ -88,6 +88,15 @@ export function getCoverPalette(category: string, isOsho: boolean, resourceType?
   };
 }
 
+function escapeXml(unsafe: string): string {
+  return (unsafe || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
 export async function generateBookCover(candidate: IngestCandidate, outputPath: string): Promise<boolean> {
   // If cover already exists and is non-empty, skip regeneration
   if (fs.existsSync(outputPath) && fs.statSync(outputPath).size > 1000) {
@@ -101,6 +110,13 @@ export async function generateBookCover(candidate: IngestCandidate, outputPath: 
   const hindiMatch = title.match(/\((.*?)\)/);
   const hindiTitle = hindiMatch ? hindiMatch[1] : "";
   const engTitle = title.replace(/\(.*?\)/, "").trim();
+
+  const safeHindiTitle = escapeXml(hindiTitle);
+  const safeEngTitle = escapeXml(engTitle.substring(0, 32));
+  const safeSubtitle = escapeXml(hindiTitle ? engTitle.substring(0, 36) : (tags[0] || category));
+  const safeTagLine = escapeXml(isOsho ? "आत्म-ज्ञान एवं ध्यान प्रवचन" : (tags.slice(0, 3).join(" • ") || category));
+  const safeAuthor = escapeXml(author.toUpperCase());
+  const safeBadge = escapeXml(palette.badge);
 
   const svg = `
     <svg width="600" height="900" viewBox="0 0 600 900" xmlns="http://www.w3.org/2000/svg">
@@ -138,12 +154,12 @@ export async function generateBookCover(candidate: IngestCandidate, outputPath: 
 
       <!-- Main Title (Devanagari / English) -->
       <text x="300" y="360" text-anchor="middle" font-family="'Noto Sans Devanagari', 'Mangal', serif, sans-serif" font-size="${hindiTitle ? 32 : 30}" font-weight="bold" fill="#ffffff" letter-spacing="1">
-        ${hindiTitle || engTitle.substring(0, 32)}
+        ${safeHindiTitle || safeEngTitle}
       </text>
 
       <!-- Subtitle -->
       <text x="300" y="415" text-anchor="middle" font-family="serif, sans-serif" font-size="20" font-style="italic" fill="rgba(255,255,255,0.85)">
-        ${hindiTitle ? engTitle.substring(0, 36) : (tags[0] || category)}
+        ${safeSubtitle}
       </text>
 
       <!-- Divider Ornament -->
@@ -154,7 +170,7 @@ export async function generateBookCover(candidate: IngestCandidate, outputPath: 
 
       <!-- Subtitle / Tag Line -->
       <text x="300" y="520" text-anchor="middle" font-family="sans-serif" font-size="15" font-weight="500" fill="rgba(255,255,255,0.75)" letter-spacing="1">
-        ${isOsho ? "आत्म-ज्ञान एवं ध्यान प्रवचन" : (tags.slice(0, 3).join(" • ") || category)}
+        ${safeTagLine}
       </text>
 
       <!-- Author Section -->
@@ -163,7 +179,7 @@ export async function generateBookCover(candidate: IngestCandidate, outputPath: 
           ${isOsho ? "DISCOURSES BY" : "CURATED BY"}
         </text>
         <text text-anchor="middle" y="20" font-family="serif, sans-serif" font-size="${author.length > 15 ? 28 : 36}" font-weight="bold" fill="url(#accentGrad)" letter-spacing="2">
-          ${author.toUpperCase()}
+          ${safeAuthor}
         </text>
         ${isOsho ? `<text text-anchor="middle" y="52" font-family="sans-serif" font-size="13" font-weight="500" fill="${palette.accent}" opacity="0.9" letter-spacing="1.5">BHAGWAN SHREE RAJNEESH</text>` : ""}
       </g>
@@ -172,7 +188,7 @@ export async function generateBookCover(candidate: IngestCandidate, outputPath: 
       <g transform="translate(300, 830)">
         <rect x="-100" y="-14" width="200" height="28" rx="14" fill="rgba(0,0,0,0.35)" stroke="rgba(255,255,255,0.15)" stroke-width="1" />
         <text text-anchor="middle" y="5" font-family="sans-serif" font-size="11" font-weight="600" fill="rgba(255,255,255,0.8)" letter-spacing="1">
-          ${palette.badge}
+          ${safeBadge}
         </text>
       </g>
     </svg>

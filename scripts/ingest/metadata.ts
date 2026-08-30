@@ -142,6 +142,17 @@ export async function extractPdfMetadata(filePath: string, filename: string): Pr
     category = "Philosophy & Spirituality";
     tags = ["Osho", "Spiritual Discourses", "Hindi Literature", "Meditation", "Self-Realization"];
   } else if (
+    lowerFile.includes("investor") || lowerFile.includes("intelligent investor") ||
+    lowerFile.includes("finance") || lowerFile.includes("economics") || lowerFile.includes("startup")
+  ) {
+    category = "Business, Finance & Economics";
+    tags = ["Finance", "Investing", "Value Investing", "Economics", "Business"];
+  } else if (
+    lowerFile.includes("denial of death") || lowerFile.includes("psychology") || lowerFile.includes("self-help")
+  ) {
+    category = "Self-Development & Psychology";
+    tags = ["Psychology", "Existentialism", "Human Nature", "Philosophy"];
+  } else if (
     lowerFile.includes("dsa") || lowerFile.includes("leetcode") || lowerFile.includes("algorithm") ||
     lowerText.includes("data structure") || lowerText.includes("dynamic programming")
   ) {
@@ -181,6 +192,25 @@ export async function extractPdfMetadata(filePath: string, filename: string): Pr
   let author = isOsho ? "Osho" : "Reader's HUB";
   if (!isOsho && metaAuthor && metaAuthor.trim().length > 2 && !metaAuthor.includes("Unknown")) {
     author = metaAuthor.trim();
+  }
+
+  // Non-Osho author extraction heuristics if still default
+  if (!isOsho && (author === "Reader's HUB" || author === "Unknown")) {
+    if (/bertrand\s*russell/i.test(filename) || /bertrand\s*russell/i.test(extractedText)) {
+      author = "Bertrand Russell";
+    } else if (/nietzsche/i.test(filename) || /nietzsche/i.test(extractedText)) {
+      author = "Friedrich Nietzsche";
+    } else if (/ernest\s*becker/i.test(filename) || /ernest\s*becker/i.test(extractedText) || /denial\s*of\s*death/i.test(filename)) {
+      author = "Ernest Becker";
+    } else if (/benjamin\s*graham/i.test(filename) || /benjamin\s*graham/i.test(extractedText)) {
+      author = "Benjamin Graham";
+    } else if (filename.includes(" - ")) {
+      const parts = filename.replace(/\.pdf$/i, "").split(" - ");
+      if (parts.length === 2 && parts[1].trim().length > 2) {
+        author = parts[1].replace(/([a-z])([A-Z])/g, "$1 $2").trim();
+        author = author.split(/\s+/).map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(" ");
+      }
+    }
   }
 
   // Title generation
@@ -226,8 +256,31 @@ export async function extractPdfMetadata(filePath: string, filename: string): Pr
     }
   } else {
     let base = filename.replace(/\.pdf$/i, "").replace(/([a-z])([A-Z])/g, "$1 $2").trim();
+    if (base.includes(" - ")) {
+      base = base.split(" - ")[0].trim();
+    }
+    if (/bertrand\s*russell/i.test(base)) {
+      base = base.replace(/bertrand\s*russell\s*[-–—]*/i, "").replace(/routledge\s*\d*/i, "").trim();
+    }
+    if (/beyond\s*good\s*and\s*evil/i.test(base) || /beyondgoodevil/i.test(filename)) {
+      base = "Beyond Good and Evil";
+    }
+    if (/denial\s*of\s*death/i.test(base)) {
+      base = "The Denial of Death";
+    }
+    if (/intelligent\s*investor/i.test(base)) {
+      base = "The Intelligent Investor";
+    }
     if (metaTitle && metaTitle.trim().length > 3 && !metaTitle.includes("Untitled") && !metaTitle.includes(".pdf")) {
-      title = metaTitle.trim();
+      let cleanMetaTitle = metaTitle.trim();
+      if (/beyond\s*good\s*and\s*evil/i.test(cleanMetaTitle)) {
+        cleanMetaTitle = "Beyond Good and Evil";
+      } else if (/denial\s*of\s*death/i.test(cleanMetaTitle)) {
+        cleanMetaTitle = "The Denial of Death";
+      } else if (/intelligent\s*investor/i.test(cleanMetaTitle)) {
+        cleanMetaTitle = "The Intelligent Investor";
+      }
+      title = cleanMetaTitle;
     } else {
       title = base;
     }

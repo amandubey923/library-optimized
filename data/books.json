@@ -8360,5 +8360,101 @@
     ],
     "excerpt": "Master essential principles and practical patterns with clear structured notes.",
     "fileHash": "71502b22dfc56ffee71b8d70ab6da0238a589935ea33010fd4f14c7c5a94a4cb"
+  },
+  {
+    "id": "authority-and-the-individual",
+    "title": "Authority and the Individual",
+    "author": "Bertrand Russell",
+    "category": "Philosophy & Spirituality",
+    "resourceType": "Book",
+    "cover": "/images/books/authority-and-the-individual.webp",
+    "pdf": "/pdfs/AuthorityAndTheIndividual.pdf",
+    "description": "Bertrand Russell's BBC Reith Lectures examining how to reconcile individual initiative and creative freedom with the social cohesion necessary for societal stability.",
+    "year": 1949,
+    "pages": 102,
+    "language": "English",
+    "rating": 4.8,
+    "featured": false,
+    "tags": [
+      "Philosophy",
+      "Bertrand Russell",
+      "Political Philosophy",
+      "Ethics",
+      "Classics"
+    ],
+    "excerpt": "Individual initiative is the ultimate source of everything that is worthwhile in human life.",
+    "fileHash": "f86a4129a85bdedb9989dbd9e8db9a03740a5242ed22f8daed80a5a132fb54d3"
+  },
+  {
+    "id": "beyond-good-and-evil",
+    "title": "Beyond Good and Evil",
+    "author": "Friedrich Nietzsche",
+    "category": "Philosophy & Spirituality",
+    "resourceType": "Book",
+    "cover": "/images/books/beyond-good-and-evil.webp",
+    "pdf": "/pdfs/BeyondGoodAndEvil.pdf",
+    "description": "Friedrich Nietzsche's landmark philosophical work questioning traditional morality, dogmatic philosophy, and the nature of truth, proposing a philosophy of the future.",
+    "year": 1886,
+    "pages": 296,
+    "language": "English",
+    "rating": 4.8,
+    "featured": false,
+    "tags": [
+      "Philosophy",
+      "Friedrich Nietzsche",
+      "Morality",
+      "Existentialism",
+      "Classics"
+    ],
+    "excerpt": "He who fights with monsters should be careful lest he thereby become a monster. And if you gaze long into an abyss, the abyss also gazes into you.",
+    "fileHash": "91ae56405d8911a0d5026300fc1047380ba440ff2a4a44bbfec49412e3b82c8b"
+  },
+  {
+    "id": "the-denial-of-death",
+    "title": "The Denial of Death",
+    "author": "Ernest Becker",
+    "category": "Self-Development & Psychology",
+    "resourceType": "Book",
+    "cover": "/images/books/the-denial-of-death.webp",
+    "pdf": "/pdfs/TheDenialOfDeath.pdf",
+    "description": "Ernest Becker's Pulitzer Prize-winning masterpiece exploring how the human awareness of mortality shapes civilization, culture, and individual psychology.",
+    "year": 1973,
+    "pages": 144,
+    "language": "English",
+    "rating": 4.8,
+    "featured": false,
+    "tags": [
+      "Psychology",
+      "Existentialism",
+      "Human Nature",
+      "Philosophy",
+      "Pulitzer Prize"
+    ],
+    "excerpt": "Man is a creature with a name who can think about himself and realize his own terrifying predicament.",
+    "fileHash": "1121ec271aeb3b348b1bfd0f978f53a60e44732aeb88de6093a13741512b4a25"
+  },
+  {
+    "id": "the-intelligent-investor",
+    "title": "The Intelligent Investor",
+    "author": "Benjamin Graham",
+    "category": "Business, Finance & Economics",
+    "resourceType": "Book",
+    "cover": "/images/books/the-intelligent-investor.webp",
+    "pdf": "/pdfs/TheIntelligentInvestor.pdf",
+    "description": "The definitive classic on value investing by Benjamin Graham, teaching timeless principles of financial analysis, risk management, and emotional discipline.",
+    "year": 1949,
+    "pages": 641,
+    "language": "English",
+    "rating": 4.8,
+    "featured": false,
+    "tags": [
+      "Finance",
+      "Investing",
+      "Value Investing",
+      "Economics",
+      "Business"
+    ],
+    "excerpt": "The intelligent investor is a realist who sells to optimists and buys from pessimists.",
+    "fileHash": "2fca98ab2511938ca6f9b4e024e7bd6e456c9d41c46ac16c99da38912f876f33"
   }
 ]
