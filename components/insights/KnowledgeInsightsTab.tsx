@@ -10,8 +10,13 @@ export default function KnowledgeInsightsTab() {
   const { readingHistory, favorites, streakData, reflections, readingMemories, annotations, stats } = useLibrary();
 
   const insights = useMemo(() => {
+<<<<<<< HEAD
     return generateKnowledgeInsights(readingHistory, favorites, streakData, reflections, readingMemories, annotations, stats);
   }, [readingHistory, favorites, streakData, reflections, readingMemories, annotations, stats]);
+=======
+    return generateKnowledgeInsights(readingHistory, favorites, streakData, reflections, readingMemories, annotations);
+  }, [readingHistory, favorites, streakData, reflections, readingMemories, annotations]);
+>>>>>>> new-feature
 
   const studyHours = (insights.totalStudyMinutes / 60).toFixed(1);
 

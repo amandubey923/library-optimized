@@ -7,14 +7,12 @@ import { Book, BOOKS } from "@/data/books";
 import {
   ReadingProgressItem,
   ReadingStreakData,
-  ReadingStats,
   BookReflection,
   BookReadingMemory,
   BookAnnotations,
   getAllReadingMemories,
   getAllBookAnnotations,
   getBookReflections,
-  getGenuinelyCompletedBookIds,
 } from "@/lib/reader-storage";
 
 export interface CategoryDistribution {

@@ -1169,47 +1169,6 @@ export function clearPageDrawings(bookId: string, page: number): void {
   saveBookAnnotations(bookId, current);
 }
 
-/**
- * Shared authoritative calculation for genuinely finished / completed books.
- * Single source of truth across:
- * - Stats & Goals (booksCompleted)
- * - Knowledge Insights (totalCompleted / Books Finished)
- * - My Shelf (Completed tab)
- * 
- * Rules:
- * 1. Progress completion condition: progress >= 95% OR current page >= totalPages.
- * 2. Genuine active reading time requirement: >= 180 seconds (3 min) of active logged study on that book.
- */
-export function getGenuinelyCompletedBookIds(
-  history?: ReadingProgressItem[],
-  memories?: Record<string, BookReadingMemory>
-): string[] {
-  let historyList = history;
-  if (!historyList && typeof window !== "undefined") {
-    try {
-      const raw = localStorage.getItem(HISTORY_KEY);
-      if (raw) historyList = JSON.parse(raw);
-    } catch {}
-  }
-  if (!historyList) historyList = [];
-
-  const allMemories = memories || (typeof window !== "undefined" ? getAllReadingMemories() : {});
-  const completedIds: string[] = [];
-
-  for (const item of historyList) {
-    if (!item?.bookId) continue;
-    const mem = allMemories[item.bookId] || (typeof window !== "undefined" ? getBookReadingMemory(item.bookId) : undefined);
-    const bookSecs = mem?.totalSeconds || 0;
-    const isProgressCompleted = item.progress >= 95 || Boolean(item.totalPages && item.page >= item.totalPages);
-
-    if (isProgressCompleted && bookSecs >= 180) {
-      completedIds.push(item.bookId);
-    }
-  }
-
-  return completedIds;
-}
-
 // -------------------------------------------------------------
 // Genuine Local Reading Statistics Calculator
 // -------------------------------------------------------------
@@ -1270,9 +1229,6 @@ export function calculateReadingStats(): ReadingStats {
     if (history) {
       const parsed: ReadingProgressItem[] = JSON.parse(history);
       const allMemories = getAllReadingMemories();
-      const completedIds = getGenuinelyCompletedBookIds(parsed, allMemories);
-      booksCompleted = completedIds.length;
-
       for (const item of parsed) {
         const mem = allMemories[item.bookId] || getBookReadingMemory(item.bookId);
         const bookSecs = mem?.totalSeconds || 0;
