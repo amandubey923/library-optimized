@@ -239,6 +239,208 @@ export function clearShelfDismissals(): void {
   } catch {}
 }
 
+// ---------------------------------------------------------------------------
+// 2.7 Smart Reading Collections (Isolated Namespace: readershub:collections:v1)
+// ---------------------------------------------------------------------------
+export const COLLECTIONS_KEY = "readershub:collections:v1";
+
+export interface ReadingCollection {
+  id: string;
+  name: string;
+  description?: string;
+  color?: string;
+  bookIds: string[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+let collectionsCache: ReadingCollection[] | null = null;
+
+export function getReadingCollections(): ReadingCollection[] {
+  if (typeof window === "undefined") return [];
+  if (collectionsCache) return collectionsCache;
+  try {
+    const raw = localStorage.getItem(COLLECTIONS_KEY);
+    if (!raw) {
+      collectionsCache = [];
+      return [];
+    }
+    collectionsCache = JSON.parse(raw);
+    return Array.isArray(collectionsCache) ? collectionsCache : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveReadingCollections(collections: ReadingCollection[]): void {
+  if (typeof window === "undefined") return;
+  collectionsCache = collections;
+  try {
+    localStorage.setItem(COLLECTIONS_KEY, JSON.stringify(collections));
+  } catch (e) {
+    console.warn("[ReaderStorage] Failed to save collections:", e);
+  }
+}
+
+export function createReadingCollection(
+  name: string,
+  description?: string,
+  color?: string
+): ReadingCollection {
+  const collections = [...getReadingCollections()];
+  const id = `col-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+  const newCol: ReadingCollection = {
+    id,
+    name: name.trim() || "Untitled Collection",
+    description: description?.trim() || "",
+    color: color || "emerald",
+    bookIds: [],
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  };
+  collections.unshift(newCol);
+  saveReadingCollections(collections);
+  return newCol;
+}
+
+export function updateReadingCollection(
+  id: string,
+  updates: Partial<Pick<ReadingCollection, "name" | "description" | "color">>
+): ReadingCollection | null {
+  const collections = [...getReadingCollections()];
+  const idx = collections.findIndex((c) => c.id === id);
+  if (idx === -1) return null;
+  const updated: ReadingCollection = {
+    ...collections[idx],
+    ...updates,
+    updatedAt: Date.now(),
+  };
+  collections[idx] = updated;
+  saveReadingCollections(collections);
+  return updated;
+}
+
+export function deleteReadingCollection(id: string): void {
+  const collections = getReadingCollections().filter((c) => c.id !== id);
+  saveReadingCollections(collections);
+}
+
+export function addBookToCollection(collectionId: string, bookId: string): void {
+  if (!bookId) return;
+  const collections = [...getReadingCollections()];
+  const col = collections.find((c) => c.id === collectionId);
+  if (!col) return;
+  if (!col.bookIds.includes(bookId)) {
+    col.bookIds = [...col.bookIds, bookId];
+    col.updatedAt = Date.now();
+    saveReadingCollections(collections);
+  }
+}
+
+export function removeBookFromCollection(collectionId: string, bookId: string): void {
+  if (!bookId) return;
+  const collections = [...getReadingCollections()];
+  const col = collections.find((c) => c.id === collectionId);
+  if (!col) return;
+  if (col.bookIds.includes(bookId)) {
+    col.bookIds = col.bookIds.filter((id) => id !== bookId);
+    col.updatedAt = Date.now();
+    saveReadingCollections(collections);
+  }
+}
+
+export function getCollectionsForBook(bookId: string): ReadingCollection[] {
+  if (!bookId) return [];
+  return getReadingCollections().filter((c) => c.bookIds.includes(bookId));
+}
+
+export function clearAllCollections(): void {
+  if (typeof window === "undefined") return;
+  collectionsCache = [];
+  try {
+    localStorage.removeItem(COLLECTIONS_KEY);
+  } catch {}
+}
+
+// ---------------------------------------------------------------------------
+// 2.8 Post-Completion Reflections (Isolated Namespace: readershub:reflections:v1)
+// ---------------------------------------------------------------------------
+export const REFLECTIONS_KEY = "readershub:reflections:v1";
+
+export interface BookReflection {
+  bookId: string;
+  reflection: string;
+  completedAt: number;
+  rating?: number;
+}
+
+let reflectionsCache: Record<string, BookReflection> | null = null;
+
+export function getBookReflections(): Record<string, BookReflection> {
+  if (typeof window === "undefined") return {};
+  if (reflectionsCache) return reflectionsCache;
+  try {
+    const raw = localStorage.getItem(REFLECTIONS_KEY);
+    if (!raw) {
+      reflectionsCache = {};
+      return {};
+    }
+    reflectionsCache = JSON.parse(raw);
+    return reflectionsCache || {};
+  } catch {
+    return {};
+  }
+}
+
+export function getBookReflection(bookId: string): BookReflection | null {
+  if (!bookId) return null;
+  const all = getBookReflections();
+  return all[bookId] || null;
+}
+
+export function saveBookReflection(
+  bookId: string,
+  reflection: string,
+  rating?: number
+): void {
+  if (typeof window === "undefined" || !bookId) return;
+  try {
+    const current = { ...getBookReflections() };
+    current[bookId] = {
+      bookId,
+      reflection: reflection.trim(),
+      completedAt: Date.now(),
+      rating,
+    };
+    reflectionsCache = current;
+    localStorage.setItem(REFLECTIONS_KEY, JSON.stringify(current));
+  } catch (e) {
+    console.warn("[ReaderStorage] Failed to save reflection:", e);
+  }
+}
+
+export function removeBookReflection(bookId: string): void {
+  if (typeof window === "undefined" || !bookId) return;
+  try {
+    const current = { ...getBookReflections() };
+    if (current[bookId]) {
+      delete current[bookId];
+      reflectionsCache = current;
+      localStorage.setItem(REFLECTIONS_KEY, JSON.stringify(current));
+    }
+  } catch (e) {
+    console.warn("[ReaderStorage] Failed to remove reflection:", e);
+  }
+}
+
+export function clearAllReflections(): void {
+  if (typeof window === "undefined") return;
+  reflectionsCache = {};
+  try {
+    localStorage.removeItem(REFLECTIONS_KEY);
+  } catch {}
+}
+
 export const DAILY_READING_GOAL_SECONDS = 15 * 60; // 15 minutes = 900 seconds
 
 // -------------------------------------------------------------
@@ -1022,17 +1224,39 @@ export function calculateReadingStats(): ReadingStats {
       totalFavorites = JSON.parse(favs).length;
     }
 
-    // 2. Reading History
+    // 2. Reading History & Genuinely Explored Books
     const history = localStorage.getItem(HISTORY_KEY);
     if (history) {
       const parsed: ReadingProgressItem[] = JSON.parse(history);
-      booksStarted = parsed.length;
       for (const item of parsed) {
-        pagesRead += item.page || 1;
-        if (item.progress >= 98 || (item.totalPages && item.page >= item.totalPages)) {
+        const mem = getBookReadingMemory(item.bookId);
+        const bookSecs = mem?.totalSeconds || 0;
+        const hasGenuineReading = bookSecs >= 30;
+
+        // A book counts as started/explored only when genuine active reading occurred on this book
+        if (hasGenuineReading) {
+          booksStarted += 1;
+        }
+
+        // Pages read is bounded by plausible reading time on this book
+        if (hasGenuineReading) {
+          pagesRead += Math.max(1, Math.min(item.page || 1, Math.floor(bookSecs / 45)));
+        }
+
+        // Completed only if finished progress AND meaningful genuine study time on this book
+        if (
+          (item.progress >= 95 || (item.totalPages && item.page >= item.totalPages)) &&
+          bookSecs >= 180
+        ) {
           booksCompleted += 1;
         }
       }
+    }
+
+    // If reading time > 0 but no history items reached threshold, compute plausible pages read
+    if (totalReadingSeconds > 0 && pagesRead === 0) {
+      pagesRead = Math.max(1, Math.floor(totalReadingSeconds / 60));
+      if (booksStarted === 0) booksStarted = 1;
     }
 
     // 3. Scan LocalStorage for Bookmarks & Annotations
@@ -1326,6 +1550,28 @@ export function invalidateAllCaches(): void {
   memoryCache.clear();
   activeTimeCache = null;
   shelfDismissalsCache = null;
+  collectionsCache = null;
+  reflectionsCache = null;
+}
+
+export function clearAllUserDataOnLogout(): void {
+  if (typeof window === "undefined") return;
+  try {
+    invalidateAllCaches();
+    const keysToRemove: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (
+        key &&
+        (key.startsWith("readershub:") || key.startsWith("readers_hub_"))
+      ) {
+        keysToRemove.push(key);
+      }
+    }
+    keysToRemove.forEach((k) => localStorage.removeItem(k));
+  } catch (e) {
+    console.warn("[ReaderStorage] Failed to clear user data on logout:", e);
+  }
 }
 
 export function exportAllStorageDataForSync(): {
@@ -1335,6 +1581,9 @@ export function exportAllStorageDataForSync(): {
   activeTime: WebsiteActiveTimeData;
   readingMemories: Record<string, BookReadingMemory>;
   annotations: Record<string, BookAnnotations>;
+  collections?: ReadingCollection[];
+  reflections?: Record<string, BookReflection>;
+  shelfDismissals?: ShelfDismissalsMap;
 } {
   if (typeof window === "undefined") {
     return {
@@ -1344,6 +1593,9 @@ export function exportAllStorageDataForSync(): {
       activeTime: { totalActiveSeconds: 0, daily: {}, lastUpdated: Date.now() },
       readingMemories: {},
       annotations: {},
+      collections: [],
+      reflections: {},
+      shelfDismissals: {},
     };
   }
 
@@ -1361,6 +1613,9 @@ export function exportAllStorageDataForSync(): {
   const activeTime = getWebsiteActiveTimeData();
   const readingMemories = getAllReadingMemories();
   const annotations = getAllBookAnnotations();
+  const collections = getReadingCollections();
+  const reflections = getBookReflections();
+  const shelfDismissals = getShelfDismissals();
 
   return {
     favorites,
@@ -1369,6 +1624,9 @@ export function exportAllStorageDataForSync(): {
     activeTime,
     readingMemories,
     annotations,
+    collections,
+    reflections,
+    shelfDismissals,
   };
 }
 
@@ -1379,12 +1637,17 @@ export function hydrateStorageFromCloudData(data: {
   activeTime?: WebsiteActiveTimeData;
   readingMemories?: Record<string, BookReadingMemory>;
   annotations?: Record<string, BookAnnotations>;
+  collections?: ReadingCollection[];
+  reflections?: Record<string, BookReflection>;
+  shelfDismissals?: ShelfDismissalsMap;
 }): void {
   if (typeof window === "undefined") return;
 
   try {
     if (data.favorites) {
       localStorage.setItem(FAVORITES_KEY, JSON.stringify(data.favorites));
+    } else {
+      localStorage.removeItem(FAVORITES_KEY);
     }
 
     if (data.readingHistory) {
@@ -1405,14 +1668,20 @@ export function hydrateStorageFromCloudData(data: {
           );
         }
       });
+    } else {
+      localStorage.removeItem(HISTORY_KEY);
     }
 
     if (data.readingActivity) {
       localStorage.setItem(ACTIVITY_KEY, JSON.stringify(data.readingActivity));
+    } else {
+      localStorage.removeItem(ACTIVITY_KEY);
     }
 
     if (data.activeTime) {
       localStorage.setItem(ACTIVE_TIME_KEY, JSON.stringify(data.activeTime));
+    } else {
+      localStorage.removeItem(ACTIVE_TIME_KEY);
     }
 
     if (data.readingMemories) {
@@ -1429,6 +1698,24 @@ export function hydrateStorageFromCloudData(data: {
           localStorage.setItem(`${ANNOTATIONS_KEY_PREFIX}:${bookId}`, JSON.stringify(ann));
         }
       }
+    }
+
+    if (data.collections) {
+      localStorage.setItem(COLLECTIONS_KEY, JSON.stringify(data.collections));
+    } else {
+      localStorage.removeItem(COLLECTIONS_KEY);
+    }
+
+    if (data.reflections) {
+      localStorage.setItem(REFLECTIONS_KEY, JSON.stringify(data.reflections));
+    } else {
+      localStorage.removeItem(REFLECTIONS_KEY);
+    }
+
+    if (data.shelfDismissals) {
+      localStorage.setItem(SHELF_DISMISSALS_KEY, JSON.stringify(data.shelfDismissals));
+    } else {
+      localStorage.removeItem(SHELF_DISMISSALS_KEY);
     }
 
     // Invalidate in-memory caches so subsequent calls immediately read the hydrated values

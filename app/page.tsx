@@ -9,6 +9,7 @@ import FeaturedCarousel from "@/components/FeaturedCarousel";
 import ReadingUniverse from "@/components/visual/ReadingUniverse";
 import CategoryPills from "@/components/CategoryPills";
 import BookCard from "@/components/BookCard";
+import SmartRecommendations from "@/components/recommendations/SmartRecommendations";
 
 export default function HomePage() {
   const [selectedCategory, setSelectedCategory] = useState<Category>("All");
@@ -195,7 +196,14 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* 6. Why Reader's HUB / Mission Section */}
+      {/* 6. Smart Personalized Recommendations Rail */}
+      <section className="py-12 border-t border-[var(--border)]/80">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <SmartRecommendations maxSections={3} />
+        </div>
+      </section>
+
+      {/* 7. Why Reader's HUB / Mission Section */}
       <section className="py-16 border-t border-[var(--border)]/80 bg-[var(--background)]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-12">

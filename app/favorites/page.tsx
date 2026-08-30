@@ -10,12 +10,16 @@ import { Book, BOOKS } from "@/data/books";
 import BookCard from "@/components/BookCard";
 import { getLocalDateKey, getPreviousDateKey, DAILY_READING_GOAL_SECONDS } from "@/lib/reader-storage";
 import AuthGuard from "@/components/auth/AuthGuard";
+import CollectionsTab from "@/components/collections/CollectionsTab";
+import ReadingPathsTab from "@/components/paths/ReadingPathsTab";
+import KnowledgeInsightsTab from "@/components/insights/KnowledgeInsightsTab";
+import SmartRecommendations from "@/components/recommendations/SmartRecommendations";
 
 const BookReadingMemory = dynamic(() => import("@/components/memory/BookReadingMemory"), {
   ssr: false,
 });
 
-type ShelfTab = "favorites" | "reading" | "completed" | "offline" | "memory" | "stats";
+type ShelfTab = "favorites" | "reading" | "completed" | "collections" | "paths" | "insights" | "offline" | "memory" | "stats";
 
 export default function FavoritesPage() {
   const {
@@ -37,6 +41,7 @@ export default function FavoritesPage() {
     clearStreak,
     clearOfflineStorage,
     factoryReset,
+    collections,
   } = useLibrary();
 
   const [activeTab, setActiveTab] = useState<ShelfTab>("favorites");
@@ -376,6 +381,20 @@ export default function FavoritesPage() {
           </button>
 
           <button
+            onClick={() => setActiveTab("memory")}
+            className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 sm:gap-2 whitespace-nowrap flex-shrink-0 ${
+              activeTab === "memory"
+                ? "bg-[var(--primary)] text-[var(--primary-foreground)] shadow-md"
+                : "bg-[var(--card)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)]"
+            }`}
+          >
+            <span>🧠 Reading Memory</span>
+            <span className="px-1.5 py-0.2 rounded-full bg-black/20 text-[10px]">
+              {memoryBooks.length}
+            </span>
+          </button>
+
+          <button
             onClick={() => setActiveTab("reading")}
             className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 sm:gap-2 whitespace-nowrap flex-shrink-0 ${
               activeTab === "reading"
@@ -404,6 +423,42 @@ export default function FavoritesPage() {
           </button>
 
           <button
+            onClick={() => setActiveTab("collections")}
+            className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 sm:gap-2 whitespace-nowrap flex-shrink-0 ${
+              activeTab === "collections"
+                ? "bg-[var(--primary)] text-[var(--primary-foreground)] shadow-md"
+                : "bg-[var(--card)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)]"
+            }`}
+          >
+            <span>📚 Collections</span>
+            <span className="px-1.5 py-0.2 rounded-full bg-black/20 text-[10px]">
+              {collections.length}
+            </span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("paths")}
+            className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 sm:gap-2 whitespace-nowrap flex-shrink-0 ${
+              activeTab === "paths"
+                ? "bg-[var(--primary)] text-[var(--primary-foreground)] shadow-md"
+                : "bg-[var(--card)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)]"
+            }`}
+          >
+            <span>🧭 Reading Paths</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab("insights")}
+            className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 sm:gap-2 whitespace-nowrap flex-shrink-0 ${
+              activeTab === "insights"
+                ? "bg-[var(--primary)] text-[var(--primary-foreground)] shadow-md"
+                : "bg-[var(--card)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)]"
+            }`}
+          >
+            <span>📊 Knowledge Insights</span>
+          </button>
+
+          <button
             onClick={() => {
               setActiveTab("offline");
               refreshOfflineBooks();
@@ -417,20 +472,6 @@ export default function FavoritesPage() {
             <span>📦 Offline Books</span>
             <span className="px-1.5 py-0.2 rounded-full bg-black/20 text-[10px]">
               {visibleOfflineBooks.length}
-            </span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab("memory")}
-            className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 sm:gap-2 whitespace-nowrap flex-shrink-0 ${
-              activeTab === "memory"
-                ? "bg-[var(--primary)] text-[var(--primary-foreground)] shadow-md"
-                : "bg-[var(--card)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)]"
-            }`}
-          >
-            <span>🧠 Reading Memory</span>
-            <span className="px-1.5 py-0.2 rounded-full bg-black/20 text-[10px]">
-              {memoryBooks.length}
             </span>
           </button>
 
@@ -673,7 +714,34 @@ export default function FavoritesPage() {
       )}
 
       {/* -------------------------------------------------------------
-       * Tab 4: Offline Books Manager
+       * Tab 4: Collections
+       * ------------------------------------------------------------- */}
+      {activeTab === "collections" && (
+        <div className="w-full min-w-0">
+          <CollectionsTab />
+        </div>
+      )}
+
+      {/* -------------------------------------------------------------
+       * Tab 5: Reading Paths
+       * ------------------------------------------------------------- */}
+      {activeTab === "paths" && (
+        <div className="w-full min-w-0">
+          <ReadingPathsTab />
+        </div>
+      )}
+
+      {/* -------------------------------------------------------------
+       * Tab 6: Knowledge Insights
+       * ------------------------------------------------------------- */}
+      {activeTab === "insights" && (
+        <div className="w-full min-w-0">
+          <KnowledgeInsightsTab />
+        </div>
+      )}
+
+      {/* -------------------------------------------------------------
+       * Tab 7: Offline Books Manager
        * ------------------------------------------------------------- */}
       {activeTab === "offline" && (
         <div className="w-full space-y-4 sm:space-y-6 min-w-0">
@@ -1050,7 +1118,7 @@ export default function FavoritesPage() {
                   <span>12-Week Active Reading Activity Heatmap</span>
                 </h4>
                 <p className="text-[11px] sm:text-xs text-[var(--text-secondary)] mt-0.5">
-                  Derived from your genuine browser-local reading sessions.
+                  Derived from your genuine authenticated reading sessions.
                 </p>
               </div>
               <div className="flex items-center gap-1.5 text-[10px] text-[var(--text-secondary)] font-medium">
@@ -1317,6 +1385,13 @@ export default function FavoritesPage() {
           </div>,
           document.body
         )}
+
+      {/* Smart Recommendations Section (rendered strictly ONLY on primary shelf views) */}
+      {(activeTab === "favorites" || activeTab === "reading" || activeTab === "completed") && (
+        <div className="pt-10 border-t border-[var(--border)] mt-12">
+          <SmartRecommendations maxSections={2} />
+        </div>
+      )}
 
       {/* Selected Book Reading Memory Modal */}
       {selectedMemoryBook && (
