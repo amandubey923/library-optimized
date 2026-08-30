@@ -1228,8 +1228,8 @@ export function calculateReadingStats(): ReadingStats {
     const history = localStorage.getItem(HISTORY_KEY);
     if (history) {
       const parsed: ReadingProgressItem[] = JSON.parse(history);
+      const allMemories = getAllReadingMemories();
       for (const item of parsed) {
-        const mem = getBookReadingMemory(item.bookId);
         const mem = allMemories[item.bookId] || getBookReadingMemory(item.bookId);
         const bookSecs = mem?.totalSeconds || 0;
         const hasGenuineReading = bookSecs >= 30;

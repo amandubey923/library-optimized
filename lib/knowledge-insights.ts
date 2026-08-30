@@ -74,7 +74,6 @@ export function generateKnowledgeInsights(
   streakData: ReadingStreakData = { daily: {}, currentStreak: 0, longestStreak: 0, lastQualifiedDate: null },
   reflectionsData?: Record<string, BookReflection>,
   memoriesData?: Record<string, BookReadingMemory>,
-  annotationsData?: Record<string, BookAnnotations>
   annotationsData?: Record<string, BookAnnotations>,
   stats?: ReadingStats
 ): KnowledgeInsightsResult {
@@ -107,7 +106,6 @@ export function generateKnowledgeInsights(
     );
 
     // A book is genuinely explored only if active reading occurred on it, or user wrote reflection/notes
-    if (memSecs >= 30 || hasReflection || hasAnnotations) {
     if (memSecs >= 30 || hasReflection || hasAnnotations || genuinelyCompletedIds.has(h.bookId)) {
       engagedBookIds.add(h.bookId);
     }
