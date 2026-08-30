@@ -91,8 +91,6 @@ export default function ReadingPathsTab() {
           {activePath.steps.map((step) => {
             const isRead = readingHistory.some((h) => h.bookId === step.bookId && h.progress >= 95);
             const inProgress = readingHistory.some((h) => h.bookId === step.bookId && h.progress > 0 && h.progress < 95);
-            const isRead = Boolean(step.bookId && completedIds.has(step.bookId));
-            const inProgress = Boolean(!isRead && step.bookId && readingHistory.some((h) => h.bookId === step.bookId && h.progress > 0));
 
             return (
               <div

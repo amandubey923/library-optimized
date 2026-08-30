@@ -164,7 +164,6 @@ export default function FavoritesPage() {
     const completedSet = new Set(getGenuinelyCompletedBookIds(readingHistory));
     return readingHistory
       .filter((item) => (item.progress >= 98 || (item.totalPages && item.page >= item.totalPages)) && !isDismissedFromShelf("completed", item.bookId))
-      .filter((item) => completedSet.has(item.bookId) && !isDismissedFromShelf("completed", item.bookId))
       .map((item) => {
         const book = BOOKS.find((b) => b.id === item.bookId);
         if (!book) return null;

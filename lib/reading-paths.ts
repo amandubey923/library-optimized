@@ -206,7 +206,6 @@ export function getPathProgress(
     if (step.bookId && historyMap.has(step.bookId)) {
       const item = historyMap.get(step.bookId)!;
       if (item.progress >= 95) {
-      if (completedIds.has(step.bookId)) {
         completed += 1;
       } else if (item.progress > 0) {
         inProgress += 1;
