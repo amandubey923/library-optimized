@@ -9,6 +9,7 @@ import { useEntitlement } from "@/context/EntitlementContext";
 import DrawingCanvas from "@/components/reader/DrawingCanvas";
 import AnnotationDrawer from "@/components/reader/AnnotationDrawer";
 import BookReadingMemory from "@/components/memory/BookReadingMemory";
+import { SESSION_PRESETS } from "@/components/reader/ReadingSessionTimer";
 import { TranslationDrawer, TranslationPosition } from "@/components/reader/TranslationDrawer";
 import { pageSound } from "@/lib/pageSound";
 import {
@@ -303,11 +304,13 @@ export default function BookReader({ book }: BookReaderProps) {
 
   // Active Reading Streak Tracker Refs
   const lastActivityTimestampRef = useRef<number>(Date.now());
+  const pageDwellStartRef = useRef<number>(Date.now());
   const accumulatedSecondsRef = useRef<number>(0);
   const activeSessionRef = useRef(activeSession);
   const sessionCompletedRef = useRef<boolean>(false);
   const handleCompleteSessionRef = useRef<((customTargetSecs?: number) => void) | null>(null);
   const currentPageRef = useRef(currentPage);
+  const numPagesRef = useRef(numPages);
   const isSessionCompleteOpenRef = useRef(isSessionCompleteOpen);
   const showToastRef = useRef(showToast);
   const recordSessionEventRef = useRef(recordSessionEvent);
@@ -321,7 +324,12 @@ export default function BookReader({ book }: BookReaderProps) {
 
   useEffect(() => {
     currentPageRef.current = currentPage;
+    pageDwellStartRef.current = Date.now();
   }, [currentPage]);
+
+  useEffect(() => {
+    numPagesRef.current = numPages;
+  }, [numPages]);
 
   useEffect(() => {
     isSessionCompleteOpenRef.current = isSessionCompleteOpen;
@@ -452,6 +460,7 @@ export default function BookReader({ book }: BookReaderProps) {
   // 1.5. Intelligent Active Reading Timer (Diwali Diya & Book Memory Tracker)
   useEffect(() => {
     const IDLE_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes grace period for stationary reading
+    pageDwellStartRef.current = Date.now();
 
     const timer = setInterval(() => {
       if (
@@ -462,8 +471,10 @@ export default function BookReader({ book }: BookReaderProps) {
       ) {
         const now = Date.now();
         const timeSinceLastActivity = now - lastActivityTimestampRef.current;
+        const pageDwellSeconds = (now - pageDwellStartRef.current) / 1000;
 
-        if (timeSinceLastActivity < IDLE_TIMEOUT_MS) {
+        // User must be actively dwell-reading on current page for at least 3 seconds (avoiding rapid flips) and not idle
+        if (timeSinceLastActivity < IDLE_TIMEOUT_MS && pageDwellSeconds >= 3) {
           accumulatedSecondsRef.current += 1;
 
           if (accumulatedSecondsRef.current >= 5) {
@@ -471,6 +482,7 @@ export default function BookReader({ book }: BookReaderProps) {
             accumulatedSecondsRef.current = 0;
             const res = recordActiveReadingRef.current(secs);
             addBookReadingTimeRef.current(book.id, secs);
+            updateReadingProgress(book.id, currentPageRef.current, numPagesRef.current);
             if (res.justQualified) {
               showToastRef.current("🪔 15-minute daily reading goal reached! Your Diwali Diya is lit! ✨");
             }
@@ -490,14 +502,17 @@ export default function BookReader({ book }: BookReaderProps) {
 
     return () => {
       clearInterval(timer);
-      if (accumulatedSecondsRef.current > 0) {
+      if (accumulatedSecondsRef.current >= 5) {
         const secs = accumulatedSecondsRef.current;
         accumulatedSecondsRef.current = 0;
         recordActiveReadingRef.current(secs);
         addBookReadingTimeRef.current(book.id, secs);
+        updateReadingProgress(book.id, currentPageRef.current, numPagesRef.current);
+      } else {
+        accumulatedSecondsRef.current = 0;
       }
     };
-  }, [loading, book.id]);
+  }, [loading, book.id, updateReadingProgress]);
 
   // 2. Load Standalone PDF.js Library
   useEffect(() => {
@@ -568,7 +583,6 @@ export default function BookReader({ book }: BookReaderProps) {
 
         const targetPage = Math.min(doc.numPages, Math.max(1, initialPage));
         setCurrentPage(targetPage);
-        updateReadingProgress(book.id, targetPage, doc.numPages);
         saveProgress(book.id, targetPage, doc.numPages);
 
         // Extract PDF Outline
@@ -748,7 +762,6 @@ export default function BookReader({ book }: BookReaderProps) {
       renderPageToCanvas(currentPage, canvasSingleRef.current, "single");
     }
 
-    updateReadingProgress(book.id, currentPage, numPages);
     saveProgress(book.id, currentPage, numPages);
   }, [
     currentPage,
@@ -760,7 +773,6 @@ export default function BookReader({ book }: BookReaderProps) {
     loading,
     renderPageToCanvas,
     book.id,
-    updateReadingProgress,
   ]);
 
   // 6. Navigation Logic
@@ -2351,18 +2363,18 @@ export default function BookReader({ book }: BookReaderProps) {
               Enter a dedicated distraction-free reading session with full immersion, countdown tracking, and reading memory logging.
             </p>
 
-            {/* Duration Selector: 15 min / 30 min / 45 min */}
+            {/* Duration Selector: 15 min / 25 min / 30 min / 45 min / 60 min */}
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-[var(--foreground)] block">
                 Select Session Duration
               </label>
-              <div className="grid grid-cols-3 gap-2">
-                {[15, 30, 45].map((mins) => (
+              <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
+                {SESSION_PRESETS.map((mins) => (
                   <button
                     key={mins}
                     type="button"
                     onClick={() => setSessionTargetMinutes(mins)}
-                    className={`py-2.5 px-3 rounded-2xl text-xs font-bold font-mono transition-all border cursor-pointer flex flex-col items-center gap-0.5 ${
+                    className={`py-2 px-1 sm:px-2 rounded-2xl text-xs font-bold font-mono transition-all border cursor-pointer flex flex-col items-center gap-0.5 ${
                       sessionTargetMinutes === mins
                         ? "bg-[var(--accent)] text-[var(--primary-foreground)] border-[var(--accent)] shadow-md scale-[1.02]"
                         : "bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] border-[var(--border)]"
