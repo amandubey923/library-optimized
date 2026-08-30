@@ -141,6 +141,12 @@ export async function extractPdfMetadata(filePath: string, filename: string): Pr
   if (isOsho) {
     category = "Philosophy & Spirituality";
     tags = ["Osho", "Spiritual Discourses", "Hindi Literature", "Meditation", "Self-Realization"];
+  } else if (/jane\s*eyre/i.test(filename) || /charlotte\s*bront/i.test(filename) || /charlotte\s*bront/i.test(extractedText)) {
+    category = "Classics";
+    tags = ["Classic Literature", "Victorian Literature", "Gothic Romance", "British Classics"];
+  } else if (/me\s*before\s*you/i.test(filename) || /the\s*notebook/i.test(filename) || /time.*traveler/i.test(filename) || /nicholas\s*sparks/i.test(filename) || /jojo\s*moyes/i.test(filename)) {
+    category = "Romance";
+    tags = ["Romance", "Contemporary Fiction", "Emotional", "Bestseller", "Love Story"];
   } else if (
     lowerFile.includes("investor") || lowerFile.includes("intelligent investor") ||
     lowerFile.includes("finance") || lowerFile.includes("economics") || lowerFile.includes("startup")
@@ -152,6 +158,13 @@ export async function extractPdfMetadata(filePath: string, filename: string): Pr
   ) {
     category = "Self-Development & Psychology";
     tags = ["Psychology", "Existentialism", "Human Nature", "Philosophy"];
+  } else if (
+    /clean[\s_-]*code/i.test(filename) || /clean[\s_-]*architecture/i.test(filename) || /refactoring/i.test(filename) ||
+    /pragmatic[\s_-]*programmer/i.test(filename) || /design[\s_-]*pattern/i.test(filename) || /software[\s_-]*engineering/i.test(filename) ||
+    lowerText.includes("clean architecture") || lowerText.includes("refactoring") || lowerText.includes("software craftsmanship")
+  ) {
+    category = "Technical Knowledge";
+    tags = ["OOP & Software Design", "Software Architecture", "Clean Code", "Best Practices", "Technical Knowledge"];
   } else if (
     lowerFile.includes("dsa") || lowerFile.includes("leetcode") || lowerFile.includes("algorithm") ||
     lowerText.includes("data structure") || lowerText.includes("dynamic programming")
@@ -183,20 +196,45 @@ export async function extractPdfMetadata(filePath: string, filename: string): Pr
   ) {
     category = "Technical Knowledge";
     tags = ["Web Development", "Programming", "Frontend", "Backend"];
-  } else if (/[\u0900-\u097F]/.test(extractedText) || /[\u0900-\u097F]/.test(filename)) {
+  } else if (
+    lowerFile.includes("kurukshetra") || lowerFile.includes("tyag-patra") || lowerFile.includes("sekhar") || lowerFile.includes("shekhar") ||
+    /[\u0900-\u097F]/.test(extractedText) || /[\u0900-\u097F]/.test(filename)
+  ) {
     category = "Hindi Literature";
-    tags = ["Hindi Literature", "Sahitya", "Classic"];
+    tags = ["Hindi Literature", "Sahitya", "Classic", "Hindi Novel"];
   }
 
   // 7. Resolve Author & Title
   let author = isOsho ? "Osho" : "Reader's HUB";
-  if (!isOsho && metaAuthor && metaAuthor.trim().length > 2 && !metaAuthor.includes("Unknown")) {
+  if (!isOsho && metaAuthor && metaAuthor.trim().length > 2 && !metaAuthor.includes("Unknown") && !metaAuthor.includes("Microsoft")) {
     author = metaAuthor.trim();
   }
 
-  // Non-Osho author extraction heuristics if still default
-  if (!isOsho && (author === "Reader's HUB" || author === "Unknown")) {
-    if (/clean\s*code/i.test(filename) || /robert\s*c\.?\s*martin/i.test(filename) || /robert\s*c\.?\s*martin/i.test(extractedText) || /uncle\s*bob/i.test(extractedText)) {
+  // Non-Osho author extraction heuristics
+  if (!isOsho && (author === "Reader's HUB" || author === "Unknown" || author.includes("Microsoft"))) {
+    if (/kurukshetra/i.test(filename) || /dinker|dinkar/i.test(filename)) {
+      author = "Ramdhari Singh 'Dinkar'";
+    } else if (/tyag.*patra/i.test(filename)) {
+      author = "Jainendra Kumar";
+    } else if (/sekhar|shekhar/i.test(filename)) {
+      author = "Sachchidananda Vatsyayan 'Agyeya'";
+    } else if (/jane\s*eyre/i.test(filename)) {
+      author = "Charlotte Brontë";
+    } else if (/me\s*before\s*you/i.test(filename) || /jojo\s*moyes/i.test(filename)) {
+      author = "Jojo Moyes";
+    } else if (/the\s*notebook/i.test(filename) || /nicholas\s*sparks/i.test(filename)) {
+      author = "Nicholas Sparks";
+    } else if (/time.*traveler/i.test(filename) || /audrey\s*niffenegger/i.test(filename)) {
+      author = "Audrey Niffenegger";
+    } else if (/refactoring/i.test(filename) || /martin\s*fowler/i.test(filename) || /martin\s*fowler/i.test(extractedText)) {
+      author = "Martin Fowler";
+    } else if (/pragmatic\s*programmer/i.test(filename) || /andrew\s*hunt/i.test(filename) || /andrew\s*hunt/i.test(extractedText)) {
+      author = "Andrew Hunt & David Thomas";
+    } else if (/clean\s*architecture.*realms|clean\s*architecture.*z/i.test(filename)) {
+      author = "Benjamin Smith";
+    } else if (/clean\s*architecture/i.test(filename) || /robert\s*c\.?\s*martin/i.test(filename) || /uncle\s*bob/i.test(extractedText)) {
+      author = "Robert C. Martin";
+    } else if (/clean\s*code/i.test(filename) || /robert\s*c\.?\s*martin/i.test(filename) || /robert\s*c\.?\s*martin/i.test(extractedText) || /uncle\s*bob/i.test(extractedText)) {
       author = "Robert C. Martin";
     } else if (/bertrand\s*russell/i.test(filename) || /bertrand\s*russell/i.test(extractedText)) {
       author = "Bertrand Russell";
@@ -257,49 +295,107 @@ export async function extractPdfMetadata(filePath: string, filename: string): Pr
       title = base;
     }
   } else {
-    let base = filename.replace(/\.pdf$/i, "").replace(/([a-z])([A-Z])/g, "$1 $2").trim();
-    if (base.includes(" - ")) {
-      base = base.split(" - ")[0].trim();
-    }
-    if (/bertrand\s*russell/i.test(base)) {
-      base = base.replace(/bertrand\s*russell\s*[-–—]*/i, "").replace(/routledge\s*\d*/i, "").trim();
-    }
-    if (/beyond\s*good\s*and\s*evil/i.test(base) || /beyondgoodevil/i.test(filename)) {
-      base = "Beyond Good and Evil";
-    }
-    if (/denial\s*of\s*death/i.test(base)) {
-      base = "The Denial of Death";
-    }
-    if (/intelligent\s*investor/i.test(base)) {
-      base = "The Intelligent Investor";
-    }
-    if (metaTitle && metaTitle.trim().length > 3 && !metaTitle.includes("Untitled") && !metaTitle.includes(".pdf")) {
-      let cleanMetaTitle = metaTitle.trim();
-      if (/clean\s*code/i.test(cleanMetaTitle)) {
-        cleanMetaTitle = "Clean Code: A Handbook of Agile Software Craftsmanship";
-      } else if (/beyond\s*good\s*and\s*evil/i.test(cleanMetaTitle)) {
-        cleanMetaTitle = "Beyond Good and Evil";
-      } else if (/denial\s*of\s*death/i.test(cleanMetaTitle)) {
-        cleanMetaTitle = "The Denial of Death";
-      } else if (/intelligent\s*investor/i.test(cleanMetaTitle)) {
-        cleanMetaTitle = "The Intelligent Investor";
-      }
-      title = cleanMetaTitle;
+    // Specific title mappings for new batch
+    if (/kurukshetra/i.test(filename)) {
+      title = "Kurukshetra (कुरुक्षेत्र)";
+    } else if (/tyag.*patra/i.test(filename)) {
+      title = "Tyagpatra (त्यागपत्र)";
+    } else if (/sekhar|shekhar/i.test(filename)) {
+      title = "Shekhar: Ek Jeevani - Vividh Aayam (शेखर: एक जीवनी)";
+    } else if (/clean.*architecture.*realms|clean.*architecture.*z/i.test(filename)) {
+      title = "Clean Architecture: A Comprehensive Beginner's Guide from A to Z";
+    } else if (/clean.*architecture.*principles|clean.*architecture.*understand/i.test(filename)) {
+      title = "Clean Architecture: Principles and Patterns";
+    } else if (/pragmatic.*programmer/i.test(filename)) {
+      title = "The Pragmatic Programmer: Your Journey to Mastery";
+    } else if (/refactoring/i.test(filename)) {
+      title = "Refactoring: Improving the Design of Existing Code";
+    } else if (/me.*before.*you/i.test(filename)) {
+      title = "Me Before You";
+    } else if (/the.*notebook/i.test(filename)) {
+      title = "The Notebook";
+    } else if (/time.*traveler/i.test(filename)) {
+      title = "The Time Traveler's Wife";
+    } else if (/jane.*eyre/i.test(filename)) {
+      title = "Jane Eyre";
     } else {
-      title = base;
+      let base = filename.replace(/\.pdf$/i, "").replace(/([a-z])([A-Z])/g, "$1 $2").trim();
+      if (base.includes(" - ")) {
+        base = base.split(" - ")[0].trim();
+      }
+      if (/bertrand\s*russell/i.test(base)) {
+        base = base.replace(/bertrand\s*russell\s*[-–—]*/i, "").replace(/routledge\s*\d*/i, "").trim();
+      }
+      if (/beyond\s*good\s*and\s*evil/i.test(base) || /beyondgoodevil/i.test(filename)) {
+        base = "Beyond Good and Evil";
+      }
+      if (/denial\s*of\s*death/i.test(base)) {
+        base = "The Denial of Death";
+      }
+      if (/intelligent\s*investor/i.test(base)) {
+        base = "The Intelligent Investor";
+      }
+      if (metaTitle && metaTitle.trim().length > 3 && !metaTitle.includes("Untitled") && !metaTitle.includes(".pdf") && !metaTitle.includes("Microsoft Word")) {
+        let cleanMetaTitle = metaTitle.trim();
+        if (/clean\s*code/i.test(cleanMetaTitle)) {
+          cleanMetaTitle = "Clean Code: A Handbook of Agile Software Craftsmanship";
+        } else if (/beyond\s*good\s*and\s*evil/i.test(cleanMetaTitle)) {
+          cleanMetaTitle = "Beyond Good and Evil";
+        } else if (/denial\s*of\s*death/i.test(cleanMetaTitle)) {
+          cleanMetaTitle = "The Denial of Death";
+        } else if (/intelligent\s*investor/i.test(cleanMetaTitle)) {
+          cleanMetaTitle = "The Intelligent Investor";
+        }
+        title = cleanMetaTitle;
+      } else {
+        title = base;
+      }
     }
   }
 
   const isHindi = /[\u0900-\u097F]/.test(title) || /[\u0900-\u097F]/.test(extractedText) || category === "Hindi Literature";
   const language = isHindi ? "Hindi" : "English";
 
-  const description = isOsho
+  // Individualized descriptions and excerpts
+  let description = isOsho
     ? `ओशो द्वारा दिए गए आत्म-ज्ञान और आंतरिक सत्य के अन्वेषण पर गहन अमृत प्रवचनों का संकलन।`
     : `Comprehensive high-yield study material covering core concepts, patterns, and practical reference.`;
 
-  const excerpt = isOsho
+  let excerpt = isOsho
     ? `सत्य वह नहीं जो दूसरों से सुना जाए; सत्य वह है जो स्वयं की आँखों से साक्षात् देखा और अनुभूत किया जाए।`
     : `Master essential principles and practical patterns with clear structured notes.`;
+
+  if (/kurukshetra/i.test(title)) {
+    description = "राष्ट्रकवि रामधारी सिंह 'दिनकर' का कालजयी प्रबंध-काव्य, जिसमें महाभारत के युद्ध के माध्यम से शांति और क्रांति, न्याय और हिंसा के सनातन द्वंद्व पर ओजस्वी विचार व्यक्त किए गए हैं।";
+    excerpt = "नर पर नर का अधिकार न हो, कोई न किसी से त्रस्त रहे। सब एक पिता की संतानें, सब एक भाव में मस्त रहें।";
+  } else if (/tyagpatra/i.test(title)) {
+    description = "उपन्यास सम्राट जैनेंद्र कुमार की सुप्रसिद्ध मनोवैज्ञानिक रचना, जो भारतीय समाज में नारी की स्थिति, त्याग और सामाजिक मर्यादाओं का मर्मस्पर्शी विश्लेषण प्रस्तुत करती है।";
+    excerpt = "संसार में त्याग से बड़ा कोई बल नहीं है, लेकिन जब समाज उस त्याग की उपेक्षा करता है तो वह जीवन की त्रासदी बन जाता है।";
+  } else if (/shekhar/i.test(title)) {
+    description = "सच्चिदानंद हीरानंद वात्स्यायन 'अज्ञेय' की अमर औपन्यासिक कृति 'शेखर: एक जीवनी' के विविध आयामों, विद्रोही चेतना और मनोवैज्ञानिक संरचना पर गंभीर विमर्श।";
+    excerpt = "विद्रोह जीवन की सजीवता का प्रमाण है; जो बंधनों को स्वीकार कर लेता है, वह जीने से पहले ही मर जाता है।";
+  } else if (/jane\s*eyre/i.test(title)) {
+    description = "Charlotte Brontë's masterwork following the emotional and moral journey of an independent, resilient governess at Thornfield Hall.";
+    excerpt = "I am no bird; and no net ensnares me; I am a free human being with an independent will, which I now exert to leave you.";
+  } else if (/me\s*before\s*you/i.test(title)) {
+    description = "Jojo Moyes's heartwarming and heartbreaking bestselling romance chronicling the transformative bond between Louisa Clark and Will Traynor.";
+    excerpt = "You only get one life. It's actually your duty to live it as fully as possible.";
+  } else if (/the\s*notebook/i.test(title)) {
+    description = "Nicholas Sparks's timeless, evocative story of enduring love, devotion, and shared memories across decades between Noah Calhoun and Allie Nelson.";
+    excerpt = "I am nothing special, of this I am sure. I am a common man with common thoughts... but I've loved another with all my heart and soul, and to me, this has always been enough.";
+  } else if (/time\s*traveler/i.test(title)) {
+    description = "Audrey Niffenegger's inventive romantic novel about Henry DeTamble, a librarian with a rare genetic disorder causing him to involuntarily travel through time, and his deep bond with Clare Abshire.";
+    excerpt = "I love you, always, time is nothing.";
+  } else if (/pragmatic\s*programmer/i.test(title)) {
+    description = "The seminal software engineering classic by Andrew Hunt and David Thomas that illustrates the craftsmanship, career philosophy, and practical disciplines of software development.";
+    excerpt = "Care About Your Craft. Why spend your life developing software unless you care about doing it well?";
+  } else if (/refactoring/i.test(title)) {
+    description = "Martin Fowler's foundational guide to improving the internal design and maintainability of existing codebases through systematic code transformation patterns.";
+    excerpt = "Any fool can write code that a computer can understand. Good programmers write code that humans can understand.";
+  } else if (/clean\s*architecture/i.test(title)) {
+    description = "Essential principles and practical structural patterns for building decoupled, testable, and maintainable software systems across diverse environments.";
+    excerpt = "The architecture of a software system is the shape given to that system by those who build it.";
+  }
 
   return {
     title,
