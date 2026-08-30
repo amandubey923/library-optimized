@@ -1274,7 +1274,6 @@ export function calculateReadingStats(): ReadingStats {
       booksCompleted = completedIds.length;
 
       for (const item of parsed) {
-        const mem = getBookReadingMemory(item.bookId);
         const mem = allMemories[item.bookId] || getBookReadingMemory(item.bookId);
         const bookSecs = mem?.totalSeconds || 0;
         const hasGenuineReading = bookSecs >= 30;

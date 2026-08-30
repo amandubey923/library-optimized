@@ -8,7 +8,6 @@ import { useLibrary } from "@/context/LibraryContext";
 import dynamic from "next/dynamic";
 import { Book, BOOKS } from "@/data/books";
 import BookCard from "@/components/BookCard";
-import { getLocalDateKey, getPreviousDateKey, DAILY_READING_GOAL_SECONDS } from "@/lib/reader-storage";
 import { getLocalDateKey, getPreviousDateKey, DAILY_READING_GOAL_SECONDS, getGenuinelyCompletedBookIds } from "@/lib/reader-storage";
 import AuthGuard from "@/components/auth/AuthGuard";
 import CollectionsTab from "@/components/collections/CollectionsTab";

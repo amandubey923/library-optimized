@@ -76,7 +76,6 @@ export function generateKnowledgeInsights(
   streakData: ReadingStreakData = { daily: {}, currentStreak: 0, longestStreak: 0, lastQualifiedDate: null },
   reflectionsData?: Record<string, BookReflection>,
   memoriesData?: Record<string, BookReadingMemory>,
-  annotationsData?: Record<string, BookAnnotations>
   annotationsData?: Record<string, BookAnnotations>,
   stats?: ReadingStats
 ): KnowledgeInsightsResult {
@@ -109,7 +108,6 @@ export function generateKnowledgeInsights(
     );
 
     // A book is genuinely explored only if active reading occurred on it, or user wrote reflection/notes
-    if (memSecs >= 30 || hasReflection || hasAnnotations) {
     if (memSecs >= 30 || hasReflection || hasAnnotations || genuinelyCompletedIds.has(h.bookId)) {
       engagedBookIds.add(h.bookId);
     }
@@ -128,7 +126,6 @@ export function generateKnowledgeInsights(
   }
 
   const historyMap = new Map(history.map((h) => [h.bookId, h]));
-  let totalCompleted = 0;
   let rawPagesSum = 0;
 
   const categoryCounts: Record<string, number> = {};
@@ -144,16 +141,10 @@ export function generateKnowledgeInsights(
     const ref = allReflections[bookId];
     const memSeconds = mem?.totalSeconds || 0;
 
-    const progress = hist ? hist.progress : (ref ? 100 : 0);
     const isCompleted = genuinelyCompletedIds.has(bookId);
-    const progress = hist ? hist.progress : (isCompleted ? 100 : 0);
+    const progress = hist ? hist.progress : (isCompleted ? 100 : (ref ? 100 : 0));
     const pages = hist ? hist.page : 0;
     rawPagesSum += pages;
-
-    // Completed only if progress >= 95% AND meaningful study time or has a written reflection
-    if ((progress >= 95 && (memSeconds >= 180 || totalStudySeconds >= 300)) || (ref && ref.reflection)) {
-      totalCompleted += 1;
-    }
 
     // Category distribution
     const cat = book.category || "General";

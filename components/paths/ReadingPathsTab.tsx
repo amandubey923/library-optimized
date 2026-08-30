@@ -1,6 +1,5 @@
 "use client";
 
-import React, { useState } from "react";
 import React, { useState, useMemo } from "react";
 import { READING_PATHS, getPathProgress } from "@/lib/reading-paths";
 import { useLibrary } from "@/context/LibraryContext";
@@ -89,8 +88,6 @@ export default function ReadingPathsTab() {
         {/* Steps Timeline */}
         <div className="space-y-4 relative before:absolute before:top-4 before:bottom-4 before:left-5 before:w-0.5 before:bg-[var(--border)] before:hidden sm:before:block">
           {activePath.steps.map((step) => {
-            const isRead = readingHistory.some((h) => h.bookId === step.bookId && h.progress >= 95);
-            const inProgress = readingHistory.some((h) => h.bookId === step.bookId && h.progress > 0 && h.progress < 95);
             const isRead = Boolean(step.bookId && completedIds.has(step.bookId));
             const inProgress = Boolean(!isRead && step.bookId && readingHistory.some((h) => h.bookId === step.bookId && h.progress > 0));
 
