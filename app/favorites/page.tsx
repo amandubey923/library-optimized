@@ -177,10 +177,10 @@ export default function FavoritesPage() {
       .filter((b): b is Book & { currentPage: number; totalPages: number | string; progress: number; lastReadAt: number } => b !== null);
   }, [readingHistory, isDismissedFromShelf]);
 
-  // 2. Derive Books with Reading Memory (Dismissal Aware)
+  // 2. Derive Books with Reading Memory / In-Progress (Dismissal Aware)
   const memoryBooks = useMemo(() => {
     return readingHistory
-      .filter((item) => !isDismissedFromShelf("memory", item.bookId))
+      .filter((item) => item.progress < 98 && !isDismissedFromShelf("memory", item.bookId))
       .map((item) => {
         const book = BOOKS.find((b) => b.id === item.bookId);
         if (!book) return null;
@@ -384,7 +384,7 @@ export default function FavoritesPage() {
           <button
             onClick={() => setActiveTab("memory")}
             className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 sm:gap-2 whitespace-nowrap flex-shrink-0 ${
-              activeTab === "memory"
+              activeTab === "memory" || activeTab === "reading"
                 ? "bg-[var(--primary)] text-[var(--primary-foreground)] shadow-md"
                 : "bg-[var(--card)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)]"
             }`}
@@ -392,20 +392,6 @@ export default function FavoritesPage() {
             <span>🧠 Reading Memory</span>
             <span className="px-1.5 py-0.2 rounded-full bg-black/20 text-[10px]">
               {memoryBooks.length}
-            </span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab("reading")}
-            className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 sm:gap-2 whitespace-nowrap flex-shrink-0 ${
-              activeTab === "reading"
-                ? "bg-[var(--primary)] text-[var(--primary-foreground)] shadow-md"
-                : "bg-[var(--card)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)]"
-            }`}
-          >
-            <span>📖 In Progress</span>
-            <span className="px-1.5 py-0.2 rounded-full bg-black/20 text-[10px]">
-              {currentlyReadingBooks.length}
             </span>
           </button>
 
@@ -549,91 +535,6 @@ export default function FavoritesPage() {
         </div>
       )}
 
-      {/* -------------------------------------------------------------
-       * Tab 2: In Progress
-       * ------------------------------------------------------------- */}
-      {activeTab === "reading" && (
-        <div className="w-full space-y-4 sm:space-y-6 min-w-0">
-          {currentlyReadingBooks.length === 0 ? (
-            <div className="w-full max-w-2xl mx-auto text-center py-12 sm:py-20 px-4 sm:px-6 glass-card rounded-2xl sm:rounded-3xl border border-[var(--border)] bg-[var(--card)] shadow-2xl">
-              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-[var(--accent)]/10 border border-[var(--accent)]/25 text-2xl sm:text-3xl flex items-center justify-center mx-auto mb-3 sm:mb-4 text-[var(--accent)] shadow-inner">
-                📖
-              </div>
-              <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold font-serif text-[var(--foreground)] mb-2">
-                No Books Currently In Progress
-              </h2>
-              <p className="text-xs sm:text-sm text-[var(--text-secondary)] max-w-md mx-auto mb-6 sm:mb-8 leading-relaxed font-normal">
-                Open any book in the reader to start tracking your reading journey automatically.
-              </p>
-              <Link
-                href="/library"
-                className="inline-flex items-center gap-2 px-6 sm:px-8 py-3 sm:py-3.5 rounded-xl bg-[var(--primary)] text-[var(--primary-foreground)] font-bold text-xs shadow-xl hover:scale-105 transition-all"
-              >
-                <span>Explore Library</span>
-                <span>→</span>
-              </Link>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-6 w-full min-w-0">
-              {currentlyReadingBooks.map((book) => (
-                <div
-                  key={book.id}
-                  className="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-[var(--border)] bg-[var(--card)] shadow-xl flex flex-col justify-between space-y-3 sm:space-y-4 relative group"
-                >
-                  {/* Subtle Dismiss Button */}
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      dismissFromShelf("reading", book.id);
-                    }}
-                    className="absolute top-3 right-3 sm:top-4 sm:right-4 w-6 h-6 sm:w-6.5 sm:h-6.5 rounded-full bg-[var(--secondary)]/80 hover:bg-rose-500/20 text-[var(--text-secondary)] hover:text-rose-400 border border-[var(--border)] hover:border-rose-500/40 flex items-center justify-center text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer shadow-xs focus-visible:ring-2 focus-visible:ring-[var(--accent)] z-10"
-                    aria-label={`Remove ${book.title} from In Progress`}
-                    title="Remove from In Progress"
-                  >
-                    ×
-                  </button>
-
-                  <div className="flex gap-3.5 sm:gap-4 pr-6 sm:pr-7">
-                    <div className="relative w-14 h-20 sm:w-16 sm:h-24 rounded-xl overflow-hidden book-shadow flex-shrink-0 border border-[var(--border)]">
-                      <Image src={book.cover} alt={book.title} fill className="object-cover" sizes="(max-width: 640px) 56px, 64px" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-[var(--secondary)] text-[var(--accent)] font-semibold border border-[var(--border)] truncate inline-block max-w-full">
-                        {book.category}
-                      </span>
-                      <h4 className="font-serif font-bold text-xs sm:text-sm text-[var(--foreground)] truncate mt-1">
-                        {book.title}
-                      </h4>
-                      <p className="text-[11px] sm:text-xs text-[var(--text-secondary)] truncate">
-                        by {book.author}
-                      </p>
-                      <div className="mt-1.5 sm:mt-2 text-[10px] sm:text-[11px] text-[var(--text-secondary)] font-medium">
-                        Page {book.currentPage} of {book.totalPages} ({book.progress}%)
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="w-full h-1.5 rounded-full bg-[var(--secondary)] overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-[var(--primary)] to-[var(--accent)]"
-                      style={{ width: `${book.progress}%` }}
-                    />
-                  </div>
-
-                  <Link
-                    href={`/book/${book.id}`}
-                    className="w-full py-2 sm:py-2.5 rounded-xl bg-[var(--primary)] text-[var(--primary-foreground)] text-xs font-bold text-center block shadow-md hover:scale-102 transition-transform"
-                  >
-                    Resume Reading →
-                  </Link>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
 
       {/* -------------------------------------------------------------
        * Tab 3: Completed Books
@@ -904,7 +805,10 @@ export default function FavoritesPage() {
                       <Image src={book.cover} alt={book.title} fill className="object-cover" sizes="(max-width: 640px) 56px, 64px" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <h4 className="font-serif font-bold text-xs sm:text-sm text-[var(--foreground)] truncate">
+                      <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-[var(--secondary)] text-[var(--accent)] font-semibold border border-[var(--border)] truncate inline-block max-w-full">
+                        {book.category}
+                      </span>
+                      <h4 className="font-serif font-bold text-xs sm:text-sm text-[var(--foreground)] truncate mt-1">
                         {book.title}
                       </h4>
                       <p className="text-[11px] sm:text-xs text-[var(--text-secondary)] truncate">
@@ -915,19 +819,34 @@ export default function FavoritesPage() {
                           Page {book.currentPage} / {book.totalPages} ({book.progress}%)
                         </span>
                         <span className="block text-[10px] opacity-80">
-                          {Math.floor(book.memory.totalSeconds / 60)} min read • {book.memory.timeline?.length || 0} sessions
+                          {Math.floor((book.memory?.totalSeconds || 0) / 60)} min read • {book.memory?.timeline?.length || 0} sessions
                         </span>
                       </div>
                     </div>
                   </div>
 
-                  <button
-                    onClick={() => setSelectedMemoryBook(book)}
-                    className="w-full py-2 sm:py-2.5 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
-                  >
-                    <span>🧠</span>
-                    <span>View Reading Memory 2.0 →</span>
-                  </button>
+                  <div className="w-full h-1.5 rounded-full bg-[var(--secondary)] overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-[var(--primary)] to-[var(--accent)]"
+                      style={{ width: `${book.progress}%` }}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <Link
+                      href={`/book/${book.id}`}
+                      className="w-full py-2 sm:py-2.5 rounded-xl bg-[var(--primary)] text-[var(--primary-foreground)] text-xs font-bold text-center block shadow-md hover:scale-102 transition-transform truncate"
+                    >
+                      Resume →
+                    </Link>
+                    <button
+                      onClick={() => setSelectedMemoryBook(book)}
+                      className="w-full py-2 sm:py-2.5 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] text-xs font-bold transition-all flex items-center justify-center gap-1 cursor-pointer shadow-xs truncate"
+                      title="View deep study analytics and memory replay"
+                    >
+                      <span>🧠 Memory</span>
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
