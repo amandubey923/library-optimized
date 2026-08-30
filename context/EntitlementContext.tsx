@@ -14,6 +14,8 @@ import {
   FREE_TIER_LIMITS,
   getPlanConfig,
   RAZORPAY_PAYMENTS_ENABLED,
+  PRO_ENFORCEMENT_ENABLED,
+  DONATION_ENABLED,
 } from "@/lib/monetization-config";
 import {
   UserEntitlement,
@@ -38,6 +40,8 @@ interface EntitlementContextType {
   isSupportModalOpen: boolean;
   isPaymentStatusModalOpen: boolean;
   isRazorpayEnabled: boolean;
+  isProEnforcementEnabled: boolean;
+  isDonationEnabled: boolean;
   proModalReason: string;
   openProModal: (reason?: string) => void;
   closeProModal: () => void;
@@ -154,14 +158,15 @@ export function EntitlementProvider({ children }: { children: ReactNode }) {
     setIsSupportModalOpen(false);
   }, []);
 
-  // Feature Limits
+  // Feature Limits — Free & Unrestricted access while Pro enforcement is disabled
   const canUseAiAssistant = useCallback((): boolean => {
-    if (isPro) return true;
+    // While Pro enforcement is disabled (pending Razorpay verification), all readers have unrestricted access
+    if (!PRO_ENFORCEMENT_ENABLED || isPro) return true;
     return aiQueriesToday < FREE_TIER_LIMITS.DAILY_AI_QUERIES;
   }, [isPro, aiQueriesToday]);
 
   const recordAiQuery = useCallback((): boolean => {
-    if (isPro) return true;
+    if (!PRO_ENFORCEMENT_ENABLED || isPro) return true;
     const nextCount = aiQueriesToday + 1;
     setAiQueriesToday(nextCount);
     try {
@@ -174,12 +179,13 @@ export function EntitlementProvider({ children }: { children: ReactNode }) {
   }, [isPro, aiQueriesToday]);
 
   const canTranslateSpread = useCallback((): boolean => {
-    if (isPro) return true;
+    // While Pro enforcement is disabled (pending Razorpay verification), all page translations remain 100% free with NO limits
+    if (!PRO_ENFORCEMENT_ENABLED || isPro) return true;
     return translationsToday < FREE_TIER_LIMITS.DAILY_TRANSLATION_SPREADS;
   }, [isPro, translationsToday]);
 
   const recordTranslationSpread = useCallback((): boolean => {
-    if (isPro) return true;
+    if (!PRO_ENFORCEMENT_ENABLED || isPro) return true;
     const nextCount = translationsToday + 1;
     setTranslationsToday(nextCount);
     try {
@@ -219,7 +225,8 @@ export function EntitlementProvider({ children }: { children: ReactNode }) {
     }
 
     // Temporary Payment Availability Guard:
-    if (!RAZORPAY_PAYMENTS_ENABLED) {
+    // Razorpay is temporarily unavailable while merchant KYC / PAN verification is pending.
+    if (!RAZORPAY_PAYMENTS_ENABLED || !PRO_ENFORCEMENT_ENABLED) {
       setIsPaymentStatusModalOpen(true);
       return {
         success: false,
@@ -376,7 +383,9 @@ export function EntitlementProvider({ children }: { children: ReactNode }) {
         isProModalOpen,
         isSupportModalOpen,
         isPaymentStatusModalOpen,
-        isRazorpayEnabled: RAZORPAY_PAYMENTS_ENABLED,
+        isRazorpayEnabled: RAZORPAY_PAYMENTS_ENABLED && PRO_ENFORCEMENT_ENABLED,
+        isProEnforcementEnabled: PRO_ENFORCEMENT_ENABLED,
+        isDonationEnabled: DONATION_ENABLED,
         proModalReason,
         openProModal,
         closeProModal,

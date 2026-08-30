@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createRazorpayOrder, getRazorpayKeys } from "@/lib/razorpay";
-import { getPlanConfig, PlanId, RAZORPAY_PAYMENTS_ENABLED } from "@/lib/monetization-config";
+import { getPlanConfig, PlanId, RAZORPAY_PAYMENTS_ENABLED, PRO_ENFORCEMENT_ENABLED } from "@/lib/monetization-config";
 import { verifyFirebaseIdToken } from "@/lib/entitlements";
 
 export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
   try {
-    if (!RAZORPAY_PAYMENTS_ENABLED) {
+    if (!RAZORPAY_PAYMENTS_ENABLED || !PRO_ENFORCEMENT_ENABLED) {
       return NextResponse.json(
         {
           success: false,
