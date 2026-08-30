@@ -13,6 +13,23 @@ export type PlanId = "FREE" | "PRO_MONTHLY" | "PRO_YEARLY" | "SUPPORT_49" | "SUP
 export const RAZORPAY_PAYMENTS_ENABLED: boolean =
   process.env.NEXT_PUBLIC_RAZORPAY_PAYMENTS_ENABLED === "true" || false;
 
+/**
+ * PRO ENFORCEMENT FEATURE FLAG
+ * Temporarily disabled while Razorpay merchant KYC & PAN verification is pending.
+ * When false:
+ *  - Reader's HUB remains 100% free with ZERO paywall blocks or "upgrade to continue" restrictions.
+ *  - Daily translation limits and AI assistant quotas are unrestricted (free unlimited access).
+ *  - Pro upgrade UI/pricing cards remain visible for user preview.
+ *  - Voluntary UPI/QR donation flow remains fully active and enabled.
+ */
+export const PRO_ENFORCEMENT_ENABLED: boolean = false;
+
+/**
+ * VOLUNTARY DONATION FEATURE FLAG
+ * Direct voluntary patron donations via UPI & QR code remain 100% active and enabled.
+ */
+export const DONATION_ENABLED: boolean = true;
+
 export interface PlanConfig {
   id: PlanId;
   name: string;
