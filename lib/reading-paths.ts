@@ -203,12 +203,7 @@ export function getPathProgress(
 
   path.steps.forEach((step) => {
     if (step.bookId && historyMap.has(step.bookId)) {
-<<<<<<< HEAD
       if (completedIds.has(step.bookId)) {
-=======
-      const item = historyMap.get(step.bookId)!;
-      if (item.progress >= 95) {
->>>>>>> new-feature
         completed += 1;
       } else {
         const item = historyMap.get(step.bookId)!;

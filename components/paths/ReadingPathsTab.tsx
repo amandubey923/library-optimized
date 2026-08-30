@@ -88,13 +88,8 @@ export default function ReadingPathsTab() {
         {/* Steps Timeline */}
         <div className="space-y-4 relative before:absolute before:top-4 before:bottom-4 before:left-5 before:w-0.5 before:bg-[var(--border)] before:hidden sm:before:block">
           {activePath.steps.map((step) => {
-<<<<<<< HEAD
             const isRead = Boolean(step.bookId && completedIds.has(step.bookId));
             const inProgress = Boolean(!isRead && step.bookId && readingHistory.some((h) => h.bookId === step.bookId && h.progress > 0));
-=======
-            const isRead = readingHistory.some((h) => h.bookId === step.bookId && h.progress >= 95);
-            const inProgress = readingHistory.some((h) => h.bookId === step.bookId && h.progress > 0 && h.progress < 95);
->>>>>>> new-feature
 
             return (
               <div
