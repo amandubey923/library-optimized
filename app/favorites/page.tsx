@@ -962,7 +962,7 @@ export default function FavoritesPage() {
           </div>
 
           {/* Daily Reading Streak & Habit Banner */}
-          <div className="w-full glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-7 border border-[var(--border)] bg-gradient-to-r from-[var(--card)] via-[var(--card)] to-amber-500/5 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-6 min-w-0">
+          <div className="w-full rounded-2xl sm:rounded-3xl p-5 sm:p-7 border border-[var(--border)] bg-gradient-to-r from-[var(--card)] via-[var(--card)] to-amber-500/5 shadow-xs hover:border-amber-500/30 transition-all flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 sm:gap-6 min-w-0">
             <div className="flex items-center gap-3.5 sm:gap-4 text-left w-full sm:w-auto">
               <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center text-2xl sm:text-3xl border flex-shrink-0 ${
                 stats.isTodayQualified
@@ -973,16 +973,16 @@ export default function FavoritesPage() {
               </div>
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h3 className="font-serif font-bold text-base sm:text-lg text-[var(--foreground)]">
+                  <h3 className="font-serif font-black text-base sm:text-lg text-[var(--foreground)]">
                     {stats.readingStreakDays} Day Reading Streak
                   </h3>
                   {stats.isTodayQualified && (
-                    <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[10px] font-bold">
+                    <span className="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/35 text-[10px] font-bold">
                       Diya Lit Today ✨
                     </span>
                   )}
                 </div>
-                <p className="text-[11px] sm:text-xs text-[var(--text-secondary)] mt-0.5 sm:mt-1 leading-relaxed">
+                <p className="text-[11px] sm:text-xs text-[var(--text-secondary)] mt-0.5 sm:mt-1 leading-relaxed font-normal">
                   {stats.isTodayQualified
                     ? `15-minute goal completed today (${Math.floor(stats.todayReadingSeconds / 60)} min read). Keep it up!`
                     : stats.todayReadingSeconds > 0
@@ -992,23 +992,23 @@ export default function FavoritesPage() {
               </div>
             </div>
 
-            <div className="w-full sm:w-auto flex items-center justify-between sm:justify-start gap-3 bg-[var(--secondary)]/50 px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-2xl border border-[var(--border)] flex-shrink-0">
-              <span className="text-[10px] sm:text-[11px] text-[var(--text-secondary)] font-medium">Today&apos;s Reading</span>
-              <span className={`text-xs sm:text-sm font-bold font-mono ${stats.isTodayQualified ? "text-amber-400" : "text-[var(--foreground)]"}`}>
+            <div className="w-full sm:w-auto flex items-center justify-between sm:justify-start gap-3 bg-[var(--secondary)]/60 px-4 py-2.5 sm:py-3 rounded-2xl border border-[var(--border)] flex-shrink-0">
+              <span className="text-[11px] text-[var(--text-secondary)] font-medium">Today&apos;s Reading</span>
+              <span className={`text-xs sm:text-sm font-extrabold font-mono ${stats.isTodayQualified ? "text-amber-400" : "text-[var(--foreground)]"}`}>
                 {Math.floor(stats.todayReadingSeconds / 60)} / 15 min
               </span>
             </div>
           </div>
 
           {/* Personal Reading Goals Selector Widget */}
-          <div className="w-full p-4 sm:p-6 rounded-2xl sm:rounded-3xl glass-card border border-[var(--border)] bg-[var(--card)] space-y-3.5 sm:space-y-4 shadow-xl min-w-0">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--border)] pb-3">
+          <div className="w-full p-5 sm:p-6 rounded-2xl sm:rounded-3xl border border-[var(--border)] bg-[var(--card)] space-y-3.5 sm:space-y-4 shadow-xs hover:border-[var(--accent)]/30 transition-all min-w-0">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[var(--border)]/60 pb-3">
               <div>
-                <h4 className="font-serif font-bold text-xs sm:text-sm text-[var(--foreground)] flex items-center gap-1.5 sm:gap-2">
+                <h4 className="font-serif font-black text-xs sm:text-sm text-[var(--foreground)] flex items-center gap-1.5 sm:gap-2">
                   <span>🎯</span>
                   <span>Personal Daily Reading Target</span>
                 </h4>
-                <p className="text-[11px] sm:text-xs text-[var(--text-secondary)]">
+                <p className="text-[11px] sm:text-xs text-[var(--text-secondary)] font-normal mt-0.5">
                   Streak qualifies at 15 minutes. Set your own higher personal commitment if desired.
                 </p>
               </div>
@@ -1017,10 +1017,10 @@ export default function FavoritesPage() {
                   <button
                     key={mins}
                     onClick={() => handleUpdateGoal(mins)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer text-center ${
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-extrabold transition-all cursor-pointer text-center ${
                       customGoalMinutes === mins
-                        ? "bg-[var(--primary)] text-[var(--primary-foreground)] shadow-md"
-                        : "bg-[var(--secondary)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)]"
+                        ? "bg-gradient-to-r from-[var(--primary)] to-[var(--accent)] text-[var(--primary-foreground)] shadow-sm scale-105"
+                        : "bg-[var(--secondary)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)] hover:border-[var(--accent)]/30"
                     }`}
                   >
                     {mins}m
@@ -1031,103 +1031,20 @@ export default function FavoritesPage() {
 
             {/* Goal Progress Ring Bar */}
             <div className="space-y-1.5">
-              <div className="flex justify-between text-[11px] sm:text-xs font-medium text-[var(--text-secondary)]">
+              <div className="flex justify-between text-[11px] sm:text-xs font-semibold text-[var(--text-secondary)]">
                 <span>Today&apos;s Progress towards {customGoalMinutes}m goal</span>
-                <span className="font-bold text-[var(--accent)]">
+                <span className="font-extrabold text-[var(--accent)]">
                   {Math.min(100, Math.round((stats.todayReadingSeconds / (customGoalMinutes * 60)) * 100))}%
                 </span>
               </div>
-              <div className="w-full h-2 rounded-full bg-[var(--secondary)] overflow-hidden">
+              <div className="w-full h-2 rounded-full bg-[var(--secondary)] overflow-hidden shadow-inner">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-[var(--primary)] to-[var(--accent)] transition-all"
+                  className="h-full rounded-full bg-gradient-to-r from-[var(--primary)] to-[var(--accent)] transition-all duration-500"
                   style={{
                     width: `${Math.min(100, (stats.todayReadingSeconds / (customGoalMinutes * 60)) * 100)}%`,
                   }}
                 />
               </div>
-            </div>
-          </div>
-
-          {/* Real Local Statistics Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4 w-full min-w-0">
-            <div
-              className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-[var(--card)] border border-[var(--border)] shadow-xl flex items-center justify-between gap-4"
-              title="Time you actively spent exploring, searching, and studying on Reader's HUB."
-            >
-              <div className="space-y-1">
-                <div className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)]">
-                  <span>⚡</span>
-                  <span>Website Active Time</span>
-                </div>
-                <h4 className="text-xl sm:text-3xl font-bold font-serif text-emerald-400 font-mono">
-                  {Math.floor((stats.totalActiveSeconds || 0) / 60) >= 60
-                    ? `${Math.floor((stats.totalActiveSeconds || 0) / 3600)}h ${Math.floor(((stats.totalActiveSeconds || 0) % 3600) / 60)}m`
-                    : `${Math.floor((stats.totalActiveSeconds || 0) / 60)}m`}
-                </h4>
-                <p className="text-[10px] sm:text-[11px] text-[var(--text-secondary)]">
-                  Meaningful time spent using Reader&apos;s HUB
-                </p>
-              </div>
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center text-lg sm:text-xl flex-shrink-0">
-                ⚡
-              </div>
-            </div>
-
-            <div
-              className="p-4 sm:p-5 rounded-2xl sm:rounded-3xl bg-[var(--card)] border border-[var(--border)] shadow-xl flex items-center justify-between gap-4"
-              title="Actual active book-reading time used by your Diya and reading streak."
-            >
-              <div className="space-y-1">
-                <div className="flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)]">
-                  <span>📖</span>
-                  <span>Genuine Reading Time</span>
-                </div>
-                <h4 className="text-xl sm:text-3xl font-bold font-serif text-[var(--accent)] font-mono">
-                  {Math.floor((stats.totalReadingSeconds || 0) / 60) >= 60
-                    ? `${Math.floor((stats.totalReadingSeconds || 0) / 3600)}h ${Math.floor(((stats.totalReadingSeconds || 0) % 3600) / 60)}m`
-                    : `${Math.floor((stats.totalReadingSeconds || 0) / 60)}m`}
-                </h4>
-                <p className="text-[10px] sm:text-[11px] text-[var(--text-secondary)]">
-                  Actual active time spent reading books
-                </p>
-              </div>
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-[var(--accent)]/10 border border-[var(--accent)]/20 text-[var(--accent)] flex items-center justify-center text-lg sm:text-xl flex-shrink-0">
-                🪔
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4 w-full min-w-0">
-            <div className="p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl bg-[var(--card)] border border-[var(--border)] shadow-xl text-center space-y-1">
-              <span className="text-xl sm:text-2xl">📖</span>
-              <h4 className="text-xl sm:text-2xl font-bold font-serif text-[var(--foreground)]">
-                {stats.booksStarted}
-              </h4>
-              <p className="text-[10px] sm:text-xs text-[var(--text-secondary)] font-medium">Books Explored</p>
-            </div>
-
-            <div className="p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl bg-[var(--card)] border border-[var(--border)] shadow-xl text-center space-y-1">
-              <span className="text-xl sm:text-2xl">🏆</span>
-              <h4 className="text-xl sm:text-2xl font-bold font-serif text-emerald-400">
-                {stats.booksCompleted}
-              </h4>
-              <p className="text-[10px] sm:text-xs text-[var(--text-secondary)] font-medium">Books Finished</p>
-            </div>
-
-            <div className="p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl bg-[var(--card)] border border-[var(--border)] shadow-xl text-center space-y-1">
-              <span className="text-xl sm:text-2xl">📑</span>
-              <h4 className="text-xl sm:text-2xl font-bold font-serif text-[var(--accent)]">
-                {stats.pagesRead}
-              </h4>
-              <p className="text-[10px] sm:text-xs text-[var(--text-secondary)] font-medium">Pages Read</p>
-            </div>
-
-            <div className="p-3.5 sm:p-5 rounded-2xl sm:rounded-3xl bg-[var(--card)] border border-[var(--border)] shadow-xl text-center space-y-1">
-              <span className="text-xl sm:text-2xl">✏️</span>
-              <h4 className="text-xl sm:text-2xl font-bold font-serif text-amber-400">
-                {stats.totalHighlights + stats.totalNotes + stats.totalDrawings}
-              </h4>
-              <p className="text-[10px] sm:text-xs text-[var(--text-secondary)] font-medium">Study Markings</p>
             </div>
           </div>
 

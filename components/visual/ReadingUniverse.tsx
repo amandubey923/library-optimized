@@ -77,7 +77,7 @@ export default function ReadingUniverse() {
         </div>
 
         {/* Constellation Grid of Interactive Category Nodes */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-5 relative">
+        <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-5 relative">
           {visibleRealms.map((item) => {
             const isHovered = hoveredCategory === item.name;
             return (
@@ -86,7 +86,7 @@ export default function ReadingUniverse() {
                 href={`/library?category=${encodeURIComponent(item.name)}`}
                 onMouseEnter={() => setHoveredCategory(item.name)}
                 onMouseLeave={() => setHoveredCategory(null)}
-                className={`p-4 sm:p-5 rounded-2xl border transition-all duration-300 flex flex-col justify-between relative overflow-hidden group hover:scale-[1.02] shadow-xs ${
+                className={`p-3 sm:p-5 rounded-xl sm:rounded-2xl border transition-all duration-300 flex flex-col justify-between relative overflow-hidden group hover:scale-[1.02] shadow-xs ${
                   isHovered
                     ? "border-[var(--accent)] shadow-xl bg-[var(--card)] ring-1 ring-[var(--accent)]/40 -translate-y-1"
                     : "border-[var(--border)] hover:border-[var(--accent)]/40 bg-[var(--card)]"
@@ -98,29 +98,29 @@ export default function ReadingUniverse() {
                   style={{ background: "var(--accent)" }}
                 />
 
-                <div className="space-y-3">
+                <div className="space-y-2 sm:space-y-3">
                   {/* Top Node Pill */}
-                  <div className="flex items-center justify-between">
-                    <span className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-[var(--secondary)] text-[var(--accent)] font-mono font-bold text-[11px] sm:text-xs flex items-center justify-center border border-[var(--border)] shadow-xs">
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-[var(--secondary)] text-[var(--accent)] font-mono font-bold text-[10px] sm:text-xs flex items-center justify-center border border-[var(--border)] shadow-xs shrink-0">
                       0{item.index + 1}
                     </span>
-                    <span className="text-[10px] sm:text-[11px] font-extrabold px-2.5 py-0.5 rounded-full bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/25">
+                    <span className="text-[9px] sm:text-[11px] font-extrabold px-2 py-0.5 rounded-full bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/25 truncate">
                       {item.count} {item.unit}
                     </span>
                   </div>
 
                   {/* Category Title */}
-                  <h3 className="text-sm sm:text-lg font-black font-serif text-[var(--foreground)] group-hover:text-[var(--accent)] transition-colors leading-snug line-clamp-2 min-h-[36px] sm:min-h-[44px]">
+                  <h3 className="text-xs sm:text-lg font-black font-serif text-[var(--foreground)] group-hover:text-[var(--accent)] transition-colors leading-snug line-clamp-2 min-h-[32px] sm:min-h-[44px]">
                     {item.name}
                   </h3>
 
                   {/* Sample Books Mini-List */}
-                  <div className="space-y-1 my-2 sm:my-3">
-                    <span className="text-[9.5px] uppercase tracking-wider text-[var(--text-secondary)] font-bold block">
+                  <div className="space-y-0.5 sm:space-y-1 my-1 sm:my-3">
+                    <span className="text-[8.5px] sm:text-[9.5px] uppercase tracking-wider text-[var(--text-secondary)] font-bold block">
                       Notable Volumes:
                     </span>
                     {item.sampleBooks.map((title, i) => (
-                      <p key={i} className="text-[11px] sm:text-xs text-[var(--text-secondary)] truncate font-medium leading-tight">
+                      <p key={i} className="text-[9.5px] sm:text-xs text-[var(--text-secondary)] truncate font-medium leading-tight">
                         • {title}
                       </p>
                     ))}
@@ -128,7 +128,7 @@ export default function ReadingUniverse() {
                 </div>
 
                 {/* Footer Action */}
-                <div className="mt-3 pt-3 border-t border-[var(--border)]/60 flex items-center justify-between text-xs text-[var(--accent)] font-extrabold">
+                <div className="mt-2.5 sm:mt-3 pt-2.5 sm:pt-3 border-t border-[var(--border)]/60 flex items-center justify-between text-[11px] sm:text-xs text-[var(--accent)] font-extrabold">
                   <span>Enter Realm</span>
                   <span className="group-hover:translate-x-1.5 transition-transform duration-200">→</span>
                 </div>
