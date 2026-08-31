@@ -31,6 +31,83 @@ export function getCoverPalette(
   const lowerAuthor = author.toLowerCase();
 
   // 1. Specific Book Personalities
+  if (lowerTitle.includes("buddha: a biography") || lowerTitle.includes("karen armstrong")) {
+    return {
+      bg1: "#1e1b4b",
+      bg2: "#312e81",
+      accent: "#facc15",
+      emblem: "☸️",
+      badge: "BUDDHIST BIOGRAPHY",
+      borderStyle: "ornate",
+    };
+  }
+
+  if (lowerTitle.includes("eight mindful steps")) {
+    return {
+      bg1: "#064e3b",
+      bg2: "#022c22",
+      accent: "#6ee7b7",
+      emblem: "🧘",
+      badge: "MINDFULNESS & MEDITATION",
+      borderStyle: "ornate",
+    };
+  }
+
+  if (lowerTitle.includes("in the buddha's words") || lowerTitle.includes("in the words of the buddha")) {
+    return {
+      bg1: "#451a03",
+      bg2: "#78350f",
+      accent: "#fde047",
+      emblem: "📜",
+      badge: "SACRED PALI CANON",
+      borderStyle: "ornate",
+    };
+  }
+
+  if (lowerTitle.includes("old path white clouds")) {
+    return {
+      bg1: "#0f172a",
+      bg2: "#1e293b",
+      accent: "#38bdf8",
+      emblem: "☁️",
+      badge: "LIFE OF THE BUDDHA",
+      borderStyle: "ornate",
+    };
+  }
+
+  if (lowerTitle.includes("essence of dhamma") || lowerTitle.includes("scrndhamma")) {
+    return {
+      bg1: "#3b0764",
+      bg2: "#1e1b4b",
+      accent: "#e9d5ff",
+      emblem: "🪔",
+      badge: "DHAMMA REFLECTIONS",
+      borderStyle: "ornate",
+    };
+  }
+
+  if (lowerTitle.includes("foundations of buddhism")) {
+    return {
+      bg1: "#172554",
+      bg2: "#1e1b4b",
+      accent: "#93c5fd",
+      emblem: "🏛️",
+      badge: "OXFORD BUDDHIST STUDIES",
+      borderStyle: "victorian",
+    };
+  }
+
+  if (lowerTitle.includes("what the buddha taught")) {
+    return {
+      bg1: "#701a75",
+      bg2: "#4a044e",
+      accent: "#fbcfe8",
+      emblem: "🪷",
+      badge: "CORE BUDDHIST DOCTRINE",
+      borderStyle: "ornate",
+    };
+  }
+
   if (lowerTitle.includes("kurukshetra")) {
     return {
       bg1: "#450a0a",

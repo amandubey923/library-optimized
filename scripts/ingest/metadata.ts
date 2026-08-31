@@ -101,15 +101,19 @@ export async function extractPdfMetadata(filePath: string, filename: string): Pr
     };
   }
 
-  // 3. Extract text from first 2 pages using PDFParse
+  // 3. Extract text from first 2 pages using PDFParse (fast & non-blocking)
   let extractedText = "";
   try {
-    const parser = new PDFParse({ data: fileBuffer });
-    const textResult = await parser.getText();
-    if (textResult && textResult.text) {
-      extractedText = textResult.text.replace(/\s+/g, " ").trim().substring(0, 800);
-    }
-    await parser.destroy();
+    const parsePromise = (async () => {
+      const parser = new PDFParse({ data: fileBuffer });
+      const textResult = await parser.getText();
+      const txt = textResult?.text ? textResult.text.replace(/\s+/g, " ").trim().substring(0, 800) : "";
+      await parser.destroy();
+      return txt;
+    })();
+
+    const timeoutPromise = new Promise<string>((resolve) => setTimeout(() => resolve(""), 1500));
+    extractedText = await Promise.race([parsePromise, timeoutPromise]);
   } catch {
     // Non-blocking text parse failure (scanned/handwritten PDF)
   }
@@ -244,6 +248,20 @@ export async function extractPdfMetadata(filePath: string, filename: string): Pr
       author = "Ernest Becker";
     } else if (/benjamin\s*graham/i.test(filename) || /benjamin\s*graham/i.test(extractedText)) {
       author = "Benjamin Graham";
+    } else if (/karen\s*armstrong/i.test(filename) || /karen\s*armstrong/i.test(extractedText)) {
+      author = "Karen Armstrong";
+    } else if (/henepola\s*gunaratana|bhante\s*gunaratana|eight\s*mindful\s*steps/i.test(filename) || /gunaratana/i.test(extractedText)) {
+      author = "Bhante Henepola Gunaratana";
+    } else if (/in\s*the\s*words\s*of\s*the\s*buddha|in\s*the\s*buddhas\s*words|bhikkhu\s*bodhi/i.test(filename) || /bhikkhu\s*bodhi/i.test(extractedText)) {
+      author = "Bhikkhu Bodhi";
+    } else if (/thich\s*nhat\s*hanh|old\s*path\s*white\s*clouds/i.test(filename) || /thich\s*nhat\s*hanh/i.test(extractedText)) {
+      author = "Thich Nhat Hanh";
+    } else if (/rupert\s*gethin|foundations\s*of\s*buddhism/i.test(filename) || /rupert\s*gethin/i.test(extractedText)) {
+      author = "Rupert Gethin";
+    } else if (/walpola\s*rahula|what\s*the\s*buddha\s*taught/i.test(filename) || /walpola\s*rahula/i.test(extractedText)) {
+      author = "Walpola Rahula";
+    } else if (/scrndhamma/i.test(filename) || /dhamma/i.test(filename)) {
+      author = "S.N. Goenka";
     } else if (filename.includes(" - ")) {
       const parts = filename.replace(/\.pdf$/i, "").split(" - ");
       if (parts.length === 2 && parts[1].trim().length > 2) {
@@ -296,7 +314,21 @@ export async function extractPdfMetadata(filePath: string, filename: string): Pr
     }
   } else {
     // Specific title mappings for new batch
-    if (/kurukshetra/i.test(filename)) {
+    if (/buddha[\s_-]*karen[\s_-]*armstrong/i.test(filename)) {
+      title = "Buddha: A Biography";
+    } else if (/eight[\s_-]*mindful[\s_-]*steps/i.test(filename)) {
+      title = "Eight Mindful Steps to Happiness: Walking the Buddha's Path";
+    } else if (/in[\s_-]*the[\s_-]*words[\s_-]*of[\s_-]*the[\s_-]*buddha|in[\s_-]*the[\s_-]*buddhas[\s_-]*words/i.test(filename)) {
+      title = "In the Buddha's Words: An Anthology of Discourses from the Pali Canon";
+    } else if (/old[\s_-]*path[\s_-]*white[\s_-]*clouds/i.test(filename)) {
+      title = "Old Path White Clouds: Walking in the Footsteps of the Buddha";
+    } else if (/foundations[\s_-]*of[\s_-]*buddhism/i.test(filename)) {
+      title = "The Foundations of Buddhism";
+    } else if (/what[\s_-]*the[\s_-]*buddha[\s_-]*taught/i.test(filename)) {
+      title = "What the Buddha Taught";
+    } else if (/scrndhamma/i.test(filename)) {
+      title = "The Essence of Dhamma: Core Teachings & Mindful Reflection";
+    } else if (/kurukshetra/i.test(filename)) {
       title = "Kurukshetra (कुरुक्षेत्र)";
     } else if (/tyag.*patra/i.test(filename)) {
       title = "Tyagpatra (त्यागपत्र)";
@@ -365,7 +397,28 @@ export async function extractPdfMetadata(filePath: string, filename: string): Pr
     ? `सत्य वह नहीं जो दूसरों से सुना जाए; सत्य वह है जो स्वयं की आँखों से साक्षात् देखा और अनुभूत किया जाए।`
     : `Master essential principles and practical patterns with clear structured notes.`;
 
-  if (/kurukshetra/i.test(title)) {
+  if (/buddha:\s*a\s*biography/i.test(title)) {
+    description = "A profound and accessible biography by acclaimed religious historian Karen Armstrong exploring the life, spiritual quest, and foundational insights of Siddhartha Gautama.";
+    excerpt = "The Buddha was convinced that suffering could not be overcome by metaphysical theories or ascetic extremes, but by a radical reorientation of the mind and compassionate action.";
+  } else if (/eight\s*mindful\s*steps/i.test(title)) {
+    description = "Renowned meditation master Bhante Gunaratana illuminates the Noble Eightfold Path with practical, compassionate guidance for cultivating inner peace and mindful living.";
+    excerpt = "Mindfulness is the observant, non-judgmental awareness of what is happening in the present moment, within and around us.";
+  } else if (/in\s*the\s*buddha's\s*words/i.test(title)) {
+    description = "Bhikkhu Bodhi's essential anthology curating the most vital teachings of the Pali Canon, offering a clear and comprehensive framework of the Buddha's path to liberation.";
+    excerpt = "Just as the great ocean has but one taste, the taste of salt, so too this teaching and discipline has but one taste, the taste of liberation.";
+  } else if (/old\s*path\s*white\s*clouds/i.test(title)) {
+    description = "Thich Nhat Hanh's beloved, poetic retelling of the life and teachings of Gautama Buddha, drawn from original Pali, Sanskrit, and Chinese texts with deep gentleness and clarity.";
+    excerpt = "Walk as if you are kissing the Earth with your feet. When we walk like that with every breath, peace becomes a reality.";
+  } else if (/the\s*essence\s*of\s*dhamma/i.test(title)) {
+    description = "Foundational discourses and practical insights into Vipassana meditation, universal Dhamma, and the art of living in harmony and self-observation.";
+    excerpt = "Real peace is within oneself; when the mind is free of craving, aversion, and ignorance, genuine harmony arises.";
+  } else if (/the\s*foundations\s*of\s*buddhism/i.test(title)) {
+    description = "A standard Oxford University introduction exploring the narrative, philosophical, cosmological, and meditative dimensions of Buddhist traditions.";
+    excerpt = "The purpose of Buddhist practice is not simply to contemplate truth, but to transform the mind through understanding and ethics.";
+  } else if (/what\s*the\s*buddha\s*taught/i.test(title)) {
+    description = "Ven. Dr. Walpola Rahula's world-renowned classic presenting the core doctrines of Buddhism, the Four Noble Truths, and the nature of mind with scholarly precision.";
+    excerpt = "Buddhism is neither pessimistic nor optimistic. If anything, it is realistic, for it takes a realistic view of life and of the world.";
+  } else if (/kurukshetra/i.test(title)) {
     description = "राष्ट्रकवि रामधारी सिंह 'दिनकर' का कालजयी प्रबंध-काव्य, जिसमें महाभारत के युद्ध के माध्यम से शांति और क्रांति, न्याय और हिंसा के सनातन द्वंद्व पर ओजस्वी विचार व्यक्त किए गए हैं।";
     excerpt = "नर पर नर का अधिकार न हो, कोई न किसी से त्रस्त रहे। सब एक पिता की संतानें, सब एक भाव में मस्त रहें।";
   } else if (/tyagpatra/i.test(title)) {

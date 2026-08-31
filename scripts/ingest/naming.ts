@@ -58,6 +58,27 @@ export function resolveCanonicalFilename(
   }
 
   // Clean special book mappings
+  if (/buddha[\s_-]*karen[\s_-]*armstrong/i.test(currentBase) || /buddha[\s_-]*karen[\s_-]*armstrong/i.test(title)) {
+    return "BuddhaByKarenArmstrong.pdf";
+  }
+  if (/eight[\s_-]*mindful[\s_-]*steps/i.test(currentBase) || /eight[\s_-]*mindful[\s_-]*steps/i.test(title)) {
+    return "EightMindfulStepsToHappiness.pdf";
+  }
+  if (/in[\s_-]*the[\s_-]*words[\s_-]*of[\s_-]*the[\s_-]*buddha|in[\s_-]*the[\s_-]*buddhas[\s_-]*words/i.test(currentBase) || /in[\s_-]*the[\s_-]*buddhas[\s_-]*words/i.test(title)) {
+    return "InTheBuddhasWords.pdf";
+  }
+  if (/old[\s_-]*path[\s_-]*white[\s_-]*clouds/i.test(currentBase) || /old[\s_-]*path[\s_-]*white[\s_-]*clouds/i.test(title)) {
+    return "OldPathWhiteClouds.pdf";
+  }
+  if (/foundations[\s_-]*of[\s_-]*buddhism/i.test(currentBase) || /foundations[\s_-]*of[\s_-]*buddhism/i.test(title)) {
+    return "TheFoundationsOfBuddhism.pdf";
+  }
+  if (/what[\s_-]*the[\s_-]*buddha[\s_-]*taught/i.test(currentBase) || /what[\s_-]*the[\s_-]*buddha[\s_-]*taught/i.test(title)) {
+    return "WhatTheBuddhaTaught.pdf";
+  }
+  if (/scrndhamma/i.test(currentBase) || /scrndhamma/i.test(title)) {
+    return "TheEssenceOfDhamma.pdf";
+  }
   if (/kurukshetra/i.test(currentBase) || /kurukshetra/i.test(title)) {
     return "KurukshetraByRamdhariSinghDinkar.pdf";
   }
@@ -107,6 +128,13 @@ export function resolveCanonicalFilename(
  */
 export function generateStableId(title: string, author?: string): string {
   // Specific slug mappings for canonical IDs
+  if (/buddha:\s*a\s*biography|buddha[\s_-]*karen[\s_-]*armstrong/i.test(title)) return "buddha-karen-armstrong";
+  if (/eight[\s_-]*mindful[\s_-]*steps/i.test(title)) return "eight-mindful-steps-to-happiness";
+  if (/in[\s_-]*the[\s_-]*buddha's[\s_-]*words|in[\s_-]*the[\s_-]*words[\s_-]*of[\s_-]*the[\s_-]*buddha/i.test(title)) return "in-the-buddhas-words";
+  if (/old[\s_-]*path[\s_-]*white[\s_-]*clouds/i.test(title)) return "old-path-white-clouds";
+  if (/the[\s_-]*foundations[\s_-]*of[\s_-]*buddhism|foundations[\s_-]*of[\s_-]*buddhism/i.test(title)) return "the-foundations-of-buddhism";
+  if (/what[\s_-]*the[\s_-]*buddha[\s_-]*taught/i.test(title)) return "what-the-buddha-taught";
+  if (/the[\s_-]*essence[\s_-]*of[\s_-]*dhamma|scrndhamma/i.test(title)) return "the-essence-of-dhamma";
   if (/kurukshetra/i.test(title)) return "kurukshetra";
   if (/tyagpatra|tyag-patra/i.test(title)) return "tyagpatra";
   if (/shekhar|sekhar/i.test(title)) return "shekhar-ek-jeevani-vividh-aayam";
