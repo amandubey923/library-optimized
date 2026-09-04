@@ -2,10 +2,8 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // User root document and all private subcollections
+    // 1. Private User root document and personal subcollections
     // (reading_progress, favorites, bookmarks, daily_activity)
-    match /users/{userId}/{document=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
     match /users/{userId} {
       allow read: if request.auth != null && (request.auth.uid == userId || request.auth.token.email == 'kumaraman19137@gmail.com');
       allow write: if request.auth != null && request.auth.uid == userId;
@@ -20,10 +18,39 @@ service cloud.firestore {
       allow list: if request.auth != null && request.auth.token.email == 'kumaraman19137@gmail.com';
     }
 
+    // 2. Public User Profiles (Instagram + LeetCode social layer)
+    match /public_profiles/{userId} {
+      allow read: if true;
+      allow create, update: if request.auth != null && request.auth.uid == userId;
+      allow delete: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // 3. Unique Username Registry (@username)
+    match /usernames/{username} {
+      allow read: if true;
+      allow create, update: if request.auth != null && request.auth.uid == request.resource.data.uid;
+      allow delete: if request.auth != null && request.auth.uid == resource.data.uid;
+    }
+
+    // 4. Follow Relationships (${followerUid}_${followingUid})
+    match /follows/{followId} {
+      allow read: if true;
+      allow create: if request.auth != null 
+                    && request.auth.uid == request.resource.data.followerUid 
+                    && request.resource.data.followerUid != request.resource.data.followingUid;
+      allow delete: if request.auth != null && request.auth.uid == resource.data.followerUid;
+    }
+
+    // 5. Public Reading Activities
+    match /public_activities/{activityId} {
+      allow read: if true;
+      allow create: if request.auth != null && request.auth.uid == request.resource.data.uid;
+      allow delete: if request.auth != null && request.auth.uid == resource.data.uid;
+    }
+
     // Default deny all other paths
     match /{document=**} {
       allow read, write: false;
     }
   }
 }
-

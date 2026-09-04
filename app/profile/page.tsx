@@ -17,6 +17,14 @@ import AuthGuard from "@/components/auth/AuthGuard";
 import { useEntitlement } from "@/context/EntitlementContext";
 import ProBadge from "@/components/payment/ProBadge";
 import { isAdminUser } from "@/lib/admin";
+import {
+  PublicUserProfile,
+  ensureUserProfile,
+  syncPublicProfileMetrics,
+} from "@/lib/social";
+import FollowersModal from "@/components/social/FollowersModal";
+import EditProfileModal from "@/components/social/EditProfileModal";
+import UserSearchModal from "@/components/social/UserSearchModal";
 
 export default function ProfilePage() {
   const { favorites, readingHistory, streakData, stats, globalActiveSeconds, todayReadingSeconds, todayActiveSeconds } = useLibrary();
@@ -28,10 +36,29 @@ export default function ProfilePage() {
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [socialProfile, setSocialProfile] = useState<PublicUserProfile | null>(null);
+  const [isFollowersModalOpen, setIsFollowersModalOpen] = useState(false);
+  const [followersModalTab, setFollowersModalTab] = useState<"followers" | "following">("followers");
+  const [isEditProfileModalOpen, setIsEditProfileModalOpen] = useState(false);
+  const [isUserSearchModalOpen, setIsUserSearchModalOpen] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Initialize and synchronize social profile metrics
+  useEffect(() => {
+    if (!user) return;
+    ensureUserProfile(user).then((prof) => {
+      setSocialProfile(prof);
+      syncPublicProfileMetrics(
+        user.uid,
+        readingHistory,
+        streakData,
+        globalActiveSeconds
+      );
+    });
+  }, [user, readingHistory, streakData, globalActiveSeconds]);
 
   // Build activeTimeData from context's Firestore-hydrated state so analytics
   // never falls back to browser localStorage for authenticated account data.
@@ -162,6 +189,15 @@ export default function ProfilePage() {
                     <span>{user?.displayName || profileHeader.userTitle}</span>
                     <ProBadge />
                   </h1>
+                  {socialProfile?.username && (
+                    <Link
+                      href={`/profile/${socialProfile.username}`}
+                      className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/30 hover:bg-[var(--accent)]/25 transition-colors"
+                      title="View your public profile"
+                    >
+                      @{socialProfile.username}
+                    </Link>
+                  )}
                   {user ? (
                     <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5 shadow-xs">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -173,6 +209,55 @@ export default function ProfilePage() {
                     </span>
                   )}
                 </div>
+
+                {socialProfile?.bio && (
+                  <p className="text-xs text-[var(--foreground)]/90 italic mt-1">
+                    &ldquo;{socialProfile.bio}&rdquo;
+                  </p>
+                )}
+
+                {/* Social Followers / Following Bar */}
+                {user && socialProfile && (
+                  <div className="flex items-center gap-4 pt-1 text-xs">
+                    <button
+                      onClick={() => {
+                        setFollowersModalTab("followers");
+                        setIsFollowersModalOpen(true);
+                      }}
+                      className="hover:text-[var(--accent)] transition-colors cursor-pointer"
+                    >
+                      <strong className="text-[var(--foreground)] font-mono text-sm">
+                        {socialProfile.followersCount || 0}
+                      </strong>{" "}
+                      <span className="text-[var(--text-secondary)]">Followers</span>
+                    </button>
+
+                    <span className="text-[var(--border)]">•</span>
+
+                    <button
+                      onClick={() => {
+                        setFollowersModalTab("following");
+                        setIsFollowersModalOpen(true);
+                      }}
+                      className="hover:text-[var(--accent)] transition-colors cursor-pointer"
+                    >
+                      <strong className="text-[var(--foreground)] font-mono text-sm">
+                        {socialProfile.followingCount || 0}
+                      </strong>{" "}
+                      <span className="text-[var(--text-secondary)]">Following</span>
+                    </button>
+
+                    <span className="text-[var(--border)]">•</span>
+
+                    <Link
+                      href={`/profile/${socialProfile.username}`}
+                      className="text-[var(--accent)] font-semibold hover:underline flex items-center gap-1"
+                    >
+                      <span>Public Profile</span>
+                      <span>↗</span>
+                    </Link>
+                  </div>
+                )}
 
                 <p className="text-sm text-[var(--text-secondary)] mt-1">
                   {user
@@ -194,6 +279,24 @@ export default function ProfilePage() {
 
                 {/* Primary Auth & Monetization Action Trigger */}
                 <div className="flex items-center gap-2.5 flex-wrap mt-3">
+                  {socialProfile && (
+                    <button
+                      onClick={() => setIsEditProfileModalOpen(true)}
+                      className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-[var(--secondary)] hover:bg-[var(--secondary)]/80 text-[var(--foreground)] border border-[var(--border)] hover:border-[var(--accent)]/40 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 shadow-xs"
+                    >
+                      <span>✏️</span>
+                      <span>Edit Profile</span>
+                    </button>
+                  )}
+
+                  <button
+                    onClick={() => setIsUserSearchModalOpen(true)}
+                    className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-[var(--card)] hover:bg-[var(--secondary)] text-[var(--foreground)] border border-[var(--border)] transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 shadow-xs"
+                  >
+                    <span>🔍</span>
+                    <span>Find Readers</span>
+                  </button>
+
                   {!isPro ? (
                     <button
                       onClick={() => openProModal()}
@@ -1077,6 +1180,33 @@ export default function ProfilePage() {
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={() => setIsAuthModalOpen(false)}
+      />
+
+      {/* Social Followers & Following Modal */}
+      {user && socialProfile && (
+        <FollowersModal
+          isOpen={isFollowersModalOpen}
+          onClose={() => setIsFollowersModalOpen(false)}
+          targetUid={user.uid}
+          targetUsername={socialProfile.username}
+          initialTab={followersModalTab}
+        />
+      )}
+
+      {/* Social Profile Settings Modal */}
+      {user && socialProfile && (
+        <EditProfileModal
+          isOpen={isEditProfileModalOpen}
+          onClose={() => setIsEditProfileModalOpen(false)}
+          profile={socialProfile}
+          onProfileUpdated={(updated) => setSocialProfile(updated)}
+        />
+      )}
+
+      {/* User Discovery & Search Modal */}
+      <UserSearchModal
+        isOpen={isUserSearchModalOpen}
+        onClose={() => setIsUserSearchModalOpen(false)}
       />
       </div>
     </AuthGuard>

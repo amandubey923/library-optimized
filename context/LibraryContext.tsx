@@ -73,6 +73,7 @@ import {
   cancelAllPendingSyncTimers,
   flushPendingActivitySyncs,
 } from "@/lib/firestore-sync";
+import { recordPublicActivity, sanitizeUsername } from "@/lib/social";
 
 export interface ReadingProgressItem {
   bookId: string;
@@ -594,6 +595,22 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
 
     if (user) {
       syncReadingProgressToCloud(user.uid, bookId, finalPage, finalTotal);
+
+      // Record public reading activity if book is completed
+      if (finalPage >= finalTotal && finalTotal > 0) {
+        const targetBook = BOOKS.find((b) => b.id === bookId);
+        recordPublicActivity({
+          uid: user.uid,
+          username: user.displayName ? sanitizeUsername(user.displayName) : "reader",
+          displayName: user.displayName || "Reader",
+          photoURL: user.photoURL || undefined,
+          type: "completed_book",
+          bookId,
+          bookTitle: targetBook?.title || "Book",
+          bookCover: targetBook?.cover,
+          timestamp: Date.now(),
+        });
+      }
     }
 
     if (hasChanged) {
