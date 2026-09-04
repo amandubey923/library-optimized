@@ -190,8 +190,30 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     pathnameRef.current = pathname;
   }, [pathname]);
 
-  const [favorites, setFavorites] = useState<string[]>([]);
-  const [readingHistory, setReadingHistory] = useState<ReadingProgressItem[]>([]);
+  const [favorites, setFavorites] = useState<string[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem(FAVORITES_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) return parsed;
+        }
+      } catch {}
+    }
+    return [];
+  });
+  const [readingHistory, setReadingHistory] = useState<ReadingProgressItem[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem(HISTORY_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (Array.isArray(parsed)) return parsed;
+        }
+      } catch {}
+    }
+    return [];
+  });
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [shelfDismissals, setShelfDismissals] = useState<ShelfDismissalsMap>({});
   const [collections, setCollections] = useState<ReadingCollection[]>([]);
@@ -245,6 +267,20 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     setShelfDismissals(getShelfDismissals());
     setCollections(getReadingCollections());
     setReflections(getBookReflections());
+    try {
+      const storedFavs = localStorage.getItem(FAVORITES_KEY);
+      if (storedFavs) {
+        const parsed = JSON.parse(storedFavs);
+        if (Array.isArray(parsed) && parsed.length > 0) setFavorites(parsed);
+      }
+      const storedHist = localStorage.getItem(HISTORY_KEY);
+      if (storedHist) {
+        const parsed = JSON.parse(storedHist);
+        if (Array.isArray(parsed) && parsed.length > 0) setReadingHistory(parsed);
+      }
+    } catch (e) {
+      console.warn("[LibraryContext] Failed to load local favorites/history:", e);
+    }
   }, []);
 
   const dismissFromShelf = useCallback((section: ShelfSectionKey, bookId: string) => {
@@ -547,6 +583,11 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
         wasAdded = true;
         updated = [...prev, bookId];
       }
+      try {
+        localStorage.setItem(FAVORITES_KEY, JSON.stringify(updated));
+      } catch (e) {
+        console.warn("[LibraryContext] Failed to save favorites to localStorage:", e);
+      }
       return updated;
     });
 
@@ -565,6 +606,11 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   const removeFavorite = useCallback((bookId: string) => {
     setFavorites((prev) => {
       const updated = prev.filter((id) => id !== bookId);
+      try {
+        localStorage.setItem(FAVORITES_KEY, JSON.stringify(updated));
+      } catch (e) {
+        console.warn("[LibraryContext] Failed to save favorites to localStorage:", e);
+      }
       return updated;
     });
     if (user) {
@@ -609,6 +655,11 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       };
 
       const updated = [newItem, ...filtered].slice(0, 16);
+      try {
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
+      } catch (e) {
+        console.warn("[LibraryContext] Failed to save reading history to localStorage:", e);
+      }
       return updated;
     });
 

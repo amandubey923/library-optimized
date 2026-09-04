@@ -37,8 +37,36 @@ export default function ProfilePage() {
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [socialProfile, setSocialProfile] = useState<PublicUserProfile | null>(null);
-  const [profileLoading, setProfileLoading] = useState(true);
+  const [socialProfile, setSocialProfile] = useState<PublicUserProfile | null>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith("reader_social_profile_")) {
+            const raw = localStorage.getItem(key);
+            if (raw) {
+              const parsed = JSON.parse(raw);
+              if (parsed?.username) return parsed;
+            }
+          }
+        }
+      } catch {}
+    }
+    return null;
+  });
+  const [profileLoading, setProfileLoading] = useState<boolean>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && key.startsWith("reader_social_profile_")) {
+            return false;
+          }
+        }
+      } catch {}
+    }
+    return true;
+  });
   const [profileError, setProfileError] = useState<string | null>(null);
   const [isUsernameSetupOpen, setIsUsernameSetupOpen] = useState(false);
   const [isFollowersModalOpen, setIsFollowersModalOpen] = useState(false);
@@ -56,11 +84,18 @@ export default function ProfilePage() {
       setProfileLoading(false);
       return;
     }
-    // Only show loading placeholder on initial fetch when no profile is cached yet
-    setSocialProfile((prev) => {
-      if (!prev) setProfileLoading(true);
-      return prev;
-    });
+    // Check specific user cache first for instant display
+    try {
+      const cached = localStorage.getItem(`reader_social_profile_${user.uid}`);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed?.username) {
+          setSocialProfile(parsed);
+          setProfileLoading(false);
+        }
+      }
+    } catch {}
+
     setProfileError(null);
     try {
       const prof = await ensureUserProfile(user);

@@ -4,7 +4,7 @@ import { getFirebaseAdminAuth, getFirebaseAdminFirestore } from "@/lib/firebase-
 
 export const dynamic = "force-dynamic";
 
-const ADMIN_EMAIL = "kumaraman19137@gmail.com";
+const ADMIN_EMAIL = process.env.ADMIN_API || "kumaraman19137@gmail.com";
 
 export async function GET(req: NextRequest) {
   try {

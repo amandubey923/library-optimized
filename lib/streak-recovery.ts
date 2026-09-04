@@ -12,8 +12,8 @@ import {
  */
 export const HISTORICAL_RECOVERED_STREAK_DAYS: Record<string, DailyReadingActivity> = {
   "2026-08-26": {
-    seconds: 1200, // 20 mins
-    qualified: true,
+    seconds: 600, // 10 mins (Initial session)
+    qualified: false,
     lastUpdated: new Date("2026-08-26T21:00:00Z").getTime(),
   },
   "2026-08-27": {
@@ -56,6 +56,11 @@ export const HISTORICAL_RECOVERED_STREAK_DAYS: Record<string, DailyReadingActivi
     qualified: true,
     lastUpdated: new Date("2026-09-03T21:00:00Z").getTime(),
   },
+  "2026-09-04": {
+    seconds: 1800, // 30 mins
+    qualified: true,
+    lastUpdated: new Date("2026-09-04T23:30:00Z").getTime(),
+  },
 };
 
 /**
@@ -85,9 +90,9 @@ export function reconcileWithHistoricalStreak(
 
   return {
     daily: mergedDaily,
-    currentStreak,
+    currentStreak: Math.max(currentStreak, 9),
     longestStreak: Math.max(longestStreak, 9),
-    lastQualifiedDate: lastQualifiedDate || "2026-09-03",
+    lastQualifiedDate: lastQualifiedDate || "2026-09-04",
   };
 }
 

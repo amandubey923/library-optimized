@@ -20,6 +20,12 @@ import {
   ShelfDismissalsMap,
   calculateStreak,
   getReadingActivityData,
+  getStoredFavorites,
+  getStoredReadingHistory,
+  getReadingCollections,
+  getBookReflections,
+  getShelfDismissals,
+  getWebsiteActiveTimeData,
 } from "./reader-storage";
 import { reconcileWithHistoricalStreak } from "./streak-recovery";
 import { UserEntitlement, DEFAULT_FREE_ENTITLEMENT } from "./entitlements";
@@ -367,7 +373,96 @@ export async function reconcileAndSyncAllUserData(user: User): Promise<CloudFull
       syncReadingActivityToCloud(user.uid, cloudData.readingActivity);
     }
 
-    // 3. Hydrate local in-memory storage caches with authoritative cloud state
+    // 3. Two-way safe union merge for favorites
+    const localFavs = getStoredFavorites();
+    const cloudFavs = Array.isArray(cloudData.favorites) ? cloudData.favorites : [];
+    const mergedFavs = Array.from(new Set([...localFavs, ...cloudFavs]));
+    cloudData.favorites = mergedFavs;
+    const cloudFavsSet = new Set(cloudFavs);
+    localFavs.forEach((favId) => {
+      if (!cloudFavsSet.has(favId)) {
+        syncFavoriteToCloud(user.uid, favId, true);
+      }
+    });
+
+    // 4. Two-way safe union merge for reading history
+    const localHistory = getStoredReadingHistory();
+    const cloudHistory = Array.isArray(cloudData.readingHistory) ? cloudData.readingHistory : [];
+    const historyMap = new Map<string, ReadingProgressItem>();
+    cloudHistory.forEach((item) => {
+      if (item?.bookId) historyMap.set(item.bookId, item);
+    });
+    localHistory.forEach((localItem) => {
+      if (!localItem?.bookId) return;
+      const existing = historyMap.get(localItem.bookId);
+      if (!existing) {
+        historyMap.set(localItem.bookId, localItem);
+        syncReadingProgressToCloud(user.uid, localItem.bookId, localItem.page, localItem.totalPages);
+      } else {
+        const higherPage = Math.max(localItem.page || 0, existing.page || 0);
+        const latestTime = Math.max(localItem.lastReadAt || 0, existing.lastReadAt || 0);
+        const total = localItem.totalPages || existing.totalPages || 100;
+        const higherProgress = Math.min(100, Math.round((higherPage / total) * 100));
+        historyMap.set(localItem.bookId, {
+          bookId: localItem.bookId,
+          page: higherPage,
+          totalPages: total,
+          progress: higherProgress,
+          lastReadAt: latestTime,
+        });
+        if (higherPage > (existing.page || 0)) {
+          syncReadingProgressToCloud(user.uid, localItem.bookId, higherPage, total);
+        }
+      }
+    });
+    cloudData.readingHistory = Array.from(historyMap.values()).sort((a, b) => (b.lastReadAt || 0) - (a.lastReadAt || 0));
+
+    // 5. Two-way safe union merge for collections & reflections
+    const localCollections = getReadingCollections();
+    const cloudCollections = Array.isArray(cloudData.collections) ? cloudData.collections : [];
+    const colMap = new Map<string, ReadingCollection>();
+    cloudCollections.forEach((c) => {
+      if (c?.id) colMap.set(c.id, { ...c });
+    });
+    localCollections.forEach((c) => {
+      if (!c?.id) return;
+      if (!colMap.has(c.id)) {
+        colMap.set(c.id, { ...c });
+      } else {
+        const existing = colMap.get(c.id)!;
+        existing.bookIds = Array.from(new Set([...(existing.bookIds || []), ...(c.bookIds || [])]));
+      }
+    });
+    cloudData.collections = Array.from(colMap.values());
+    if (localCollections.length > cloudCollections.length) {
+      syncCollectionsToCloud(user.uid, cloudData.collections);
+    }
+
+    const localReflections = getBookReflections();
+    cloudData.reflections = { ...localReflections, ...(cloudData.reflections || {}) };
+
+    const localDismissals = getShelfDismissals();
+    const cloudDismissals = cloudData.shelfDismissals || {};
+    const mergedDismissals: ShelfDismissalsMap = { ...cloudDismissals };
+    Object.entries(localDismissals).forEach(([sec, bMap]) => {
+      mergedDismissals[sec] = { ...(mergedDismissals[sec] || {}), ...bMap };
+    });
+    cloudData.shelfDismissals = mergedDismissals;
+
+    // 6. Two-way merge for active website time
+    const localActive = getWebsiteActiveTimeData();
+    const cloudActive = cloudData.activeTime || { totalActiveSeconds: 0, daily: {}, lastUpdated: Date.now() };
+    const mergedDailyActive: Record<string, number> = { ...(cloudActive.daily || {}) };
+    Object.entries(localActive.daily || {}).forEach(([k, secs]) => {
+      mergedDailyActive[k] = Math.max(mergedDailyActive[k] || 0, secs || 0);
+    });
+    cloudData.activeTime = {
+      totalActiveSeconds: Math.max(localActive.totalActiveSeconds || 0, cloudActive.totalActiveSeconds || 0),
+      daily: mergedDailyActive,
+      lastUpdated: Math.max(localActive.lastUpdated || 0, cloudActive.lastUpdated || 0),
+    };
+
+    // 7. Hydrate local in-memory storage caches with authoritative merged cloud state
     hydrateStorageFromCloudData(cloudData);
 
     return cloudData;
