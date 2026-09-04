@@ -158,15 +158,12 @@ export default function PublicProfilePage() {
     );
   }
 
-  // Private profile check
-  const isPrivate = profile.isPublic === false && !isOwnProfile;
-
   return (
     <main className="min-h-screen bg-[var(--background)] text-[var(--foreground)] pt-20 pb-20 px-3 sm:px-6 lg:px-8">
       <div className="max-w-5xl mx-auto space-y-8">
 
         {/* =========================================================================
-            1. PROFILE HEADER SECTION (Instagram + LeetCode Inspired)
+            1. PROFILE HEADER SECTION (LeetCode / GitHub Public Identity Inspired)
            ========================================================================= */}
         <header className="relative overflow-hidden rounded-3xl border border-[var(--border)] p-6 sm:p-8 bg-gradient-to-br from-[var(--card)] via-[var(--card)]/95 to-[var(--secondary)]/40 shadow-xl">
           {/* Ambient Glow */}
@@ -202,11 +199,6 @@ export default function PublicProfilePage() {
                   <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/30">
                     @{profile.username}
                   </span>
-                  {isPrivate && (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-zinc-500/20 text-zinc-400 border border-zinc-500/30">
-                      🔒 Private
-                    </span>
-                  )}
                 </div>
 
                 <p className="text-xs sm:text-sm text-[var(--text-secondary)] max-w-xl leading-relaxed mt-1">
@@ -339,20 +331,9 @@ export default function PublicProfilePage() {
           </div>
         </header>
 
-        {/* Private Profile Notice */}
-        {isPrivate ? (
-          <div className="p-12 rounded-3xl border border-[var(--border)] bg-[var(--card)] text-center space-y-3">
-            <span className="text-4xl block">🔒</span>
-            <h3 className="font-bold text-base text-[var(--foreground)]">This Profile is Private</h3>
-            <p className="text-xs text-[var(--text-secondary)] max-w-sm mx-auto">
-              @{profile.username} has chosen to keep their reading journey and shelf private.
-            </p>
-          </div>
-        ) : (
-          <>
-            {/* =========================================================================
-                TAB 1: SHELF & STATS
-               ========================================================================= */}
+        {/* =========================================================================
+            TAB 1: SHELF & STATS
+           ========================================================================= */}
             {activeTab === "shelf" && (
               <div className="space-y-8 animate-in fade-in duration-300">
                 {/* LeetCode-style Stats Banner */}
@@ -479,8 +460,6 @@ export default function PublicProfilePage() {
                 <AchievementsGrid achievements={achievements} />
               </div>
             )}
-          </>
-        )}
 
       </div>
 

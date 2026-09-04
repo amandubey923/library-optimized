@@ -212,30 +212,123 @@ export async function suggestUsername(
 }
 
 /**
- * Retrieves a public profile by its unique username.
+ * Retrieves a public profile by its unique username with multi-source resolution.
  */
 export async function getProfileByUsername(username: string): Promise<PublicUserProfile | null> {
   const clean = sanitizeUsername(username);
   if (!clean) return null;
 
-  const currentDb = getFirebaseDb() || db;
-  if (!currentDb) return null;
-
-  try {
-    // 1. Resolve UID from usernames registry
-    const userRef = doc(currentDb, "usernames", clean);
-    const userSnap = await getDoc(userRef);
-    if (!userSnap.exists()) return null;
-
-    const { uid } = userSnap.data();
-    if (!uid) return null;
-
-    // 2. Fetch public profile document
-    return await getProfileByUid(uid);
-  } catch (err) {
-    console.warn("[Social] getProfileByUsername failed:", err);
-    return null;
+  // 1. Check local cache (e.g. if viewing own profile or recently visited)
+  if (typeof window !== "undefined") {
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith("reader_social_profile_")) {
+          const item = localStorage.getItem(key);
+          if (item) {
+            const parsed = JSON.parse(item);
+            if (parsed?.username && parsed.username.toLowerCase() === clean.toLowerCase()) {
+              return parsed;
+            }
+          }
+        }
+      }
+    } catch {}
   }
+
+  const currentDb = getFirebaseDb() || db;
+
+  // 2. Try usernames registry doc
+  if (currentDb) {
+    try {
+      const userRef = doc(currentDb, "usernames", clean);
+      const userSnap = await getDoc(userRef);
+      if (userSnap.exists()) {
+        const { uid } = userSnap.data();
+        if (uid) {
+          const prof = await getProfileByUid(uid);
+          if (prof) return prof;
+        }
+      }
+    } catch (err) {
+      console.warn("[Social] getProfileByUsername doc notice:", err);
+    }
+
+    // 3. Try querying public_profiles where username == clean
+    try {
+      const q = query(
+        collection(currentDb, "public_profiles"),
+        where("username", "==", clean),
+        limit(1)
+      );
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        const prof = snap.docs[0].data() as PublicUserProfile;
+        return { ...prof, uid: snap.docs[0].id };
+      }
+    } catch (err) {
+      console.warn("[Social] getProfileByUsername public_profiles query notice:", err);
+    }
+
+    // 4. Try querying users collection where username == clean
+    try {
+      const q = query(
+        collection(currentDb, "users"),
+        where("username", "==", clean),
+        limit(1)
+      );
+      const snap = await getDocs(q);
+      if (!snap.empty) {
+        const uData = snap.docs[0].data();
+        const fallbackProfile: PublicUserProfile = {
+          uid: snap.docs[0].id,
+          username: uData.username || clean,
+          displayName: uData.displayName || clean,
+          bio: uData.bio || "Passionate reader exploring literature, philosophy & technology on Reader's HUB.",
+          photoURL: uData.photoURL || "",
+          createdAt: uData.createdAt || Date.now(),
+          followersCount: 0,
+          followingCount: 0,
+          isPublic: true,
+          stats: {
+            booksCompleted: 0,
+            currentlyReading: 0,
+            currentStreak: 0,
+            longestStreak: 0,
+            totalActiveSeconds: 0,
+          },
+          achievements: [],
+          updatedAt: Date.now(),
+        };
+        return fallbackProfile;
+      }
+    } catch (err) {
+      console.warn("[Social] getProfileByUsername users query notice:", err);
+    }
+  }
+
+  // 5. Query Server API endpoint (uses Firebase Admin SDK without client-side permission issues)
+  if (typeof window !== "undefined") {
+    try {
+      const res = await fetch(`/api/users/profile?username=${encodeURIComponent(clean)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.profile) {
+          try {
+            localStorage.setItem(
+              `reader_social_profile_${data.profile.uid}`,
+              JSON.stringify(data.profile)
+            );
+          } catch {}
+          return data.profile as PublicUserProfile;
+        }
+      }
+    } catch (apiErr) {
+      console.warn("[Social] Server profile API notice:", apiErr);
+    }
+  }
+
+  return null;
 }
 
 /**
@@ -690,47 +783,94 @@ export async function getFollowing(targetUid: string): Promise<PublicUserProfile
 }
 
 /**
- * Simple, fast user search by username or display name prefix.
+ * Fast public user discovery by username or display name prefix.
+ * Never searches or leaks private account emails or internal UIDs.
  */
 export async function searchUsers(rawQuery: string): Promise<PublicUserProfile[]> {
   const clean = rawQuery.toLowerCase().trim().replace(/^@/, "");
   if (!clean || clean.length < 2) return [];
 
+  // 1. Try server-side API search (powered by Firebase Admin, handles username and displayName)
+  if (typeof window !== "undefined") {
+    try {
+      const res = await fetch(`/api/users/search?q=${encodeURIComponent(clean)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data?.readers) && data.readers.length > 0) {
+          return data.readers as PublicUserProfile[];
+        }
+      }
+    } catch (apiErr) {
+      console.warn("[Social] Server search API notice:", apiErr);
+    }
+  }
+
   const currentDb = getFirebaseDb() || db;
   if (!currentDb) return [];
 
   try {
-    // Query public_profiles
-    const q = query(
-      collection(currentDb, "public_profiles"),
-      where("username", ">=", clean),
-      where("username", "<=", clean + "\uf8ff"),
-      limit(15)
-    );
+    const results: PublicUserProfile[] = [];
+    const seenUids = new Set<string>();
 
-    const snap = await getDocs(q);
-    const results = snap.docs.map((d) => d.data() as PublicUserProfile);
+    // 2. Query public_profiles by username prefix
+    try {
+      const q = query(
+        collection(currentDb, "public_profiles"),
+        where("username", ">=", clean),
+        where("username", "<=", clean + "\uf8ff"),
+        limit(20)
+      );
+      const snap = await getDocs(q);
+      snap.docs.forEach((d) => {
+        seenUids.add(d.id);
+        const p = d.data() as PublicUserProfile;
+        if (p.username) {
+          results.push({ ...p, uid: d.id });
+        }
+      });
+    } catch (qErr) {
+      console.warn("[Social] prefix query notice:", qErr);
+    }
 
-    // Fallback: If username query returned few results, also match display names in memory
-    if (results.length < 10) {
+    // 3. Substring & Display Name matching across public_profiles
+    try {
       const allQ = query(collection(currentDb, "public_profiles"), limit(50));
       const allSnap = await getDocs(allQ);
       allSnap.docs.forEach((docSnap) => {
-        const item = docSnap.data() as PublicUserProfile;
-        if (!results.some((r) => r.uid === item.uid)) {
-          if (
-            item.displayName?.toLowerCase().includes(clean) ||
-            item.username?.toLowerCase().includes(clean)
-          ) {
-            results.push(item);
+        if (!seenUids.has(docSnap.id)) {
+          const item = docSnap.data() as PublicUserProfile;
+          const u = (item.username || "").toLowerCase();
+          const d = (item.displayName || "").toLowerCase();
+          if ((u && u.includes(clean)) || (d && d.includes(clean))) {
+            seenUids.add(docSnap.id);
+            results.push({ ...item, uid: docSnap.id });
           }
         }
       });
+    } catch (allErr) {
+      console.warn("[Social] all profiles query notice:", allErr);
+    }
+
+    // 4. Try usernames registry doc directly if exact username match
+    try {
+      const exactDoc = await getDoc(doc(currentDb, "usernames", clean));
+      if (exactDoc.exists()) {
+        const uData = exactDoc.data();
+        if (uData?.uid && !seenUids.has(uData.uid)) {
+          const prof = await getProfileByUid(uData.uid);
+          if (prof && prof.username) {
+            seenUids.add(prof.uid);
+            results.push(prof);
+          }
+        }
+      }
+    } catch (uDocErr) {
+      // Non-fatal
     }
 
     return results;
   } catch (err) {
-    console.warn("[Social] searchUsers error:", err);
+    console.warn("[Social] searchUsers fallback error:", err);
     return [];
   }
 }
@@ -899,14 +1039,26 @@ export async function syncPublicProfileMetrics(
 
   try {
     const profRef = doc(currentDb, "public_profiles", uid);
+    const existingSnap = await getDoc(profRef);
+    const existingStats = existingSnap.exists() ? existingSnap.data()?.stats : null;
+
+    const safeCurrentStreak = Math.max(
+      streakData.currentStreak || 0,
+      streakData.currentStreak === 0 && existingStats?.currentStreak ? existingStats.currentStreak : 0
+    );
+    const safeLongestStreak = Math.max(
+      streakData.longestStreak || 0,
+      existingStats?.longestStreak || 0
+    );
+
     await setDoc(
       profRef,
       {
         stats: {
           booksCompleted: completedBooks.length,
           currentlyReading: currentlyReading.length,
-          currentStreak: streakData.currentStreak || 0,
-          longestStreak: streakData.longestStreak || 0,
+          currentStreak: safeCurrentStreak,
+          longestStreak: safeLongestStreak,
           totalActiveSeconds: totalActiveSeconds || 0,
         },
         achievements: earnedAchievementIds,

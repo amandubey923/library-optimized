@@ -50,27 +50,26 @@ export default function ProfilePage() {
     setMounted(true);
   }, []);
 
-  // Initialize and synchronize social profile metrics
+  // Initialize and synchronize social profile
   const loadProfile = React.useCallback(async () => {
     if (!user) {
       setProfileLoading(false);
       return;
     }
-    setProfileLoading(true);
+    // Only show loading placeholder on initial fetch when no profile is cached yet
+    setSocialProfile((prev) => {
+      if (!prev) setProfileLoading(true);
+      return prev;
+    });
     setProfileError(null);
     try {
       const prof = await ensureUserProfile(user);
-      setSocialProfile(prof);
+      if (prof) {
+        setSocialProfile(prof);
+      }
       if (!prof || !prof.username) {
         // STATE B: Missing username - automatically open setup modal
         setIsUsernameSetupOpen(true);
-      } else {
-        syncPublicProfileMetrics(
-          user.uid,
-          readingHistory,
-          streakData,
-          globalActiveSeconds
-        );
       }
     } catch (err: any) {
       console.error("[ProfilePage] Failed to load user profile:", err);
@@ -78,11 +77,32 @@ export default function ProfilePage() {
     } finally {
       setProfileLoading(false);
     }
-  }, [user, readingHistory, streakData, globalActiveSeconds]);
+  }, [user]);
 
   useEffect(() => {
     loadProfile();
   }, [loadProfile]);
+
+  // Background sync for public profile metrics without ever touching profile loading state
+  const prevSyncKeyRef = React.useRef<string>("");
+  useEffect(() => {
+    if (!user || !socialProfile?.username) return;
+
+    const syncKey = `${readingHistory.length}_${streakData.currentStreak}_${Math.floor(globalActiveSeconds / 15)}`;
+    if (prevSyncKeyRef.current === syncKey) return;
+    prevSyncKeyRef.current = syncKey;
+
+    const timer = setTimeout(() => {
+      syncPublicProfileMetrics(
+        user.uid,
+        readingHistory,
+        streakData,
+        globalActiveSeconds
+      );
+    }, 1200);
+
+    return () => clearTimeout(timer);
+  }, [user, socialProfile?.username, readingHistory, streakData, globalActiveSeconds]);
 
   // Build activeTimeData from context's Firestore-hydrated state so analytics
   // never falls back to browser localStorage for authenticated account data.
@@ -224,11 +244,7 @@ export default function ProfilePage() {
                   {/* Username Pill */}
                   {user && (
                     <>
-                      {profileLoading ? (
-                        <span className="px-2.5 py-0.5 rounded-full text-xs font-mono bg-[var(--secondary)] text-[var(--text-secondary)] animate-pulse">
-                          Loading handle...
-                        </span>
-                      ) : socialProfile?.username ? (
+                      {socialProfile?.username ? (
                         <Link
                           href={`/profile/${socialProfile.username}`}
                           className="px-2.5 py-0.5 rounded-full text-xs font-mono font-semibold bg-cyan-500/10 text-cyan-300 border border-cyan-500/25 hover:bg-cyan-500/20 hover:border-cyan-500/40 transition-all inline-flex items-center gap-1 shadow-xs"
@@ -237,6 +253,10 @@ export default function ProfilePage() {
                           <span>@{socialProfile.username}</span>
                           <span className="text-[10px] text-cyan-400/80">↗</span>
                         </Link>
+                      ) : profileLoading ? (
+                        <span className="px-2.5 py-0.5 rounded-full text-xs font-mono bg-[var(--secondary)] text-[var(--text-secondary)] animate-pulse">
+                          Loading handle...
+                        </span>
                       ) : profileError ? (
                         <div className="inline-flex items-center gap-1.5">
                           <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-rose-500/15 text-rose-400 border border-rose-500/30">

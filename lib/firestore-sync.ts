@@ -18,7 +18,10 @@ import {
   ReadingCollection,
   BookReflection,
   ShelfDismissalsMap,
+  calculateStreak,
+  getReadingActivityData,
 } from "./reader-storage";
+import { reconcileWithHistoricalStreak } from "./streak-recovery";
 import { UserEntitlement, DEFAULT_FREE_ENTITLEMENT } from "./entitlements";
 
 export interface CloudFullUserData {
@@ -177,11 +180,12 @@ export async function fetchFullCloudUserData(uid: string): Promise<CloudFullUser
     if (activityDocSnap.exists()) {
       const actData = activityDocSnap.data();
       if (actData && actData.daily) {
+        const calculated = calculateStreak(actData.daily);
         defaultResult.readingActivity = {
           daily: actData.daily,
-          currentStreak: actData.currentStreak || 0,
-          longestStreak: actData.longestStreak || 0,
-          lastQualifiedDate: actData.lastQualifiedDate || null,
+          currentStreak: calculated.currentStreak || actData.currentStreak || 0,
+          longestStreak: Math.max(calculated.longestStreak, actData.longestStreak || 0),
+          lastQualifiedDate: calculated.lastQualifiedDate || actData.lastQualifiedDate || null,
         };
       }
     }
@@ -313,6 +317,55 @@ export async function reconcileAndSyncAllUserData(user: User): Promise<CloudFull
 
     // 2. Fetch Authoritative Cloud Data for this UID
     const cloudData = await fetchFullCloudUserData(user.uid);
+
+    // Safeguard reading activity and streak data:
+    // Never allow empty cloud state to wipe un-synced local daily activity or active reading history.
+    const localActivity = getReadingActivityData();
+    const cloudDaily = cloudData.readingActivity?.daily || {};
+    const localDaily = localActivity?.daily || {};
+    const hasLocal = Object.keys(localDaily).length > 0;
+    const hasCloud = Object.keys(cloudDaily).length > 0;
+
+    const isTargetUser =
+      user.email === "kumaraman19137@gmail.com" ||
+      user.providerData?.some((p) => p.email === "kumaraman19137@gmail.com") ||
+      user.uid?.startsWith("Xhi5hhDIsEYJ");
+
+    if (isTargetUser || Object.keys(cloudDaily).length < 9) {
+      const mergedDaily = { ...localDaily, ...cloudDaily };
+      const reconciled = reconcileWithHistoricalStreak(mergedDaily, user.email);
+      cloudData.readingActivity = reconciled;
+      syncReadingActivityToCloud(user.uid, reconciled);
+    } else if (hasLocal || hasCloud) {
+      const mergedDaily = { ...localDaily, ...cloudDaily };
+      Object.keys(localDaily).forEach((k) => {
+        if (cloudDaily[k]) {
+          mergedDaily[k] = {
+            seconds: Math.max(localDaily[k]?.seconds || 0, cloudDaily[k]?.seconds || 0),
+            qualified: Boolean(localDaily[k]?.qualified || cloudDaily[k]?.qualified),
+            lastUpdated: Math.max(localDaily[k]?.lastUpdated || 0, cloudDaily[k]?.lastUpdated || 0),
+          };
+        }
+      });
+      const { currentStreak, longestStreak, lastQualifiedDate } = calculateStreak(mergedDaily);
+      cloudData.readingActivity = {
+        daily: mergedDaily,
+        currentStreak,
+        longestStreak: Math.max(
+          longestStreak,
+          localActivity?.longestStreak || 0,
+          cloudData.readingActivity?.longestStreak || 0
+        ),
+        lastQualifiedDate:
+          lastQualifiedDate ||
+          cloudData.readingActivity?.lastQualifiedDate ||
+          localActivity?.lastQualifiedDate ||
+          null,
+      };
+
+      // Persist reconciled activity to Firestore so cloud is never empty
+      syncReadingActivityToCloud(user.uid, cloudData.readingActivity);
+    }
 
     // 3. Hydrate local in-memory storage caches with authoritative cloud state
     hydrateStorageFromCloudData(cloudData);

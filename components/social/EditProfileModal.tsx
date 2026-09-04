@@ -25,7 +25,6 @@ export default function EditProfileModal({
   const [username, setUsername] = useState(profile.username);
   const [displayName, setDisplayName] = useState(profile.displayName);
   const [bio, setBio] = useState(profile.bio || "");
-  const [isPublic, setIsPublic] = useState(profile.isPublic !== false);
 
   const [usernameStatus, setUsernameStatus] = useState<"idle" | "checking" | "available" | "taken" | "invalid">("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -35,7 +34,6 @@ export default function EditProfileModal({
     setUsername(profile.username);
     setDisplayName(profile.displayName);
     setBio(profile.bio || "");
-    setIsPublic(profile.isPublic !== false);
     setUsernameStatus("idle");
     setErrorMessage(null);
   }, [profile, isOpen]);
@@ -96,7 +94,7 @@ export default function EditProfileModal({
           username: clean,
           displayName: displayName.trim(),
           bio: bio.trim(),
-          isPublic,
+          isPublic: true,
         },
         profile.username
       );
@@ -219,31 +217,7 @@ export default function EditProfileModal({
             />
           </div>
 
-          {/* Public Profile Toggle */}
-          <div className="p-3.5 rounded-2xl bg-[var(--secondary)]/40 border border-[var(--border)] flex items-center justify-between">
-            <div>
-              <span className="font-bold text-[var(--foreground)] block">
-                Public Reader Profile
-              </span>
-              <span className="text-[11px] text-[var(--text-secondary)]">
-                Allow other readers to discover and follow your reading journey
-              </span>
-            </div>
 
-            <button
-              type="button"
-              onClick={() => setIsPublic(!isPublic)}
-              className={`w-12 h-6 rounded-full transition-colors relative cursor-pointer ${
-                isPublic ? "bg-amber-500" : "bg-[var(--secondary)] border border-[var(--border)]"
-              }`}
-            >
-              <span
-                className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
-                  isPublic ? "left-6.5" : "left-0.5"
-                }`}
-              />
-            </button>
-          </div>
 
           {/* Actions */}
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-[var(--border)]">

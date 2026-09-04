@@ -78,9 +78,15 @@ export default function UserDetailsModal({ uid, onClose }: UserDetailsModalProps
                 <h2 className="text-lg sm:text-xl font-bold font-serif text-[var(--foreground)] truncate">
                   {data?.displayName || "Reader Profile"}
                 </h2>
-                <span className="px-2 py-0.5 rounded-full text-xs font-mono font-semibold bg-[var(--secondary)] text-[var(--accent)] border border-[var(--border)]">
-                  @{data?.username || "user"}
-                </span>
+                {data?.username ? (
+                  <span className="px-2 py-0.5 rounded-full text-xs font-mono font-semibold bg-[var(--secondary)] text-[var(--accent)] border border-[var(--border)]">
+                    @{data.username}
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 rounded-full text-xs italic text-[var(--text-secondary)]/70 bg-[var(--secondary)]/40 border border-[var(--border)]">
+                    Not set
+                  </span>
+                )}
                 <span className={`px-2 py-0.5 rounded-full text-[11px] font-bold border flex items-center gap-1.5 ${activityInfo.badgeClass}`}>
                   <span className={`w-1.5 h-1.5 rounded-full ${activityInfo.dotClass}`} />
                   {activityInfo.label}
@@ -346,13 +352,19 @@ export default function UserDetailsModal({ uid, onClose }: UserDetailsModalProps
               {/* UID & System Details footer */}
               <div className="pt-4 border-t border-[var(--border)] text-[11px] text-[var(--text-secondary)] flex items-center justify-between flex-wrap gap-2">
                 <span>UID: <code className="font-mono text-[var(--foreground)] select-all">{data.uid}</code></span>
-                <Link
-                  href={`/profile/${data.username}`}
-                  target="_blank"
-                  className="text-[var(--accent)] hover:underline font-semibold"
-                >
-                  Open Public Profile ↗
-                </Link>
+                {data.username ? (
+                  <Link
+                    href={`/profile/${data.username}`}
+                    target="_blank"
+                    className="text-[var(--accent)] hover:underline font-semibold"
+                  >
+                    Open Public Profile ↗
+                  </Link>
+                ) : (
+                  <span className="text-[var(--text-secondary)]/50 italic text-[10px]">
+                    No public profile (Username not created)
+                  </span>
+                )}
               </div>
             </>
           ) : (

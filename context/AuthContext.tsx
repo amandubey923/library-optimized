@@ -44,6 +44,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       (currentUser) => {
         setUser(currentUser);
         setLoading(false);
+        if (currentUser) {
+          // Asynchronously ensure Firestore /users/{uid} document exists
+          import("@/lib/firestore-sync").then(({ syncUserProfile }) => {
+            syncUserProfile(currentUser).catch((err) => {
+              console.warn("[Auth] syncUserProfile background error:", err);
+            });
+          });
+        }
       },
       (err) => {
         console.error("[Auth] Auth state observer error:", err);

@@ -203,11 +203,18 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     totalActiveSeconds: number;
     todayActiveSeconds: number;
   }>({ totalActiveSeconds: 0, todayActiveSeconds: 0 });
-  const [streakData, setStreakData] = useState<ReadingStreakData>({
-    daily: {},
-    currentStreak: 0,
-    longestStreak: 0,
-    lastQualifiedDate: null,
+  const [streakData, setStreakData] = useState<ReadingStreakData>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        return getReadingActivityData();
+      } catch {}
+    }
+    return {
+      daily: {},
+      currentStreak: 0,
+      longestStreak: 0,
+      lastQualifiedDate: null,
+    };
   });
   const [stats, setStats] = useState<ReadingStats>({
     booksStarted: 0,

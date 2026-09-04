@@ -1,4 +1,5 @@
 import { getFirebaseDb, db } from "@/lib/firebase";
+import { User } from "firebase/auth";
 import {
   collection,
   doc,
@@ -17,7 +18,7 @@ export interface AdminUserListItem {
   uid: string;
   email: string; // Strictly ADMIN-ONLY
   displayName: string;
-  username: string;
+  username: string | null;
   photoURL?: string;
   lastLoginAt?: number;
   lastActiveAt?: number;
@@ -66,10 +67,51 @@ export interface UserDeepInspectionData {
  * Scalable fetcher for Admin Users table.
  * Fetches user records from `/users` and hydrates with `/public_profiles` in batch.
  * Does NOT perform N+1 subcollection queries.
+ * First tries the authorized server API (/api/admin/users) which connects directly
+ * to real Firebase Auth accounts and merges with Firestore public_profiles + users.
+ * Falls back to direct Firestore /users query if server API is unavailable.
  */
 export async function getAdminUsersList(options?: {
   limitCount?: number;
+  currentUser?: User | null;
 }): Promise<AdminUserListItem[]> {
+  // 1. Try Server-Side Admin API with Bearer token if user is provided
+  if (options?.currentUser) {
+    try {
+      const idToken = await options.currentUser.getIdToken();
+      const res = await fetch("/api/admin/users", {
+        headers: {
+          Authorization: `Bearer ${idToken}`,
+        },
+      });
+
+      if (res.ok) {
+        const json = await res.json();
+        if (Array.isArray(json.users)) {
+          return json.users.map((u: any) => ({
+            uid: u.uid || u.id,
+            email: u.email || "No email",
+            displayName: u.displayName || "Reader",
+            username: u.username || null,
+            photoURL: u.photoURL || "",
+            lastLoginAt: u.lastSignInAt || u.lastLoginAt,
+            lastActiveAt: u.lastActiveAt,
+            createdAt: u.createdAt,
+            status: getActivityStatus(u.lastActiveAt).status,
+            booksCompleted: u.booksCompleted || 0,
+            currentlyReading: u.currentlyReading || 0,
+            followersCount: u.followersCount || 0,
+            followingCount: u.followingCount || 0,
+            isPublic: true,
+          }));
+        }
+      }
+    } catch (apiErr) {
+      console.warn("[AdminUsers] /api/admin/users fetch error, falling back to Firestore:", apiErr);
+    }
+  }
+
+  // 2. Client-side Firestore Fallback
   const currentDb = getFirebaseDb() || db;
   if (!currentDb) return [];
 

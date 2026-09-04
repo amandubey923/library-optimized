@@ -33,14 +33,29 @@ export default function UserSearchModal({ isOpen, onClose }: UserSearchModalProp
     }
 
     setLoading(true);
+    let isCancelled = false;
+
     const timer = setTimeout(() => {
-      searchUsers(clean).then((res) => {
-        setResults(res);
-        setLoading(false);
-      });
+      searchUsers(clean)
+        .then((res) => {
+          if (!isCancelled) {
+            setResults((res || []).filter((r) => r && r.username));
+            setLoading(false);
+          }
+        })
+        .catch((err) => {
+          if (!isCancelled) {
+            console.warn("[UserSearchModal] Search error:", err);
+            setResults([]);
+            setLoading(false);
+          }
+        });
     }, 300);
 
-    return () => clearTimeout(timer);
+    return () => {
+      isCancelled = true;
+      clearTimeout(timer);
+    };
   }, [query]);
 
   if (!isOpen) return null;

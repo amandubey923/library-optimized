@@ -79,7 +79,7 @@ function AdminDashboardContent() {
     setDataRefreshing(true);
     try {
       const [uList, cOverrides, sOverrides, aLogs] = await Promise.all([
-        getAdminUsersList({ limitCount: 100 }),
+        getAdminUsersList({ limitCount: 100, currentUser: user }),
         getCatalogOverrides(),
         getCuratedSeriesOverrides(),
         getAdminAuditLogs(50),
@@ -95,7 +95,7 @@ function AdminDashboardContent() {
       setUsersLoading(false);
       setDataRefreshing(false);
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     loadDashboardData();
@@ -201,10 +201,10 @@ function AdminDashboardContent() {
       .filter((u) => {
         if (userSearchQuery.trim()) {
           const q = userSearchQuery.toLowerCase().trim();
-          const matchName = u.displayName.toLowerCase().includes(q);
-          const matchUsername = u.username.toLowerCase().includes(q);
-          const matchEmail = u.email.toLowerCase().includes(q);
-          const matchUid = u.uid.toLowerCase().includes(q);
+          const matchName = (u.displayName || "").toLowerCase().includes(q);
+          const matchUsername = u.username ? u.username.toLowerCase().includes(q) : false;
+          const matchEmail = (u.email || "").toLowerCase().includes(q);
+          const matchUid = (u.uid || "").toLowerCase().includes(q);
           if (!matchName && !matchUsername && !matchEmail && !matchUid) return false;
         }
 
@@ -916,6 +916,15 @@ function AdminDashboardContent() {
                                 <span className="text-[10px] text-[var(--accent)] font-mono truncate block">
                                   @{u.username}
                                 </span>
+                                {u.username ? (
+                                  <span className="text-[10px] text-[var(--accent)] font-mono truncate block">
+                                    @{u.username}
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] text-[var(--text-secondary)]/60 italic block">
+                                    Not set
+                                  </span>
+                                )}
                               </div>
                             </td>
 
