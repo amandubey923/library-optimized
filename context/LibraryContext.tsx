@@ -58,6 +58,10 @@ import {
   removeBookReflection,
   clearAllReflections,
   clearAllUserDataOnLogout,
+  getStoredFavorites,
+  saveStoredFavorites,
+  getStoredReadingHistory,
+  saveStoredReadingHistory,
 } from "@/lib/reader-storage";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -519,6 +523,16 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     const localUserStreak = getReadingActivityData(user.uid);
     setStreakData(localUserStreak);
 
+    // Immediately prime local favorites and reading history before cloud sync arrives
+    const localFavs = getStoredFavorites(user.uid);
+    if (localFavs && localFavs.length > 0) {
+      setFavorites(localFavs);
+    }
+    const localHist = getStoredReadingHistory(user.uid);
+    if (localHist && localHist.length > 0) {
+      setReadingHistory(localHist);
+    }
+
     let isCancelled = false;
 
     const performSync = async () => {
@@ -583,11 +597,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
         wasAdded = true;
         updated = [...prev, bookId];
       }
-      try {
-        localStorage.setItem(FAVORITES_KEY, JSON.stringify(updated));
-      } catch (e) {
-        console.warn("[LibraryContext] Failed to save favorites to localStorage:", e);
-      }
+      saveStoredFavorites(updated, user?.uid);
       return updated;
     });
 
@@ -606,11 +616,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   const removeFavorite = useCallback((bookId: string) => {
     setFavorites((prev) => {
       const updated = prev.filter((id) => id !== bookId);
-      try {
-        localStorage.setItem(FAVORITES_KEY, JSON.stringify(updated));
-      } catch (e) {
-        console.warn("[LibraryContext] Failed to save favorites to localStorage:", e);
-      }
+      saveStoredFavorites(updated, user?.uid);
       return updated;
     });
     if (user) {
@@ -655,11 +661,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       };
 
       const updated = [newItem, ...filtered].slice(0, 16);
-      try {
-        localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
-      } catch (e) {
-        console.warn("[LibraryContext] Failed to save reading history to localStorage:", e);
-      }
+      saveStoredReadingHistory(updated, user?.uid);
       return updated;
     });
 

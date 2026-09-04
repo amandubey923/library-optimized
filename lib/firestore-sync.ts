@@ -23,7 +23,9 @@ import {
   saveReadingActivityData,
   getReadingActivityData,
   getStoredFavorites,
+  saveStoredFavorites,
   getStoredReadingHistory,
+  saveStoredReadingHistory,
   getReadingCollections,
   getBookReflections,
   getShelfDismissals,
@@ -374,10 +376,11 @@ export async function reconcileAndSyncAllUserData(user: User): Promise<CloudFull
     syncReadingActivityToCloud(user.uid, finalReadingActivity);
 
     // 3. Two-way safe union merge for favorites
-    const localFavs = getStoredFavorites();
+    const localFavs = getStoredFavorites(user.uid);
     const cloudFavs = Array.isArray(cloudData.favorites) ? cloudData.favorites : [];
     const mergedFavs = Array.from(new Set([...localFavs, ...cloudFavs]));
     cloudData.favorites = mergedFavs;
+    saveStoredFavorites(mergedFavs, user.uid);
     const cloudFavsSet = new Set(cloudFavs);
     localFavs.forEach((favId) => {
       if (!cloudFavsSet.has(favId)) {
@@ -386,7 +389,7 @@ export async function reconcileAndSyncAllUserData(user: User): Promise<CloudFull
     });
 
     // 4. Two-way safe union merge for reading history
-    const localHistory = getStoredReadingHistory();
+    const localHistory = getStoredReadingHistory(user.uid);
     const cloudHistory = Array.isArray(cloudData.readingHistory) ? cloudData.readingHistory : [];
     const historyMap = new Map<string, ReadingProgressItem>();
     cloudHistory.forEach((item) => {
@@ -416,6 +419,7 @@ export async function reconcileAndSyncAllUserData(user: User): Promise<CloudFull
       }
     });
     cloudData.readingHistory = Array.from(historyMap.values()).sort((a, b) => (b.lastReadAt || 0) - (a.lastReadAt || 0));
+    saveStoredReadingHistory(cloudData.readingHistory, user.uid);
 
     // 5. Two-way safe union merge for collections & reflections
     const localCollections = getReadingCollections();

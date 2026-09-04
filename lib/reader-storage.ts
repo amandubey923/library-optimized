@@ -176,42 +176,91 @@ export function getActivityStorageKey(uid?: string | null): string {
   const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
   return targetUid ? `readershub:reading-activity:v1:${targetUid}` : "readershub:reading-activity:v1:guest";
 }
+export const ACCOUNT_A_UID = "Xhi5hhDIsEYJtFKgY96gvdaKxWw2";
 export const FAVORITES_KEY = "readers_hub_favorites_v2";
 export const HISTORY_KEY = "readers_hub_reading_progress_v2";
 const OFFLINE_CACHE_NAME = "readershub-offline-books-v1";
 const SHELF_DISMISSALS_KEY = "readershub:shelf-dismissals:v1";
 
-export function getStoredFavorites(): string[] {
+export function getFavoritesStorageKey(uid?: string | null): string {
+  const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+  return targetUid ? `readershub:favorites:v1:${targetUid}` : FAVORITES_KEY;
+}
+
+export function getHistoryStorageKey(uid?: string | null): string {
+  const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+  return targetUid ? `readershub:history:v1:${targetUid}` : HISTORY_KEY;
+}
+
+export function getStoredFavorites(uid?: string | null): string[] {
   if (typeof window === "undefined") return [];
   try {
-    return JSON.parse(localStorage.getItem(FAVORITES_KEY) || "[]");
+    const key = getFavoritesStorageKey(uid);
+    const raw = localStorage.getItem(key);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+    const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+    if (!targetUid || targetUid === ACCOUNT_A_UID) {
+      const legacy = localStorage.getItem(FAVORITES_KEY);
+      if (legacy) {
+        const parsed = JSON.parse(legacy);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    }
+    return [];
   } catch {
     return [];
   }
 }
 
-export function saveStoredFavorites(favs: string[]): void {
+export function saveStoredFavorites(favs: string[], uid?: string | null): void {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(FAVORITES_KEY, JSON.stringify(favs));
+    const key = getFavoritesStorageKey(uid);
+    localStorage.setItem(key, JSON.stringify(favs));
+    const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+    if (!targetUid || targetUid === ACCOUNT_A_UID) {
+      localStorage.setItem(FAVORITES_KEY, JSON.stringify(favs));
+    }
   } catch (e) {
     console.warn("[ReaderStorage] Failed to save favorites:", e);
   }
 }
 
-export function getStoredReadingHistory(): ReadingProgressItem[] {
+export function getStoredReadingHistory(uid?: string | null): ReadingProgressItem[] {
   if (typeof window === "undefined") return [];
   try {
-    return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+    const key = getHistoryStorageKey(uid);
+    const raw = localStorage.getItem(key);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+    const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+    if (!targetUid || targetUid === ACCOUNT_A_UID) {
+      const legacy = localStorage.getItem(HISTORY_KEY);
+      if (legacy) {
+        const parsed = JSON.parse(legacy);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    }
+    return [];
   } catch {
     return [];
   }
 }
 
-export function saveStoredReadingHistory(history: ReadingProgressItem[]): void {
+export function saveStoredReadingHistory(history: ReadingProgressItem[], uid?: string | null): void {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    const key = getHistoryStorageKey(uid);
+    localStorage.setItem(key, JSON.stringify(history));
+    const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+    if (!targetUid || targetUid === ACCOUNT_A_UID) {
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    }
   } catch (e) {
     console.warn("[ReaderStorage] Failed to save reading history:", e);
   }
@@ -1674,17 +1723,10 @@ export function clearAllUserDataOnLogout(): void {
   if (typeof window === "undefined") return;
   try {
     invalidateAllCaches();
-    const keysToRemove: string[] = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (
-        key &&
-        (key.startsWith("readershub:") || key.startsWith("readers_hub_"))
-      ) {
-        keysToRemove.push(key);
-      }
-    }
-    keysToRemove.forEach((k) => localStorage.removeItem(k));
+    // Only remove ephemeral guest keys on logout. NEVER purge persistent user account offline caches!
+    localStorage.removeItem("readershub:reading-activity:v1:guest");
+    localStorage.removeItem("readershub:favorites:v1:guest");
+    localStorage.removeItem("readershub:history:v1:guest");
   } catch (e) {
     console.warn("[ReaderStorage] Failed to clear user data on logout:", e);
   }
@@ -1763,25 +1805,18 @@ export function hydrateStorageFromCloudData(
   if (typeof window === "undefined") return;
 
   try {
+    const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+
     // 1. Favorites: Non-destructive merge
     if (Array.isArray(data.favorites) && data.favorites.length > 0) {
-      let existingFavs: string[] = [];
-      try {
-        const raw = localStorage.getItem(FAVORITES_KEY);
-        if (raw) existingFavs = JSON.parse(raw) || [];
-      } catch {}
+      const existingFavs = getStoredFavorites(targetUid);
       const merged = Array.from(new Set([...existingFavs, ...data.favorites]));
-      localStorage.setItem(FAVORITES_KEY, JSON.stringify(merged));
+      saveStoredFavorites(merged, targetUid);
     }
 
     // 2. Reading History: Non-destructive merge
     if (Array.isArray(data.readingHistory) && data.readingHistory.length > 0) {
-      let existingHist: ReadingProgressItem[] = [];
-      try {
-        const raw = localStorage.getItem(HISTORY_KEY);
-        if (raw) existingHist = JSON.parse(raw) || [];
-      } catch {}
-
+      const existingHist = getStoredReadingHistory(targetUid);
       const histMap = new Map<string, ReadingProgressItem>();
       existingHist.forEach((item) => {
         if (item?.bookId) histMap.set(item.bookId, item);
@@ -1804,7 +1839,7 @@ export function hydrateStorageFromCloudData(
       });
 
       const mergedHist = Array.from(histMap.values());
-      localStorage.setItem(HISTORY_KEY, JSON.stringify(mergedHist));
+      saveStoredReadingHistory(mergedHist, targetUid);
 
       // Also update individual progress keys
       mergedHist.forEach((item) => {

@@ -38,36 +38,8 @@ export default function ProfilePage() {
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [socialProfile, setSocialProfile] = useState<PublicUserProfile | null>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i);
-          if (key && key.startsWith("reader_social_profile_")) {
-            const raw = localStorage.getItem(key);
-            if (raw) {
-              const parsed = JSON.parse(raw);
-              if (parsed?.username) return parsed;
-            }
-          }
-        }
-      } catch {}
-    }
-    return null;
-  });
-  const [profileLoading, setProfileLoading] = useState<boolean>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i);
-          if (key && key.startsWith("reader_social_profile_")) {
-            return false;
-          }
-        }
-      } catch {}
-    }
-    return true;
-  });
+  const [socialProfile, setSocialProfile] = useState<PublicUserProfile | null>(null);
+  const [profileLoading, setProfileLoading] = useState<boolean>(true);
   const [profileError, setProfileError] = useState<string | null>(null);
   const [isUsernameSetupOpen, setIsUsernameSetupOpen] = useState(false);
   const [isFollowersModalOpen, setIsFollowersModalOpen] = useState(false);
@@ -332,11 +304,10 @@ export default function ProfilePage() {
                 {/* Name + Badges Row */}
                 <div className="flex items-center gap-2.5 flex-wrap">
                   <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--foreground)] flex items-center gap-2">
-                    <span className="truncate">{user?.displayName || profileHeader.userTitle}</span>
                     <span className="truncate">
                       {socialProfile?.displayName?.replace(/^@+/, "").trim() ||
                         user?.displayName?.replace(/^@+/, "").trim() ||
-                        (socialProfile?.username ? socialProfile.username.replace(/^@+/, "") : profileHeader.userTitle)}
+                        profileHeader.userTitle}
                     </span>
                     <ProBadge />
                   </h1>
