@@ -203,6 +203,27 @@ export default function BookDetailClient({
                 </button>
               </div>
 
+              <div className="flex gap-2">
+                <a
+                  href={book.pdf}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex-1 py-2 px-3 rounded-xl bg-[var(--secondary)] hover:bg-[var(--secondary)]/80 text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)] text-[11px] sm:text-xs font-semibold text-center transition-all flex items-center justify-center gap-1 shadow-xs"
+                >
+                  <span>Open PDF</span>
+                  <span>↗</span>
+                </a>
+
+                <a
+                  href={book.pdf}
+                  download={`${book.title.replace(/\s+/g, "_")}.pdf`}
+                  className="flex-1 py-2 px-3 rounded-xl bg-[var(--secondary)] hover:bg-[var(--secondary)]/80 text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)] text-[11px] sm:text-xs font-semibold text-center transition-all flex items-center justify-center gap-1 shadow-xs"
+                >
+                  <span>Download</span>
+                  <span>↓</span>
+                </a>
+              </div>
+
               {/* Add to Collection & Log Reflection Buttons */}
               <div className="flex gap-2 pt-1">
                 <button
