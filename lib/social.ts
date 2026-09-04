@@ -1123,7 +1123,7 @@ export function calculateUserAchievements(
   booksCatalog: Book[] = BOOKS
 ): Achievement[] {
   const completedBooks = readingHistory.filter(
-    (h) => h.progress >= 98 || (h.totalPages > 0 && h.page >= h.totalPages)
+    (h) => h.progress >= 95 || (h.totalPages > 0 && h.page >= h.totalPages)
   );
   const completedCount = completedBooks.length;
 
@@ -1210,10 +1210,10 @@ export async function syncPublicProfileMetrics(
   if (!currentDb) return;
 
   const completedBooks = readingHistory.filter(
-    (h) => h.progress >= 98 || (h.totalPages > 0 && h.page >= h.totalPages)
+    (h) => h.progress >= 95 || (h.totalPages > 0 && h.page >= h.totalPages)
   );
   const currentlyReading = readingHistory.filter(
-    (h) => h.progress > 0 && h.progress < 98 && h.page < h.totalPages
+    (h) => h.progress > 0 && h.progress < 95 && (h.totalPages <= 0 || h.page < h.totalPages)
   );
 
   const achievements = calculateUserAchievements(readingHistory, streakData, reflections, BOOKS);

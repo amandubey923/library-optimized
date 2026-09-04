@@ -57,12 +57,14 @@ export async function GET(
     }
 
     // 2. Fetch subcollections using Admin SDK privileges
-    const [favsSnap, progSnap, collSnap, refSnap, actSnap] = await Promise.all([
+    const [favsSnap, progSnap, collSnap, refSnap, actSnap, activityDocSnap, activeTimeDocSnap] = await Promise.all([
       adminDb.collection("users").doc(uid).collection("favorites").get().catch(() => ({ docs: [] })),
       adminDb.collection("users").doc(uid).collection("reading_progress").get().catch(() => ({ docs: [] })),
       adminDb.collection("users").doc(uid).collection("data").doc("collections").get().catch(() => ({ exists: false, data: () => null })),
       adminDb.collection("users").doc(uid).collection("data").doc("reflections").get().catch(() => ({ exists: false, data: () => null })),
       adminDb.collection("public_activities").where("uid", "==", uid).limit(10).get().catch(() => ({ docs: [] })),
+      adminDb.collection("users").doc(uid).collection("data").doc("activity").get().catch(() => ({ exists: false, data: () => null })),
+      adminDb.collection("users").doc(uid).collection("data").doc("active_time").get().catch(() => ({ exists: false, data: () => null })),
     ]);
 
     // Format Favorites
@@ -120,6 +122,30 @@ export async function GET(
     });
     recentActivities.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
+    // Real Activity & Streak
+    let liveStreak = profData.stats?.currentStreak || 0;
+    let liveLongest = profData.stats?.longestStreak || 0;
+    if (activityDocSnap && (activityDocSnap as any).exists && typeof (activityDocSnap as any).data === "function") {
+      const actData = (activityDocSnap as any).data();
+      if (actData?.currentStreak !== undefined) liveStreak = Math.max(liveStreak, actData.currentStreak);
+      if (actData?.longestStreak !== undefined) liveLongest = Math.max(liveLongest, actData.longestStreak);
+    }
+
+    // Real Active Time
+    let liveActiveSecs = profData.stats?.totalActiveSeconds || 0;
+    if (activeTimeDocSnap && (activeTimeDocSnap as any).exists && typeof (activeTimeDocSnap as any).data === "function") {
+      const atData = (activeTimeDocSnap as any).data();
+      if (atData?.totalActiveSeconds !== undefined) liveActiveSecs = Math.max(liveActiveSecs, atData.totalActiveSeconds);
+    }
+
+    // Accurate book counts
+    const completedCount = readingProgress.filter(
+      (p) => p.progress >= 95 || (p.totalPages > 0 && p.page >= p.totalPages)
+    ).length;
+    const readingCount = readingProgress.filter(
+      (p) => p.progress > 0 && p.progress < 95 && (p.totalPages <= 0 || p.page < p.totalPages)
+    ).length;
+
     const cleanDisplayName = (userData.displayName || profData.displayName || profData.username || "Reader").replace(/^@+/, "").trim();
 
     const inspectionData = {
@@ -132,11 +158,11 @@ export async function GET(
       lastLoginAt: lastLogin,
       lastActiveAt: userData.lastActiveAt,
       createdAt: userData.createdAt,
-      booksCompleted: profData.stats?.booksCompleted || 0,
-      currentlyReading: profData.stats?.currentlyReading || readingProgress.length,
-      currentStreak: profData.stats?.currentStreak || 0,
-      longestStreak: profData.stats?.longestStreak || 0,
-      totalActiveSeconds: profData.stats?.totalActiveSeconds || 0,
+      booksCompleted: completedCount,
+      currentlyReading: readingCount,
+      currentStreak: liveStreak,
+      longestStreak: liveLongest,
+      totalActiveSeconds: liveActiveSecs,
       followersCount: profData.followersCount || 0,
       followingCount: profData.followingCount || 0,
       isPublic: profData.isPublic !== false,

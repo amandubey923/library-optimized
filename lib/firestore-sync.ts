@@ -448,7 +448,7 @@ export async function reconcileAndSyncAllUserData(user: User): Promise<CloudFull
     cloudData.shelfDismissals = mergedDismissals;
 
     // 6. Two-way merge for active website time
-    const localActive = getWebsiteActiveTimeData();
+    const localActive = getWebsiteActiveTimeData(user.uid);
     const cloudActive = cloudData.activeTime || { totalActiveSeconds: 0, daily: {}, lastUpdated: Date.now() };
     const mergedDailyActive: Record<string, number> = { ...(cloudActive.daily || {}) };
     Object.entries(localActive.daily || {}).forEach(([k, secs]) => {

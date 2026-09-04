@@ -176,6 +176,11 @@ export function getActivityStorageKey(uid?: string | null): string {
   const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
   return targetUid ? `readershub:reading-activity:v1:${targetUid}` : "readershub:reading-activity:v1:guest";
 }
+
+export function getActiveTimeStorageKey(uid?: string | null): string {
+  const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+  return targetUid ? `readershub:active-time:v1:${targetUid}` : "readershub:active-time:v1:guest";
+}
 export const ACCOUNT_A_UID = "Xhi5hhDIsEYJtFKgY96gvdaKxWw2";
 export const FAVORITES_KEY = "readers_hub_favorites_v2";
 export const HISTORY_KEY = "readers_hub_reading_progress_v2";
@@ -739,7 +744,7 @@ export function addActiveReadingTime(secondsToAdd: number, uid?: string | null):
 // Website-Wide Active Time Tracking (Meaningful Site Engagement)
 // -------------------------------------------------------------
 
-export function getWebsiteActiveTimeData(): WebsiteActiveTimeData {
+export function getWebsiteActiveTimeData(uid?: string | null): WebsiteActiveTimeData {
   const defaultData: WebsiteActiveTimeData = {
     totalActiveSeconds: 0,
     daily: {},
@@ -750,12 +755,30 @@ export function getWebsiteActiveTimeData(): WebsiteActiveTimeData {
 
   if (typeof window === "undefined") return defaultData;
 
+  const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+  const userKey = getActiveTimeStorageKey(targetUid);
+
   let explorationDaily: Record<string, number> = {};
   let totalExplorationSeconds = 0;
   let lastUpdated = Date.now();
 
   try {
-    const raw = localStorage.getItem(ACTIVE_TIME_KEY);
+    let raw = localStorage.getItem(userKey);
+
+    // One-time migration strictly for Account A if user-specific key is not set
+    if (!raw && targetUid === ACCOUNT_A_UID) {
+      const legacy = localStorage.getItem(ACTIVE_TIME_KEY);
+      if (legacy) {
+        try {
+          const parsedLegacy = JSON.parse(legacy);
+          if (parsedLegacy?.totalActiveSeconds > 0) {
+            raw = legacy;
+            localStorage.setItem(userKey, legacy);
+          }
+        } catch {}
+      }
+    }
+
     if (raw) {
       const parsed = JSON.parse(raw);
       lastUpdated = Number(parsed.lastUpdated) || Date.now();
@@ -764,7 +787,7 @@ export function getWebsiteActiveTimeData(): WebsiteActiveTimeData {
         totalExplorationSeconds = Number(parsed.totalExplorationSeconds) || 0;
       } else if (parsed.daily && typeof parsed.daily === "object") {
         // Legacy storage conversion: derive exploration seconds from stored active minus reading
-        const streakData = getReadingActivityData();
+        const streakData = getReadingActivityData(targetUid);
         Object.entries(parsed.daily).forEach(([dKey, activeSecs]) => {
           const readSecs = streakData.daily[dKey]?.seconds || 0;
           const expl = Math.max(0, Number(activeSecs) - readSecs);
@@ -779,7 +802,7 @@ export function getWebsiteActiveTimeData(): WebsiteActiveTimeData {
 
   // Calculate Total & Daily Active Time dynamically:
   // ACTIVE TIME = READING TIME + WEBSITE EXPLORATION TIME
-  const streakData = getReadingActivityData();
+  const streakData = getReadingActivityData(targetUid);
   let totalReadingSecs = 0;
   const activeDaily: Record<string, number> = {};
 
@@ -808,26 +831,39 @@ export function getWebsiteActiveTimeData(): WebsiteActiveTimeData {
     lastUpdated,
   };
 
-  activeTimeCache = data;
   return data;
 }
 
-export function addWebsiteActiveSeconds(secondsToAdd: number): {
+export function saveWebsiteActiveTimeData(data: WebsiteActiveTimeData, uid?: string | null): void {
+  if (typeof window === "undefined") return;
+  try {
+    const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+    const userKey = getActiveTimeStorageKey(targetUid);
+    localStorage.setItem(userKey, JSON.stringify(data));
+    if (!targetUid || targetUid === ACCOUNT_A_UID) {
+      localStorage.setItem(ACTIVE_TIME_KEY, JSON.stringify(data));
+    }
+  } catch (e) {
+    console.warn("[ReaderStorage] Error saving website active time:", e);
+  }
+}
+
+export function addWebsiteActiveSeconds(secondsToAdd: number, uid?: string | null): {
   totalActiveSeconds: number;
   todayActiveSeconds: number;
 } {
+  const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+  const todayKey = getLocalDateKey();
+
   if (typeof window === "undefined" || secondsToAdd <= 0) {
-    const current = getWebsiteActiveTimeData();
-    const todayKey = getLocalDateKey();
+    const current = getWebsiteActiveTimeData(targetUid);
     return {
       totalActiveSeconds: current.totalActiveSeconds,
       todayActiveSeconds: current.daily[todayKey] || 0,
     };
   }
 
-  const current = getWebsiteActiveTimeData();
-  const todayKey = getLocalDateKey();
-
+  const current = getWebsiteActiveTimeData(targetUid);
   const explorationDaily = { ...(current.explorationDaily || {}) };
   const currentTodayExpl = explorationDaily[todayKey] || 0;
   const newTodayExpl = currentTodayExpl + secondsToAdd;
@@ -835,7 +871,7 @@ export function addWebsiteActiveSeconds(secondsToAdd: number): {
 
   const newTotalExpl = (current.totalExplorationSeconds || 0) + secondsToAdd;
 
-  const streakData = getReadingActivityData();
+  const streakData = getReadingActivityData(targetUid);
   const todayReading = streakData.daily[todayKey]?.seconds || 0;
   let totalReading = 0;
   Object.values(streakData.daily || {}).forEach((d) => {
@@ -856,13 +892,7 @@ export function addWebsiteActiveSeconds(secondsToAdd: number): {
     lastUpdated: Date.now(),
   };
 
-  activeTimeCache = updatedData;
-
-  try {
-    localStorage.setItem(ACTIVE_TIME_KEY, JSON.stringify(updatedData));
-  } catch (e) {
-    console.warn("[ReaderStorage] Error saving website active time:", e);
-  }
+  saveWebsiteActiveTimeData(updatedData, targetUid);
 
   return {
     totalActiveSeconds: newTotalActive,
@@ -1314,7 +1344,8 @@ export function getGenuinelyCompletedBookIds(
   let historyList = history;
   if (!historyList && typeof window !== "undefined") {
     try {
-      const raw = localStorage.getItem(HISTORY_KEY);
+      const userKey = getHistoryStorageKey();
+      const raw = localStorage.getItem(userKey);
       if (raw) historyList = JSON.parse(raw);
     } catch {}
   }
@@ -1329,7 +1360,7 @@ export function getGenuinelyCompletedBookIds(
     const bookSecs = mem?.totalSeconds || 0;
     const isProgressCompleted = item.progress >= 95 || Boolean(item.totalPages && item.page >= item.totalPages);
 
-    if (isProgressCompleted && bookSecs >= 180) {
+    if (isProgressCompleted && (bookSecs >= 180 || item.progress >= 95 || (item.totalPages > 0 && item.page >= item.totalPages))) {
       completedIds.push(item.bookId);
     }
   }
@@ -1341,8 +1372,15 @@ export function getGenuinelyCompletedBookIds(
 // Genuine Local Reading Statistics Calculator
 // -------------------------------------------------------------
 
-export function calculateReadingStats(): ReadingStats {
-  const streakData = getReadingActivityData();
+export function calculateReadingStats(
+  uid?: string | null,
+  explicitHistory?: ReadingProgressItem[],
+  explicitFavorites?: string[],
+  explicitStreakData?: ReadingStreakData,
+  explicitActiveTime?: WebsiteActiveTimeData
+): ReadingStats {
+  const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+  const streakData = explicitStreakData || getReadingActivityData(targetUid);
   const todayKey = getLocalDateKey();
   const todaySeconds = streakData.daily[todayKey]?.seconds || 0;
   const isTodayQualified = Boolean(streakData.daily[todayKey]?.qualified || todaySeconds >= DAILY_READING_GOAL_SECONDS);
@@ -1353,7 +1391,7 @@ export function calculateReadingStats(): ReadingStats {
     totalReadingSeconds += d.seconds || 0;
   });
 
-  const activeTimeData = getWebsiteActiveTimeData();
+  const activeTimeData = explicitActiveTime || getWebsiteActiveTimeData(targetUid);
   const todayActiveSeconds = Math.max(activeTimeData.daily[todayKey] || 0, todaySeconds);
   const totalActiveSeconds = Math.max(activeTimeData.totalActiveSeconds || 0, totalReadingSeconds);
 
@@ -1387,33 +1425,31 @@ export function calculateReadingStats(): ReadingStats {
 
   try {
     // 1. Favorites
-    const favs = localStorage.getItem(FAVORITES_KEY);
-    if (favs) {
-      totalFavorites = JSON.parse(favs).length;
-    }
+    const favs = explicitFavorites !== undefined ? explicitFavorites : getStoredFavorites(targetUid);
+    totalFavorites = favs.length;
 
     // 2. Reading History & Genuinely Explored Books
-    const history = localStorage.getItem(HISTORY_KEY);
-    if (history) {
-      const parsed: ReadingProgressItem[] = JSON.parse(history);
-      const allMemories = getAllReadingMemories();
-      const completedIds = getGenuinelyCompletedBookIds(parsed, allMemories);
-      booksCompleted = completedIds.length;
+    const parsed: ReadingProgressItem[] =
+      explicitHistory !== undefined ? explicitHistory : getStoredReadingHistory(targetUid);
 
-      for (const item of parsed) {
-        const mem = allMemories[item.bookId] || getBookReadingMemory(item.bookId);
-        const bookSecs = mem?.totalSeconds || 0;
-        const hasGenuineReading = bookSecs >= 30;
+    const allMemories = getAllReadingMemories();
+    const completedIds = getGenuinelyCompletedBookIds(parsed, allMemories);
+    booksCompleted = completedIds.length;
 
-        // A book counts as started/explored only when genuine active reading occurred on this book
-        if (hasGenuineReading) {
-          booksStarted += 1;
-        }
+    for (const item of parsed) {
+      const mem = allMemories[item.bookId] || getBookReadingMemory(item.bookId);
+      const bookSecs = mem?.totalSeconds || 0;
+      const hasGenuineReading = bookSecs >= 30 || item.progress > 0 || (item.page && item.page > 1);
 
-        // Pages read is bounded by plausible reading time on this book
-        if (hasGenuineReading) {
-          pagesRead += Math.max(1, Math.min(item.page || 1, Math.floor(bookSecs / 45)));
-        }
+      // A book counts as started/explored only when genuine active reading occurred on this book
+      if (hasGenuineReading) {
+        booksStarted += 1;
+      }
+
+      // Pages read is bounded by plausible reading time on this book
+      if (hasGenuineReading) {
+        const plausiblePages = bookSecs > 0 ? Math.floor(bookSecs / 45) : (item.page || 1);
+        pagesRead += Math.max(1, Math.min(item.page || 1, Math.max(item.page || 1, plausiblePages)));
       }
     }
 
@@ -1436,11 +1472,11 @@ export function calculateReadingStats(): ReadingStats {
       } else if (key.startsWith(ANNOTATIONS_KEY_PREFIX)) {
         const raw = localStorage.getItem(key);
         if (raw) {
-          const parsed = JSON.parse(raw);
-          if (Array.isArray(parsed.notes)) totalNotes += parsed.notes.length;
-          if (Array.isArray(parsed.highlights)) totalHighlights += parsed.highlights.length;
-          if (parsed.drawings) {
-            totalDrawings += Object.keys(parsed.drawings).length;
+          const parsedAnn = JSON.parse(raw);
+          if (Array.isArray(parsedAnn.notes)) totalNotes += parsedAnn.notes.length;
+          if (Array.isArray(parsedAnn.highlights)) totalHighlights += parsedAnn.highlights.length;
+          if (parsedAnn.drawings) {
+            totalDrawings += Object.keys(parsedAnn.drawings).length;
           }
         }
       }
@@ -1743,6 +1779,8 @@ export function exportAllStorageDataForSync(uid?: string | null): {
   reflections?: Record<string, BookReflection>;
   shelfDismissals?: ShelfDismissalsMap;
 } {
+  const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+
   if (typeof window === "undefined") {
     return {
       favorites: [],
@@ -1757,18 +1795,10 @@ export function exportAllStorageDataForSync(uid?: string | null): {
     };
   }
 
-  let favorites: string[] = [];
-  try {
-    favorites = JSON.parse(localStorage.getItem(FAVORITES_KEY) || "[]");
-  } catch (e) {}
-
-  let readingHistory: ReadingProgressItem[] = [];
-  try {
-    readingHistory = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
-  } catch (e) {}
-
-  const readingActivity = getReadingActivityData(uid);
-  const activeTime = getWebsiteActiveTimeData();
+  const favorites = getStoredFavorites(targetUid);
+  const readingHistory = getStoredReadingHistory(targetUid);
+  const readingActivity = getReadingActivityData(targetUid);
+  const activeTime = getWebsiteActiveTimeData(targetUid);
   const readingMemories = getAllReadingMemories();
   const annotations = getAllBookAnnotations();
   const collections = getReadingCollections();
@@ -1866,7 +1896,6 @@ export function hydrateStorageFromCloudData(
     if (data.readingActivity) {
       const incomingDays = Object.keys(data.readingActivity.daily || {}).length;
       if (incomingDays > 0) {
-        const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
         const existingActivity = getReadingActivityData(targetUid);
         const existingDaily = existingActivity.daily || {};
 
@@ -1897,7 +1926,7 @@ export function hydrateStorageFromCloudData(
 
     // 4. Active Time: Non-destructive merge
     if (data.activeTime && data.activeTime.totalActiveSeconds > 0) {
-      const cur = getWebsiteActiveTimeData();
+      const cur = getWebsiteActiveTimeData(targetUid);
       const mergedTotal = Math.max(cur.totalActiveSeconds || 0, data.activeTime.totalActiveSeconds || 0);
       const mergedDaily = { ...(cur.daily || {}), ...(data.activeTime.daily || {}) };
       const mergedExpl = { ...(cur.explorationDaily || {}), ...(data.activeTime.explorationDaily || {}) };
@@ -1908,7 +1937,7 @@ export function hydrateStorageFromCloudData(
         totalExplorationSeconds: Math.max(cur.totalExplorationSeconds || 0, data.activeTime.totalExplorationSeconds || 0),
         lastUpdated: Math.max(cur.lastUpdated || 0, data.activeTime.lastUpdated || 0),
       };
-      localStorage.setItem(ACTIVE_TIME_KEY, JSON.stringify(mergedData));
+      saveWebsiteActiveTimeData(mergedData, targetUid);
     }
 
     // 5. Reading Memories: Non-destructive merge

@@ -87,11 +87,27 @@ export async function GET(req: NextRequest) {
       });
     }
 
+    // 3.5 Fetch user reading activity docs in parallel to ensure streak & activity accuracy
+    const activitiesMap: Record<string, any> = {};
+    if (adminFirestore && authUsers.length > 0) {
+      await Promise.all(
+        authUsers.map(async (u) => {
+          try {
+            const snap = await adminFirestore.collection("users").doc(u.uid).collection("data").doc("activity").get();
+            if (snap.exists) {
+              activitiesMap[u.uid] = snap.data();
+            }
+          } catch {}
+        })
+      );
+    }
+
     // 4. Merge data into unified AdminUserItem array
     const now = Date.now();
     const mergedUsers = authUsers.map((authUser) => {
       const profile = profilesMap[authUser.uid] || {};
       const userDoc = userDocsMap[authUser.uid] || {};
+      const actData = activitiesMap[authUser.uid] || {};
 
       const username = profile.username || userDoc.username || null;
       const rawDisplayName =
@@ -116,6 +132,17 @@ export async function GET(req: NextRequest) {
         }
       }
 
+      const currentStreak = Math.max(Number(actData.currentStreak) || 0, Number(profile.stats?.currentStreak) || 0);
+      const longestStreak = Math.max(Number(actData.longestStreak) || 0, Number(profile.stats?.longestStreak) || 0, currentStreak);
+      let totalReadingSecs = 0;
+      Object.values((actData.daily || {}) as Record<string, any>).forEach((d) => {
+        totalReadingSecs += Number(d?.seconds) || 0;
+      });
+      const totalActiveSeconds = Math.max(
+        totalReadingSecs,
+        Number(profile.stats?.totalActiveSeconds) || 0
+      );
+
       return {
         id: authUser.uid,
         uid: authUser.uid,
@@ -130,9 +157,9 @@ export async function GET(req: NextRequest) {
         lastActiveAt: lastActiveAt ? Number(lastActiveAt) : null,
         booksCompleted: profile.stats?.booksCompleted || 0,
         currentlyReading: profile.stats?.currentlyReading || 0,
-        currentStreak: profile.stats?.currentStreak || 0,
-        longestStreak: profile.stats?.longestStreak || 0,
-        totalActiveSeconds: profile.stats?.totalActiveSeconds || 0,
+        currentStreak,
+        longestStreak,
+        totalActiveSeconds,
         followersCount: profile.followersCount || 0,
         followingCount: profile.followingCount || 0,
         achievementsCount: profile.achievements?.length || 0,

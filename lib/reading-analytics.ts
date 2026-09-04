@@ -219,6 +219,7 @@ export function formatCalendarDate(dateStr: string): string {
 }
 
 export interface AnalyticsDataSource {
+  uid?: string | null;
   favorites?: string[];
   readingHistory?: ReadingProgressItem[];
   streakData?: ReadingStreakData;
@@ -235,8 +236,9 @@ export function getComprehensiveAnalytics(
   filter: AnalyticsTimeFilter = "all",
   customSource?: AnalyticsDataSource
 ): ComprehensiveAnalytics {
-  const streakData: ReadingStreakData = customSource?.streakData || getReadingActivityData();
-  const activeTimeData: WebsiteActiveTimeData = customSource?.activeTimeData || getWebsiteActiveTimeData();
+  const targetUid = customSource?.uid;
+  const streakData: ReadingStreakData = customSource?.streakData || getReadingActivityData(targetUid);
+  const activeTimeData: WebsiteActiveTimeData = customSource?.activeTimeData || getWebsiteActiveTimeData(targetUid);
   const readingMemories: Record<string, BookReadingMemory> = customSource?.readingMemories || getAllReadingMemories();
   const readingHistory: ReadingProgressItem[] = customSource?.readingHistory || [];
   const favoritesList: string[] = customSource?.favorites || [];

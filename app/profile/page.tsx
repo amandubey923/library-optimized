@@ -195,12 +195,13 @@ export default function ProfilePage() {
   // Compute analytics dynamically based on authenticated storage & state
   const analytics = useMemo(() => {
     return getComprehensiveAnalytics(timeFilter, {
+      uid: user?.uid,
       favorites,
       readingHistory,
       streakData,
       activeTimeData,
     });
-  }, [timeFilter, favorites, readingHistory, streakData, activeTimeData, stats, globalActiveSeconds, todayReadingSeconds, todayActiveSeconds]);
+  }, [user?.uid, timeFilter, favorites, readingHistory, streakData, activeTimeData, stats, globalActiveSeconds, todayReadingSeconds, todayActiveSeconds]);
 
   if (!mounted) {
     return (

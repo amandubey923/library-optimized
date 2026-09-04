@@ -16,6 +16,7 @@ import {
   setActiveUserUid,
   addActiveReadingTime,
   getWebsiteActiveTimeData,
+  WebsiteActiveTimeData,
   addWebsiteActiveSeconds,
   addBookReadingSeconds,
   getLocalDateKey,
@@ -198,11 +199,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   const [favorites, setFavorites] = useState<string[]>(() => {
     if (typeof window !== "undefined") {
       try {
-        const raw = localStorage.getItem(FAVORITES_KEY);
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (Array.isArray(parsed)) return parsed;
-        }
+        return getStoredFavorites();
       } catch {}
     }
     return [];
@@ -210,11 +207,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   const [readingHistory, setReadingHistory] = useState<ReadingProgressItem[]>(() => {
     if (typeof window !== "undefined") {
       try {
-        const raw = localStorage.getItem(HISTORY_KEY);
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          if (Array.isArray(parsed)) return parsed;
-        }
+        return getStoredReadingHistory();
       } catch {}
     }
     return [];
@@ -254,6 +247,18 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   });
   const [mounted, setMounted] = useState(false);
 
+  const favoritesRef = useRef(favorites);
+  favoritesRef.current = favorites;
+  const readingHistoryRef = useRef(readingHistory);
+  readingHistoryRef.current = readingHistory;
+  const streakDataRef = useRef(streakData);
+  streakDataRef.current = streakData;
+  const activeTimeDataRef = useRef<WebsiteActiveTimeData>({
+    totalActiveSeconds: 0,
+    daily: {},
+    lastUpdated: Date.now(),
+  });
+
   const showToast = useCallback((msg: string) => {
     setToastMessage(msg);
     setTimeout(() => {
@@ -266,16 +271,10 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     setCollections(getReadingCollections());
     setReflections(getBookReflections());
     try {
-      const storedFavs = localStorage.getItem(FAVORITES_KEY);
-      if (storedFavs) {
-        const parsed = JSON.parse(storedFavs);
-        if (Array.isArray(parsed) && parsed.length > 0) setFavorites(parsed);
-      }
-      const storedHist = localStorage.getItem(HISTORY_KEY);
-      if (storedHist) {
-        const parsed = JSON.parse(storedHist);
-        if (Array.isArray(parsed) && parsed.length > 0) setReadingHistory(parsed);
-      }
+      const storedFavs = getStoredFavorites();
+      if (storedFavs && storedFavs.length > 0) setFavorites(storedFavs);
+      const storedHist = getStoredReadingHistory();
+      if (storedHist && storedHist.length > 0) setReadingHistory(storedHist);
     } catch (e) {
       console.warn("[LibraryContext] Failed to load local favorites/history:", e);
     }
@@ -386,18 +385,34 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     return Boolean(shelfDismissals[section]?.[bookId]);
   }, [shelfDismissals]);
 
-  const refreshStats = useCallback(() => {
-    const calculated = calculateReadingStats();
-    const act = getReadingActivityData(user?.uid);
-    const actTime = getWebsiteActiveTimeData();
-    const todayKey = getLocalDateKey();
-    setStats(calculated);
-    setStreakData(act);
-    setActiveTimeState({
-      totalActiveSeconds: actTime.totalActiveSeconds || 0,
-      todayActiveSeconds: actTime.daily[todayKey] || 0,
-    });
-  }, [user]);
+  const refreshStats = useCallback(
+    (
+      explicitHist?: ReadingProgressItem[],
+      explicitFavs?: string[],
+      explicitStreak?: ReadingStreakData,
+      explicitActiveTime?: WebsiteActiveTimeData
+    ) => {
+      const targetUid = user?.uid;
+      const calculated = calculateReadingStats(
+        targetUid,
+        explicitHist !== undefined ? explicitHist : readingHistoryRef.current,
+        explicitFavs !== undefined ? explicitFavs : favoritesRef.current,
+        explicitStreak !== undefined ? explicitStreak : streakDataRef.current,
+        explicitActiveTime !== undefined ? explicitActiveTime : activeTimeDataRef.current
+      );
+      const act = explicitStreak || getReadingActivityData(targetUid);
+      const actTime = explicitActiveTime || getWebsiteActiveTimeData(targetUid);
+      activeTimeDataRef.current = actTime;
+      const todayKey = getLocalDateKey();
+      setStats(calculated);
+      setStreakData(act);
+      setActiveTimeState({
+        totalActiveSeconds: actTime.totalActiveSeconds || 0,
+        todayActiveSeconds: actTime.daily[todayKey] || 0,
+      });
+    },
+    [user]
+  );
 
   // Global Website Engagement & Active Time Tracker (Meaningful Site Interaction outside PDF Reader)
   useEffect(() => {
@@ -417,11 +432,12 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
 
     const flushSiteActiveTime = () => {
       if (accumulatedSiteSecs > 0) {
-        const res = addWebsiteActiveSeconds(accumulatedSiteSecs);
+        const res = addWebsiteActiveSeconds(accumulatedSiteSecs, user?.uid);
         accumulatedSiteSecs = 0;
         setActiveTimeState(res);
         if (user) {
-          const actTime = getWebsiteActiveTimeData();
+          const actTime = getWebsiteActiveTimeData(user.uid);
+          activeTimeDataRef.current = actTime;
           syncActiveTimeToCloud(user.uid, actTime);
         }
       }
@@ -437,11 +453,12 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       ) {
         accumulatedSiteSecs += 1;
         if (accumulatedSiteSecs >= 5) {
-          const res = addWebsiteActiveSeconds(accumulatedSiteSecs);
+          const res = addWebsiteActiveSeconds(accumulatedSiteSecs, user?.uid);
           accumulatedSiteSecs = 0;
           setActiveTimeState(res);
           if (user) {
-            const actTime = getWebsiteActiveTimeData();
+            const actTime = getWebsiteActiveTimeData(user.uid);
+            activeTimeDataRef.current = actTime;
             syncActiveTimeToCloud(user.uid, actTime);
           }
         }
@@ -462,7 +479,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       flushSiteActiveTime();
       if (user) {
         const act = getReadingActivityData(user.uid);
-        const actTime = getWebsiteActiveTimeData();
+        const actTime = getWebsiteActiveTimeData(user.uid);
         // flushPendingActivitySyncs cancels existing debounce timers and writes immediately.
         flushPendingActivitySyncs(user.uid, act, actTime);
       }
@@ -551,12 +568,20 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       setReadingMemories(cloudData.readingMemories || {});
       setAnnotationsState(cloudData.annotations || {});
 
+      activeTimeDataRef.current = cloudData.activeTime;
       const todayKey = getLocalDateKey();
       setActiveTimeState({
         totalActiveSeconds: cloudData.activeTime.totalActiveSeconds || 0,
         todayActiveSeconds: cloudData.activeTime.daily[todayKey] || 0,
       });
-      setStats(calculateReadingStats());
+      const calculated = calculateReadingStats(
+        user.uid,
+        cloudData.readingHistory,
+        cloudData.favorites,
+        cloudData.readingActivity,
+        cloudData.activeTime
+      );
+      setStats(calculated);
     };
 
     performSync();
@@ -738,11 +763,13 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
 
   // Active Reading Time Tracker (Diwali Diya)
   const recordActiveReading = useCallback((seconds: number) => {
-    const res = addActiveReadingTime(seconds, user?.uid);
-    const act = getReadingActivityData(user?.uid);
-    const actTime = getWebsiteActiveTimeData();
+    const targetUid = user?.uid;
+    const res = addActiveReadingTime(seconds, targetUid);
+    const act = getReadingActivityData(targetUid);
+    const actTime = getWebsiteActiveTimeData(targetUid);
+    activeTimeDataRef.current = actTime;
     const todayKey = getLocalDateKey();
-    const calculatedStats = calculateReadingStats();
+    const calculatedStats = calculateReadingStats(targetUid);
 
     setStreakData(act);
     setActiveTimeState({
@@ -823,15 +850,15 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   const handleImportData = useCallback((jsonStr: string) => {
     const res = importUserData(jsonStr);
     if (res.success) {
-      const favs = localStorage.getItem(FAVORITES_KEY);
-      if (favs) setFavorites(JSON.parse(favs));
-      const hist = localStorage.getItem(HISTORY_KEY);
-      if (hist) setReadingHistory(JSON.parse(hist));
+      const favs = getStoredFavorites(user?.uid);
+      if (favs) setFavorites(favs);
+      const hist = getStoredReadingHistory(user?.uid);
+      if (hist) setReadingHistory(hist);
       refreshStats();
     }
     showToast(res.message);
     return res;
-  }, [refreshStats, showToast]);
+  }, [refreshStats, showToast, user]);
 
   // Granular Reset Actions
   const clearAllProgress = useCallback(() => {
@@ -885,10 +912,12 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   }, [refreshStats, showToast]);
 
   const recordWebsiteActiveTime = useCallback((seconds: number) => {
-    const res = addWebsiteActiveSeconds(seconds);
+    const targetUid = user?.uid;
+    const res = addWebsiteActiveSeconds(seconds, targetUid);
     setActiveTimeState(res);
     if (user) {
-      const actTime = getWebsiteActiveTimeData();
+      const actTime = getWebsiteActiveTimeData(user.uid);
+      activeTimeDataRef.current = actTime;
       syncActiveTimeToCloud(user.uid, actTime);
     }
     return res;
