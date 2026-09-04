@@ -2,20 +2,31 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
+    // Helper function for authorized Super Administrator
+    function isAdmin() {
+      return request.auth != null && request.auth.token.email == 'kumaraman19137@gmail.com';
+    }
+
     // 1. Private User root document and personal subcollections
     // (reading_progress, favorites, bookmarks, daily_activity)
+    // (reading_progress, favorites, bookmarks, daily_activity, etc.)
     match /users/{userId} {
       allow read: if request.auth != null && (request.auth.uid == userId || request.auth.token.email == 'kumaraman19137@gmail.com');
       allow write: if request.auth != null && request.auth.uid == userId;
+      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      allow write: if request.auth != null && (request.auth.uid == userId || isAdmin());
 
       match /{document=**} {
         allow read: if request.auth != null && (request.auth.uid == userId || request.auth.token.email == 'kumaraman19137@gmail.com');
         allow write: if request.auth != null && request.auth.uid == userId;
+        allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
+        allow write: if request.auth != null && (request.auth.uid == userId || isAdmin());
       }
     }
 
     match /users {
       allow list: if request.auth != null && request.auth.token.email == 'kumaraman19137@gmail.com';
+      allow list: if isAdmin();
     }
 
     // 2. Public User Profiles (Instagram + LeetCode social layer)
@@ -23,6 +34,8 @@ service cloud.firestore {
       allow read: if true;
       allow create, update: if request.auth != null && request.auth.uid == userId;
       allow delete: if request.auth != null && request.auth.uid == userId;
+      allow create, update: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      allow delete: if request.auth != null && (request.auth.uid == userId || isAdmin());
     }
 
     // 3. Unique Username Registry (@username)
@@ -30,6 +43,8 @@ service cloud.firestore {
       allow read: if true;
       allow create, update: if request.auth != null && request.auth.uid == request.resource.data.uid;
       allow delete: if request.auth != null && request.auth.uid == resource.data.uid;
+      allow create, update: if request.auth != null && (request.auth.uid == request.resource.data.uid || isAdmin());
+      allow delete: if request.auth != null && (request.auth.uid == resource.data.uid || isAdmin());
     }
 
     // 4. Follow Relationships (${followerUid}_${followingUid})
@@ -39,6 +54,7 @@ service cloud.firestore {
                     && request.auth.uid == request.resource.data.followerUid 
                     && request.resource.data.followerUid != request.resource.data.followingUid;
       allow delete: if request.auth != null && request.auth.uid == resource.data.followerUid;
+      allow delete: if request.auth != null && (request.auth.uid == resource.data.followerUid || isAdmin());
     }
 
     // 5. Public Reading Activities
@@ -46,6 +62,27 @@ service cloud.firestore {
       allow read: if true;
       allow create: if request.auth != null && request.auth.uid == request.resource.data.uid;
       allow delete: if request.auth != null && request.auth.uid == resource.data.uid;
+      allow create: if request.auth != null && (request.auth.uid == request.resource.data.uid || isAdmin());
+      allow delete: if request.auth != null && (request.auth.uid == resource.data.uid || isAdmin());
+    }
+
+    // 6. Catalog Overrides (Dynamic book soft delete & metadata overrides)
+    match /catalog_overrides/{bookId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // 7. Curated Series Overrides (Platform reading paths/series management)
+    match /curated_series_overrides/{seriesId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // 8. Admin Audit Logs (Sensitive action audit trail - ADMIN ONLY)
+    match /admin_audit_logs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAdmin();
+      allow update, delete: if false; // Immutable audit trail
     }
 
     // Default deny all other paths

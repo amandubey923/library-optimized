@@ -13,6 +13,8 @@ import { getRelatedBooks } from "@/lib/recommendations";
 import { getBookAnnotations } from "@/lib/reader-storage";
 import { getAffiliateInfoForBook } from "@/lib/affiliate-config";
 import AdPlaceholder from "@/components/monetization/AdPlaceholder";
+import { getFirebaseDb, db } from "@/lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
 
 const PdfReader = dynamic(() => import("@/components/PdfReader"), {
   ssr: false,
@@ -63,6 +65,39 @@ export default function BookDetailClient({
   const [isOfflineSaved, setIsOfflineSaved] = useState(false);
   const [isCollectionModalOpen, setIsCollectionModalOpen] = useState(false);
   const [isReflectionModalOpen, setIsReflectionModalOpen] = useState(false);
+  const [isBookDeleted, setIsBookDeleted] = useState(false);
+  const [metaOverride, setMetaOverride] = useState<{
+    title?: string;
+    author?: string;
+    category?: string;
+    description?: string;
+  }>({});
+
+  useEffect(() => {
+    const currentDb = getFirebaseDb() || db;
+    if (!currentDb || !book.id) return;
+    const ref = doc(currentDb, "catalog_overrides", book.id);
+    getDoc(ref)
+      .then((snap) => {
+        if (snap.exists()) {
+          const d = snap.data();
+          if (d.isDeleted) {
+            setIsBookDeleted(true);
+          }
+          if (d.titleOverride || d.authorOverride || d.categoryOverride || d.descriptionOverride) {
+            setMetaOverride({
+              title: d.titleOverride,
+              author: d.authorOverride,
+              category: d.categoryOverride,
+              description: d.descriptionOverride,
+            });
+          }
+        }
+      })
+      .catch((err) => {
+        console.warn("[BookDetail] Override check note:", err);
+      });
+  }, [book.id]);
 
   const progress = getReadingProgress(book.id);
   const annotations = useMemo(() => getBookAnnotations(book.id), [book.id]);
@@ -126,6 +161,39 @@ export default function BookDetailClient({
   const notesCount = annotations.notes?.length || 0;
   const bookmarksCount = annotations.bookmarks?.length || 0;
   const hasPriorInteractions = Boolean((progress && progress.page > 1) || highlightsCount > 0 || notesCount > 0 || bookmarksCount > 0);
+
+  const displayTitle = metaOverride.title || book.title;
+  const displayAuthor = metaOverride.author || book.author;
+  const displayCategory = metaOverride.category || book.category;
+  const displayDescription = metaOverride.description || book.description;
+
+  if (isBookDeleted) {
+    return (
+      <main className="min-h-screen bg-[var(--background)] text-[var(--foreground)] pt-24 pb-20 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-xl mx-auto text-center space-y-6 py-16">
+          <div className="w-20 h-20 rounded-3xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-4xl mx-auto shadow-inner">
+            📖
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-2xl sm:text-3xl font-bold font-serif text-[var(--foreground)]">
+              This title is currently unavailable in Reader Hub.
+            </h1>
+            <p className="text-sm text-[var(--text-secondary)] leading-relaxed">
+              The volume &ldquo;{displayTitle}&rdquo; has been removed or temporarily set inactive by administrators. Your reading progress, bookmarks, and notes for this title remain preserved in your personal shelf.
+            </p>
+          </div>
+          <div className="pt-2 flex justify-center gap-3">
+            <Link
+              href="/library"
+              className="py-3 px-6 rounded-xl font-bold text-xs bg-[var(--foreground)] text-[var(--background)] hover:opacity-90 shadow-md transition-all"
+            >
+              ← Return to Library
+            </Link>
+          </div>
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main className="w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-6 sm:py-12 text-left min-w-0 overflow-x-hidden">

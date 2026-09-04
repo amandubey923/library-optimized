@@ -119,6 +119,7 @@ export async function syncUserProfile(user: User): Promise<void> {
         displayName: user.displayName,
         photoURL: user.photoURL,
         lastLoginAt: serverTimestamp(),
+        lastActiveAt: Date.now(),
       },
       { merge: true }
     );

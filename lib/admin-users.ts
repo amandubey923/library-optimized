@@ -1,0 +1,308 @@
+import { getFirebaseDb, db } from "@/lib/firebase";
+import {
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  query,
+  where,
+  orderBy,
+  limit,
+} from "firebase/firestore";
+import { getActivityStatus, ActivityStatus } from "./active-tracker";
+import { PublicUserProfile, PublicActivity } from "./social";
+import { ReadingCollection } from "./reader-storage";
+
+export interface AdminUserListItem {
+  uid: string;
+  email: string; // Strictly ADMIN-ONLY
+  displayName: string;
+  username: string;
+  photoURL?: string;
+  lastLoginAt?: number;
+  lastActiveAt?: number;
+  createdAt?: number;
+  status: ActivityStatus;
+  booksCompleted: number;
+  currentlyReading: number;
+  followersCount: number;
+  followingCount: number;
+  isPublic: boolean;
+}
+
+export interface UserDeepInspectionData {
+  uid: string;
+  email: string;
+  displayName: string;
+  username: string;
+  photoURL?: string;
+  bio?: string;
+  lastLoginAt?: number;
+  lastActiveAt?: number;
+  createdAt?: number;
+  booksCompleted: number;
+  currentlyReading: number;
+  currentStreak: number;
+  longestStreak: number;
+  totalActiveSeconds: number;
+  followersCount: number;
+  followingCount: number;
+  isPublic: boolean;
+  // Deep inspection items loaded exclusively on demand:
+  favorites: string[];
+  collections: ReadingCollection[];
+  readingProgress: Array<{
+    bookId: string;
+    page: number;
+    totalPages: number;
+    progress: number;
+    lastReadAt?: number;
+  }>;
+  reflections: Record<string, { reflection: string; rating?: number; updatedAt: number }>;
+  recentActivities: PublicActivity[];
+}
+
+/**
+ * Scalable fetcher for Admin Users table.
+ * Fetches user records from `/users` and hydrates with `/public_profiles` in batch.
+ * Does NOT perform N+1 subcollection queries.
+ */
+export async function getAdminUsersList(options?: {
+  limitCount?: number;
+}): Promise<AdminUserListItem[]> {
+  const currentDb = getFirebaseDb() || db;
+  if (!currentDb) return [];
+
+  const maxUsers = options?.limitCount || 100;
+
+  try {
+    const usersCol = collection(currentDb, "users");
+    const q = query(usersCol, limit(maxUsers));
+    const usersSnap = await getDocs(q);
+
+    if (usersSnap.empty) return [];
+
+    const rawUsers: Array<{
+      uid: string;
+      email: string;
+      displayName?: string;
+      photoURL?: string;
+      lastLoginAt?: any;
+      lastActiveAt?: number;
+      createdAt?: number;
+    }> = [];
+
+    usersSnap.forEach((snap) => {
+      const data = snap.data();
+      let lastLogin: number | undefined = undefined;
+      if (data.lastLoginAt) {
+        if (typeof data.lastLoginAt.toMillis === "function") {
+          lastLogin = data.lastLoginAt.toMillis();
+        } else if (typeof data.lastLoginAt === "number") {
+          lastLogin = data.lastLoginAt;
+        }
+      }
+
+      rawUsers.push({
+        uid: snap.id,
+        email: data.email || "No email",
+        displayName: data.displayName || "",
+        photoURL: data.photoURL || "",
+        lastLoginAt: lastLogin,
+        lastActiveAt: typeof data.lastActiveAt === "number" ? data.lastActiveAt : undefined,
+        createdAt: typeof data.createdAt === "number" ? data.createdAt : undefined,
+      });
+    });
+
+    // Batch load corresponding public profiles to enrich with username & social metrics
+    const profilePromises = rawUsers.map(async (u) => {
+      try {
+        const profRef = doc(currentDb, "public_profiles", u.uid);
+        const pSnap = await getDoc(profRef);
+        return pSnap.exists() ? (pSnap.data() as PublicUserProfile) : null;
+      } catch {
+        return null;
+      }
+    });
+
+    const profiles = await Promise.all(profilePromises);
+
+    const mergedList: AdminUserListItem[] = rawUsers.map((u, index) => {
+      const p = profiles[index];
+      const status = getActivityStatus(u.lastActiveAt).status;
+
+      return {
+        uid: u.uid,
+        email: u.email,
+        displayName: u.displayName || p?.displayName || "Reader",
+        username: p?.username || u.email.split("@")[0] || "user",
+        photoURL: u.photoURL || p?.photoURL || "",
+        lastLoginAt: u.lastLoginAt,
+        lastActiveAt: u.lastActiveAt,
+        createdAt: u.createdAt || p?.createdAt,
+        status,
+        booksCompleted: p?.stats?.booksCompleted || 0,
+        currentlyReading: p?.stats?.currentlyReading || 0,
+        followersCount: p?.followersCount || 0,
+        followingCount: p?.followingCount || 0,
+        isPublic: p?.isPublic !== false,
+      };
+    });
+
+    return mergedList;
+  } catch (err) {
+    console.error("[AdminUsers] getAdminUsersList error:", err);
+    return [];
+  }
+}
+
+/**
+ * On-demand deep inspection for a single user.
+ * Triggered ONLY when admin clicks "Inspect" on a specific user.
+ */
+export async function fetchUserDeepInspection(
+  uid: string
+): Promise<UserDeepInspectionData | null> {
+  const currentDb = getFirebaseDb() || db;
+  if (!currentDb || !uid) return null;
+
+  try {
+    // 1. User root doc & public profile
+    const userRef = doc(currentDb, "users", uid);
+    const profRef = doc(currentDb, "public_profiles", uid);
+
+    const [userSnap, profSnap] = await Promise.all([
+      getDoc(userRef),
+      getDoc(profRef),
+    ]);
+
+    if (!userSnap.exists() && !profSnap.exists()) return null;
+
+    const userData = userSnap.data() || {};
+    const profData = (profSnap.data() as PublicUserProfile) || {};
+
+    let lastLogin: number | undefined = undefined;
+    if (userData.lastLoginAt) {
+      if (typeof userData.lastLoginAt.toMillis === "function") {
+        lastLogin = userData.lastLoginAt.toMillis();
+      } else if (typeof userData.lastLoginAt === "number") {
+        lastLogin = userData.lastLoginAt;
+      }
+    }
+
+    // 2. Fetch deep subcollections on demand:
+    // a. Favorites
+    const favsCol = collection(currentDb, "users", uid, "favorites");
+    const favsPromise = getDocs(favsCol).catch(() => ({ docs: [] }));
+
+    // b. Collections
+    const collDocRef = doc(currentDb, "users", uid, "data", "collections");
+    const collPromise = getDoc(collDocRef).catch(() => ({ exists: () => false, data: () => null }));
+
+    // c. Reading Progress
+    const progCol = collection(currentDb, "users", uid, "reading_progress");
+    const progPromise = getDocs(progCol).catch(() => ({ docs: [] }));
+
+    // d. Reflections
+    const refDocRef = doc(currentDb, "users", uid, "data", "reflections");
+    const refPromise = getDoc(refDocRef).catch(() => ({ exists: () => false, data: () => null }));
+
+    // e. Recent Public Activities
+    const actCol = collection(currentDb, "public_activities");
+    const actQuery = query(
+      actCol,
+      where("uid", "==", uid),
+      orderBy("timestamp", "desc"),
+      limit(10)
+    );
+    const actPromise = getDocs(actQuery).catch(() => ({ docs: [] }));
+
+    const [favsSnap, collSnap, progSnap, refSnap, actSnap] = await Promise.all([
+      favsPromise,
+      collPromise,
+      progPromise,
+      refPromise,
+      actPromise,
+    ]);
+
+    // Format Favorites
+    const favorites: string[] = [];
+    (favsSnap as any).docs?.forEach((d: any) => {
+      const dData = d.data();
+      if (dData.isFavorite !== false) {
+        favorites.push(d.id);
+      }
+    });
+
+    // Format Collections
+    let collectionsList: ReadingCollection[] = [];
+    if (typeof (collSnap as any).exists === "function" && (collSnap as any).exists()) {
+      const cData = (collSnap as any).data();
+      if (Array.isArray(cData)) {
+        collectionsList = cData;
+      } else if (cData?.collections && Array.isArray(cData.collections)) {
+        collectionsList = cData.collections;
+      }
+    }
+
+    // Format Reading Progress
+    const progressList: Array<{
+      bookId: string;
+      page: number;
+      totalPages: number;
+      progress: number;
+      lastReadAt?: number;
+    }> = [];
+    (progSnap as any).docs?.forEach((d: any) => {
+      const p = d.data();
+      progressList.push({
+        bookId: d.id,
+        page: p.page || 1,
+        totalPages: p.totalPages || 100,
+        progress: p.progress || 0,
+        lastReadAt: p.lastReadAt,
+      });
+    });
+
+    // Format Reflections
+    let reflectionsMap: Record<string, any> = {};
+    if (typeof (refSnap as any).exists === "function" && (refSnap as any).exists()) {
+      reflectionsMap = (refSnap as any).data() || {};
+    }
+
+    // Format Activities
+    const recentActivities: PublicActivity[] = [];
+    (actSnap as any).docs?.forEach((d: any) => {
+      recentActivities.push(d.data() as PublicActivity);
+    });
+
+    return {
+      uid,
+      email: userData.email || "No email",
+      displayName: userData.displayName || profData.displayName || "Reader",
+      username: profData.username || userData.email?.split("@")[0] || "user",
+      photoURL: userData.photoURL || profData.photoURL || "",
+      bio: profData.bio || "",
+      lastLoginAt: lastLogin,
+      lastActiveAt: typeof userData.lastActiveAt === "number" ? userData.lastActiveAt : undefined,
+      createdAt: typeof userData.createdAt === "number" ? userData.createdAt : profData.createdAt,
+      booksCompleted: profData.stats?.booksCompleted || 0,
+      currentlyReading: profData.stats?.currentlyReading || 0,
+      currentStreak: profData.stats?.currentStreak || 0,
+      longestStreak: profData.stats?.longestStreak || 0,
+      totalActiveSeconds: profData.stats?.totalActiveSeconds || 0,
+      followersCount: profData.followersCount || 0,
+      followingCount: profData.followingCount || 0,
+      isPublic: profData.isPublic !== false,
+      favorites,
+      collections: collectionsList,
+      readingProgress: progressList,
+      reflections: reflectionsMap,
+      recentActivities,
+    };
+  } catch (err) {
+    console.error("[AdminUsers] fetchUserDeepInspection error:", err);
+    return null;
+  }
+}
+

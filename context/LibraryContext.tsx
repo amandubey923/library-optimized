@@ -74,6 +74,7 @@ import {
   flushPendingActivitySyncs,
 } from "@/lib/firestore-sync";
 import { recordPublicActivity, sanitizeUsername } from "@/lib/social";
+import { touchUserLastActive } from "@/lib/active-tracker";
 
 export interface ReadingProgressItem {
   bookId: string;
@@ -502,9 +503,26 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     };
 
     performSync();
+    if (user) {
+      touchUserLastActive(user.uid);
+    }
 
     return () => {
       isCancelled = true;
+    };
+  }, [user]);
+
+  // Tab visibility change activity trigger (throttled to 3 minutes)
+  useEffect(() => {
+    if (!user) return;
+    const handleVisibility = () => {
+      if (typeof document !== "undefined" && document.visibilityState === "visible") {
+        touchUserLastActive(user.uid);
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, [user]);
 
