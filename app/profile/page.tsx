@@ -16,6 +16,7 @@ import AuthModal from "@/components/auth/AuthModal";
 import AuthGuard from "@/components/auth/AuthGuard";
 import { useEntitlement } from "@/context/EntitlementContext";
 import ProBadge from "@/components/payment/ProBadge";
+import { isAdminUser } from "@/lib/admin";
 
 export default function ProfilePage() {
   const { favorites, readingHistory, streakData, stats, globalActiveSeconds, todayReadingSeconds, todayActiveSeconds } = useLibrary();
@@ -215,6 +216,16 @@ export default function ProfilePage() {
                     <span>💛</span>
                     <span>Support</span>
                   </button>
+
+                  {isAdminUser(user?.email) && (
+                    <Link
+                      href="/admin"
+                      className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 shadow-xs"
+                    >
+                      <span>🛡️</span>
+                      <span>Admin Portal</span>
+                    </Link>
+                  )}
 
                   {user ? (
                     <button

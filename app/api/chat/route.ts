@@ -79,12 +79,22 @@ ${catalogSummary}
     const ai = new GoogleGenAI({ apiKey });
 
     // Try primary models with graceful fallback
-    const modelsToTry = ["gemini-3.7-flash", "gemini-3.5-flash-lite", "gemini-2.5-flash"];
+    const modelsToTry = [
+      "gemini-3.1-flash-lite-preview",
+      "gemini-3-flash-preview",
+      "gemini-3.1-flash-lite",
+      "gemini-3.6-flash",
+      "gemini-3.7-flash",
+    ];
     let rawOutput = "";
 
     for (const model of modelsToTry) {
       try {
-        const response = await ai.models.generateContent({
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error(`Timeout on model ${model}`)), 8000)
+        );
+
+        const generatePromise = ai.models.generateContent({
           model,
           contents: [
             {
@@ -99,10 +109,11 @@ ${catalogSummary}
           },
         });
 
+        const response = await Promise.race([generatePromise, timeoutPromise]);
         rawOutput = response.text || "";
         if (rawOutput) break;
       } catch (err: any) {
-        console.warn(`Model ${model} failed, trying fallback...`, err?.message || err);
+        console.warn(`[Chat API] Model ${model} failed, trying fallback...`, err?.message || err);
       }
     }
 

@@ -14,6 +14,7 @@ import AuthModal from "./auth/AuthModal";
 import InstallAppButton from "./pwa/InstallAppButton";
 import { useEntitlement } from "@/context/EntitlementContext";
 import ProBadge from "./payment/ProBadge";
+import { isAdminUser } from "@/lib/admin";
 
 const SearchModal = dynamic(() => import("./SearchModal"), { ssr: false });
 
@@ -50,11 +51,14 @@ export default function Navbar() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  const isAdmin = isAdminUser(user?.email);
+
   const navLinks = [
     { name: "Home", href: "/" },
     { name: "Library", href: "/library" },
     { name: "My Shelf", href: "/favorites", count: favorites.length },
     { name: "Profile", href: "/profile" },
+    ...(isAdmin ? [{ name: "Admin", href: "/admin" }] : []),
     { name: "About", href: "/about" },
     { name: "Contact", href: "/contact" },
   ];

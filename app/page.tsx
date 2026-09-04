@@ -237,6 +237,7 @@ export default function HomePage() {
               </h3>
               <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
                 Read comfortably inside an integrated fullscreen viewer or download copies directly for offline reading on any device.
+                Read comfortably inside an integrated fullscreen viewer or save books for instant offline reading on any device.
               </p>
             </div>
 
