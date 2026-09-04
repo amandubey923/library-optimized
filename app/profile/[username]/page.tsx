@@ -113,6 +113,23 @@ export default function PublicProfilePage() {
           );
         }
       }
+      if (custom.detail?.followerUid && profile && custom.detail.followerUid === profile.uid) {
+        if (typeof custom.detail.followerFollowing === "number") {
+          setProfile((prev) =>
+            prev ? { ...prev, followingCount: custom.detail.followerFollowing } : prev
+          );
+        } else {
+          const delta = custom.detail.isFollowing ? 1 : -1;
+          setProfile((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  followingCount: Math.max(0, (prev.followingCount || 0) + delta),
+                }
+              : prev
+          );
+        }
+      }
     };
 
     window.addEventListener("readers_hub_follow_changed", handleFollowChanged);
@@ -239,7 +256,6 @@ export default function PublicProfilePage() {
               <div className="space-y-1">
                 <div className="flex items-center gap-2.5 flex-wrap">
                   <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[var(--foreground)] font-serif">
-                    {profile.displayName}
                     {profile.displayName?.replace(/^@+/, "") || profile.username}
                   </h1>
                   <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/30">

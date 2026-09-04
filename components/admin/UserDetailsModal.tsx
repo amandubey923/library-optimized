@@ -76,7 +76,6 @@ export default function UserDetailsModal({ uid, onClose }: UserDetailsModalProps
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-lg sm:text-xl font-bold font-serif text-[var(--foreground)] truncate">
-                  {data?.displayName || "Reader Profile"}
                   {data?.displayName?.replace(/^@+/, "") || data?.username || "Reader Profile"}
                 </h2>
                 {data?.username ? (
