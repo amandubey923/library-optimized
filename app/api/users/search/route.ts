@@ -68,7 +68,6 @@ export async function GET(req: NextRequest) {
           results.push({
             uid: doc.id,
             username: data.username || null,
-            displayName: data.displayName || data.username || "Reader",
             displayName: cleanDisplayName,
             photoURL: data.photoURL || "",
             bio: data.bio || "",

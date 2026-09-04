@@ -94,8 +94,6 @@ export async function GET(req: NextRequest) {
       const userDoc = userDocsMap[authUser.uid] || {};
 
       const username = profile.username || userDoc.username || null;
-      const displayName =
-        profile.displayName || authUser.displayName || userDoc.displayName || (username ? `@${username}` : "Reader");
       const rawDisplayName =
         profile.displayName || authUser.displayName || userDoc.displayName || (username ? username.replace(/^@+/, "") : "Reader");
       const displayName = rawDisplayName.replace(/^@+/, "").trim() || "Reader";
