@@ -143,9 +143,13 @@ export function isValidUsername(val: string): boolean {
 
 /**
  * Sanitizes input string into a valid username candidate.
+ * Strips leading '@' characters and enforces lowercase alphanumeric with underscores.
  */
 export function sanitizeUsername(val: string): string {
+  if (!val) return "";
   return val
+    .trim()
+    .replace(/^@+/, "")
     .toLowerCase()
     .trim()
     .replace(/[^a-z0-9_]/g, "_")
@@ -173,6 +177,37 @@ export async function isUsernameAvailable(username: string, currentUid?: string)
     console.warn("[Social] isUsernameAvailable check:", err);
     return false;
   }
+}
+
+/**
+ * Generates an available candidate username suggestion from user's displayName or email.
+ */
+export async function suggestUsername(
+  displayNameOrEmail?: string | null,
+  currentUid?: string
+): Promise<string> {
+  let base = "reader";
+  if (displayNameOrEmail) {
+    const cleaned = sanitizeUsername(displayNameOrEmail.split("@")[0]);
+    if (cleaned.length >= 3) {
+      base = cleaned;
+    }
+  }
+
+  // Check if base itself is available
+  if (await isUsernameAvailable(base, currentUid)) {
+    return base;
+  }
+
+  // Try appending short random numbers
+  for (let i = 1; i <= 15; i++) {
+    const candidate = `${base.slice(0, 16)}_${Math.floor(10 + Math.random() * 90)}`;
+    if (await isUsernameAvailable(candidate, currentUid)) {
+      return candidate;
+    }
+  }
+
+  return `${base.slice(0, 15)}_${Date.now().toString().slice(-4)}`;
 }
 
 /**
@@ -225,8 +260,15 @@ export async function getProfileByUid(uid: string): Promise<PublicUserProfile | 
 /**
  * Ensures that an authenticated user has a public profile document and registered username.
  * If one does not exist, automatically derives a clean username and creates it.
+ * Claims a chosen username and initializes or updates the user's public profile document atomically.
+ * Protected against race conditions via Firestore runTransaction.
  */
 export async function ensureUserProfile(user: User): Promise<PublicUserProfile> {
+export async function claimUsernameAndCreateProfile(
+  user: User,
+  chosenUsername: string,
+  extra?: { displayName?: string; bio?: string }
+): Promise<PublicUserProfile> {
   const currentDb = getFirebaseDb() || db;
   if (!currentDb || !user) throw new Error("Firebase unavailable or user unauthenticated");
 
@@ -238,6 +280,9 @@ export async function ensureUserProfile(user: User): Promise<PublicUserProfile> 
   let baseCandidate = "";
   if (user.displayName) {
     baseCandidate = sanitizeUsername(user.displayName);
+  const clean = sanitizeUsername(chosenUsername);
+  if (!isValidUsername(clean)) {
+    throw new Error("Invalid username. Use 3-20 lowercase letters, numbers, or underscores.");
   }
   if (!baseCandidate && user.email) {
     baseCandidate = sanitizeUsername(user.email.split("@")[0]);
@@ -253,6 +298,8 @@ export async function ensureUserProfile(user: User): Promise<PublicUserProfile> 
     finalUsername = `${baseCandidate.slice(0, 16)}_${rand}`;
     attempts++;
   }
+  const existingProfile = await getProfileByUid(user.uid);
+  const oldUsername = existingProfile?.username;
 
   const newProfile: PublicUserProfile = {
     uid: user.uid,
@@ -265,6 +312,19 @@ export async function ensureUserProfile(user: User): Promise<PublicUserProfile> 
     followingCount: 0,
     isPublic: true,
     stats: {
+    username: clean,
+    displayName: extra?.displayName?.trim() || existingProfile?.displayName || user.displayName || clean,
+    bio:
+      extra?.bio !== undefined
+        ? extra.bio.trim()
+        : existingProfile?.bio ||
+          "Passionate reader exploring literature, philosophy & technology on Reader's HUB.",
+    photoURL: user.photoURL || existingProfile?.photoURL || "",
+    createdAt: existingProfile?.createdAt || Date.now(),
+    followersCount: existingProfile?.followersCount || 0,
+    followingCount: existingProfile?.followingCount || 0,
+    isPublic: existingProfile?.isPublic !== false,
+    stats: existingProfile?.stats || {
       booksCompleted: 0,
       currentlyReading: 0,
       currentStreak: 0,
@@ -272,6 +332,7 @@ export async function ensureUserProfile(user: User): Promise<PublicUserProfile> 
       totalActiveSeconds: 0,
     },
     achievements: [],
+    achievements: existingProfile?.achievements || [],
     updatedAt: Date.now(),
   };
 
@@ -280,28 +341,71 @@ export async function ensureUserProfile(user: User): Promise<PublicUserProfile> 
     await runTransaction(currentDb, async (transaction) => {
       const usernameDocRef = doc(currentDb, "usernames", finalUsername);
       const profileDocRef = doc(currentDb, "public_profiles", user.uid);
+  await runTransaction(currentDb, async (transaction) => {
+    const newUsernameRef = doc(currentDb, "usernames", clean);
+    const newUsernameSnap = await transaction.get(newUsernameRef);
 
       transaction.set(usernameDocRef, {
         uid: user.uid,
         createdAt: Date.now(),
       });
+    if (newUsernameSnap.exists()) {
+      const data = newUsernameSnap.data();
+      if (data.uid !== user.uid) {
+        throw new Error(`@${clean} is already taken. Please choose another username.`);
+      }
+    }
 
       transaction.set(profileDocRef, newProfile);
+    const profileDocRef = doc(currentDb, "public_profiles", user.uid);
+
+    // If migrating from an old username, release old registry entry
+    if (oldUsername && oldUsername !== clean) {
+      const oldUsernameRef = doc(currentDb, "usernames", oldUsername);
+      transaction.delete(oldUsernameRef);
+    }
+
+    transaction.set(newUsernameRef, {
+      uid: user.uid,
+      createdAt: Date.now(),
     });
 
     return newProfile;
+    transaction.set(profileDocRef, newProfile, { merge: true });
+  });
+
+  return newProfile;
+}
+
+/**
+ * Checks if authenticated user has an existing public profile.
+ * Returns the profile if present, or null if username setup is needed.
+ */
+export async function ensureUserProfile(user: User): Promise<PublicUserProfile | null> {
+  const currentDb = getFirebaseDb() || db;
+  if (!currentDb || !user) return null;
+
+  try {
+    const existing = await getProfileByUid(user.uid);
+    if (existing && existing.username) {
+      return existing;
+    }
+    return null;
   } catch (err) {
     console.warn("[Social] Transaction failed during ensureUserProfile, fallback setDoc:", err);
     // Fallback direct sets
     await setDoc(doc(currentDb, "usernames", finalUsername), { uid: user.uid, createdAt: Date.now() });
     await setDoc(doc(currentDb, "public_profiles", user.uid), newProfile);
     return newProfile;
+    console.warn("[Social] ensureUserProfile notice:", err);
+    return null;
   }
 }
 
 /**
  * Updates a user's public profile fields (display name, username, bio, isPublic).
  * Handles migrating the registered username if changed.
+ * Handles migrating the registered username atomically if changed.
  */
 export async function updateUserProfile(
   uid: string,
@@ -368,6 +472,21 @@ export async function updateUserProfile(
     const newRef = doc(currentDb, "usernames", cleanNewUsername);
     await setDoc(newRef, { uid, createdAt: Date.now() });
     await deleteDoc(oldRef);
+    // Atomically migrate registry entry and profile
+    await runTransaction(currentDb, async (transaction) => {
+      const newRef = doc(currentDb, "usernames", cleanNewUsername);
+      const newSnap = await transaction.get(newRef);
+      if (newSnap.exists() && newSnap.data().uid !== uid) {
+        throw new Error(`@${cleanNewUsername} is already taken.`);
+      }
+
+      const oldRef = doc(currentDb, "usernames", currentUsername);
+      transaction.delete(oldRef);
+      transaction.set(newRef, { uid, createdAt: Date.now() });
+      transaction.set(profileRef, mergedData, { merge: true });
+    });
+  } else {
+    await setDoc(profileRef, mergedData, { merge: true });
   }
 
   await setDoc(profileRef, mergedData, { merge: true });

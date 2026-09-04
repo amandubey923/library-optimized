@@ -25,6 +25,7 @@ import {
 import FollowersModal from "@/components/social/FollowersModal";
 import EditProfileModal from "@/components/social/EditProfileModal";
 import UserSearchModal from "@/components/social/UserSearchModal";
+import UsernameSetupModal from "@/components/social/UsernameSetupModal";
 
 export default function ProfilePage() {
   const { favorites, readingHistory, streakData, stats, globalActiveSeconds, todayReadingSeconds, todayActiveSeconds } = useLibrary();
@@ -37,6 +38,9 @@ export default function ProfilePage() {
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [socialProfile, setSocialProfile] = useState<PublicUserProfile | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const [isUsernameSetupOpen, setIsUsernameSetupOpen] = useState(false);
   const [isFollowersModalOpen, setIsFollowersModalOpen] = useState(false);
   const [followersModalTab, setFollowersModalTab] = useState<"followers" | "following">("followers");
   const [isEditProfileModalOpen, setIsEditProfileModalOpen] = useState(false);
@@ -50,6 +54,15 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!user) return;
     ensureUserProfile(user).then((prof) => {
+  const loadProfile = React.useCallback(async () => {
+    if (!user) {
+      setProfileLoading(false);
+      return;
+    }
+    setProfileLoading(true);
+    setProfileError(null);
+    try {
+      const prof = await ensureUserProfile(user);
       setSocialProfile(prof);
       syncPublicProfileMetrics(
         user.uid,
@@ -58,7 +71,28 @@ export default function ProfilePage() {
         globalActiveSeconds
       );
     });
+      if (!prof || !prof.username) {
+        // STATE B: Missing username - automatically open setup modal
+        setIsUsernameSetupOpen(true);
+      } else {
+        syncPublicProfileMetrics(
+          user.uid,
+          readingHistory,
+          streakData,
+          globalActiveSeconds
+        );
+      }
+    } catch (err: any) {
+      console.error("[ProfilePage] Failed to load user profile:", err);
+      setProfileError("Unable to load profile data. Please check your connection.");
+    } finally {
+      setProfileLoading(false);
+    }
   }, [user, readingHistory, streakData, globalActiveSeconds]);
+
+  useEffect(() => {
+    loadProfile();
+  }, [loadProfile]);
 
   // Build activeTimeData from context's Firestore-hydrated state so analytics
   // never falls back to browser localStorage for authenticated account data.
@@ -197,7 +231,49 @@ export default function ProfilePage() {
                     >
                       @{socialProfile.username}
                     </Link>
+                  {/* Social Username Badges: State A, B, or C */}
+                  {user && (
+                    <>
+                      {profileLoading ? (
+                        <span className="px-2.5 py-0.5 rounded-full text-xs font-mono bg-[var(--secondary)] text-[var(--text-secondary)] animate-pulse">
+                          Loading profile...
+                        </span>
+                      ) : socialProfile?.username ? (
+                        /* STATE A: Username exists */
+                        <Link
+                          href={`/profile/${socialProfile.username}`}
+                          className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/30 hover:bg-[var(--accent)]/25 transition-colors flex items-center gap-1"
+                          title="View your public profile"
+                        >
+                          <span>@{socialProfile.username}</span>
+                          <span className="text-[10px]">↗</span>
+                        </Link>
+                      ) : profileError ? (
+                        /* STATE C: Failed to load profile */
+                        <div className="flex items-center gap-1.5">
+                          <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-500/15 text-rose-400 border border-rose-500/30">
+                            Failed to load profile
+                          </span>
+                          <button
+                            onClick={() => loadProfile()}
+                            className="px-2 py-0.5 rounded-md text-[11px] font-bold bg-rose-500/20 text-rose-300 hover:bg-rose-500/30 transition-all cursor-pointer"
+                          >
+                            Retry
+                          </button>
+                        </div>
+                      ) : (
+                        /* STATE B: Username missing / setup pending */
+                        <button
+                          onClick={() => setIsUsernameSetupOpen(true)}
+                          className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 transition-all cursor-pointer flex items-center gap-1 animate-pulse"
+                        >
+                          <span>✨</span>
+                          <span>Set your @username</span>
+                        </button>
+                      )}
+                    </>
                   )}
+
                   {user ? (
                     <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5 shadow-xs">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -287,6 +363,26 @@ export default function ProfilePage() {
                       <span>✏️</span>
                       <span>Edit Profile</span>
                     </button>
+                  {user && !profileLoading && (
+                    <>
+                      {socialProfile?.username ? (
+                        <button
+                          onClick={() => setIsEditProfileModalOpen(true)}
+                          className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-[var(--secondary)] hover:bg-[var(--secondary)]/80 text-[var(--foreground)] border border-[var(--border)] hover:border-[var(--accent)]/40 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 shadow-xs"
+                        >
+                          <span>✏️</span>
+                          <span>Edit Profile</span>
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => setIsUsernameSetupOpen(true)}
+                          className="px-4 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 text-black shadow-md hover:shadow-amber-500/20 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+                        >
+                          <span>✨</span>
+                          <span>Create Username</span>
+                        </button>
+                      )}
+                    </>
                   )}
 
                   <button
@@ -1200,6 +1296,19 @@ export default function ProfilePage() {
           onClose={() => setIsEditProfileModalOpen(false)}
           profile={socialProfile}
           onProfileUpdated={(updated) => setSocialProfile(updated)}
+        />
+      )}
+
+      {/* Username Onboarding Setup Modal */}
+      {user && (
+        <UsernameSetupModal
+          isOpen={isUsernameSetupOpen}
+          user={user}
+          onSuccess={(profile) => {
+            setSocialProfile(profile);
+            setIsUsernameSetupOpen(false);
+          }}
+          onDismiss={() => setIsUsernameSetupOpen(false)}
         />
       )}
 

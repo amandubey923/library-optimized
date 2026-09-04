@@ -53,6 +53,11 @@ export default function UserSearchModal({ isOpen, onClose }: UserSearchModalProp
           <div className="w-9 h-9 rounded-xl bg-[var(--secondary)] flex items-center justify-center text-sm text-[var(--text-secondary)]">
             🔍
           </div>
+        <div className="p-4 sm:p-5 border-b border-[var(--border)]">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-[var(--secondary)] flex items-center justify-center text-sm text-[var(--accent)] font-bold">
+              👤
+            </div>
 
           <input
             type="text"
@@ -62,15 +67,38 @@ export default function UserSearchModal({ isOpen, onClose }: UserSearchModalProp
             autoFocus
             className="flex-1 bg-transparent text-sm sm:text-base text-[var(--foreground)] placeholder:text-[var(--text-secondary)]/70 focus:outline-hidden font-medium"
           />
+            <div className="flex-1 min-w-0">
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search username or display name..."
+                autoFocus
+                className="w-full bg-transparent text-sm sm:text-base text-[var(--foreground)] placeholder:text-[var(--text-secondary)]/70 focus:outline-hidden font-medium"
+              />
+            </div>
 
           {query && (
+            {query && (
+              <button
+                onClick={() => setQuery("")}
+                className="text-xs text-[var(--text-secondary)] hover:text-[var(--foreground)] px-2 py-1 cursor-pointer"
+              >
+                Clear
+              </button>
+            )}
+
             <button
               onClick={() => setQuery("")}
               className="text-xs text-[var(--text-secondary)] hover:text-[var(--foreground)] px-2 py-1"
+              onClick={onClose}
+              className="w-8 h-8 rounded-full bg-[var(--secondary)] hover:bg-[var(--secondary)]/80 text-[var(--text-secondary)] hover:text-[var(--foreground)] flex items-center justify-center transition-all cursor-pointer"
             >
               Clear
+              ✕
             </button>
           )}
+          </div>
 
           <button
             onClick={onClose}
@@ -78,6 +106,10 @@ export default function UserSearchModal({ isOpen, onClose }: UserSearchModalProp
           >
             ✕
           </button>
+          <div className="mt-2 flex items-center justify-between text-[11px] text-[var(--text-secondary)]">
+            <span>Search readers by <strong>@username</strong> or <strong>display name</strong></span>
+            <span className="font-mono text-[10px] text-[var(--accent)]">Reader Hub Social</span>
+          </div>
         </div>
 
         {/* Results Body */}
@@ -156,6 +188,17 @@ export default function UserSearchModal({ isOpen, onClose }: UserSearchModalProp
                     <p className="text-[11px] text-[var(--text-secondary)] truncate mt-0.5">
                       {reader.bio || `${reader.stats?.booksCompleted || 0} books completed`}
                     </p>
+                    <div className="flex items-center gap-2 text-[11px] text-[var(--text-secondary)] mt-0.5">
+                      <span className="font-semibold text-amber-500/90">
+                        📚 {reader.stats?.booksCompleted || 0} books read
+                      </span>
+                      {reader.bio && (
+                        <>
+                          <span>•</span>
+                          <span className="truncate max-w-[200px] sm:max-w-xs">{reader.bio}</span>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </Link>
 

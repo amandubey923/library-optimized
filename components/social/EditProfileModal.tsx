@@ -166,6 +166,15 @@ export default function EditProfileModal({
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
+                onChange={(e) =>
+                  setUsername(
+                    e.target.value
+                      .replace(/^@+/, "")
+                      .toLowerCase()
+                      .replace(/[^a-z0-9_]/g, "")
+                      .slice(0, 20)
+                  )
+                }
                 placeholder="your_username"
                 maxLength={20}
                 className="w-full pl-8 pr-4 py-2.5 rounded-xl bg-[var(--secondary)]/60 border border-[var(--border)] focus:border-[var(--accent)] font-mono text-xs sm:text-sm text-[var(--foreground)] focus:outline-hidden transition-all"
