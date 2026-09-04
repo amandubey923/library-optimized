@@ -161,6 +161,21 @@ const BOOKMARKS_KEY_PREFIX = "readershub:bookmarks:v1";
 const MEMORY_KEY_PREFIX = "readershub:memory:v1";
 const ACTIVITY_KEY = "readershub:reading-activity:v1";
 const ACTIVE_TIME_KEY = "readershub:active-time:v1";
+
+let activeUserUid: string | null = null;
+
+export function setActiveUserUid(uid: string | null): void {
+  activeUserUid = uid ? uid.trim() : null;
+}
+
+export function getActiveUserUid(): string | null {
+  return activeUserUid;
+}
+
+export function getActivityStorageKey(uid?: string | null): string {
+  const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+  return targetUid ? `readershub:reading-activity:v1:${targetUid}` : "readershub:reading-activity:v1:guest";
+}
 export const FAVORITES_KEY = "readers_hub_favorites_v2";
 export const HISTORY_KEY = "readers_hub_reading_progress_v2";
 const OFFLINE_CACHE_NAME = "readershub-offline-books-v1";
@@ -562,42 +577,7 @@ export function calculateStreak(dailyMap: Record<string, DailyReadingActivity>):
   return { currentStreak, longestStreak, lastQualifiedDate };
 }
 
-function shouldAutoHealStreak(dailyCount: number): boolean {
-  if (typeof window === "undefined") return false;
-  try {
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key) {
-        const val = localStorage.getItem(key);
-        if (
-          val &&
-          (val.includes("kumaraman19137@gmail.com") ||
-            val.includes("Xhi5hhDIsEYJ") ||
-            key.includes("kumaraman19137@gmail.com") ||
-            key.includes("Xhi5hhDIsEYJ"))
-        ) {
-          return dailyCount < 9;
-        }
-      }
-    }
-    const at = localStorage.getItem(ACTIVE_TIME_KEY);
-    if (at && (at.includes("2026-08-26") || at.includes("2026-08-27") || at.includes("2026-09"))) {
-      return dailyCount < 9;
-    }
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i);
-      if (key && (key.startsWith("reader_social_profile_") || key.startsWith("firebase:authUser"))) {
-        const val = localStorage.getItem(key);
-        if (val && (val.includes("kumaraman19137@gmail.com") || val.includes("Xhi5hhDIsEYJ"))) {
-          return dailyCount < 9;
-        }
-      }
-    }
-  } catch {}
-  return false;
-}
-
-export function getReadingActivityData(): ReadingStreakData {
+export function getReadingActivityData(uid?: string | null): ReadingStreakData {
   const defaultData: ReadingStreakData = {
     daily: {},
     currentStreak: 0,
@@ -607,20 +587,29 @@ export function getReadingActivityData(): ReadingStreakData {
 
   if (typeof window === "undefined") return defaultData;
 
+  const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+  const userKey = getActivityStorageKey(targetUid);
+
   try {
-    const raw = localStorage.getItem(ACTIVITY_KEY);
+    let raw = localStorage.getItem(userKey);
+
+    // One-time safe migration strictly for Account A if user-specific key is not yet set
+    if (!raw && targetUid === "Xhi5hhDIsEYJtFKgY96gvdaKxWw2") {
+      const legacy = localStorage.getItem(ACTIVITY_KEY);
+      if (legacy) {
+        try {
+          const parsedLegacy = JSON.parse(legacy);
+          if (parsedLegacy?.daily && Object.keys(parsedLegacy.daily).length > 0) {
+            raw = legacy;
+            localStorage.setItem(userKey, legacy);
+          }
+        } catch {}
+      }
+    }
+
     if (raw) {
       const parsed = JSON.parse(raw);
       const daily = parsed.daily && typeof parsed.daily === "object" ? parsed.daily : {};
-      const dailyCount = Object.keys(daily).length;
-      if (shouldAutoHealStreak(dailyCount)) {
-        const { reconcileWithHistoricalStreak } = require("./streak-recovery");
-        const healed = reconcileWithHistoricalStreak(daily);
-        try {
-          localStorage.setItem(ACTIVITY_KEY, JSON.stringify(healed));
-        } catch {}
-        return healed;
-      }
       const { currentStreak, longestStreak, lastQualifiedDate } = calculateStreak(daily);
       return {
         daily,
@@ -628,13 +617,6 @@ export function getReadingActivityData(): ReadingStreakData {
         longestStreak: Math.max(longestStreak, parsed.longestStreak || 0),
         lastQualifiedDate,
       };
-    } else if (shouldAutoHealStreak(0)) {
-      const { reconcileWithHistoricalStreak } = require("./streak-recovery");
-      const healed = reconcileWithHistoricalStreak({});
-      try {
-        localStorage.setItem(ACTIVITY_KEY, JSON.stringify(healed));
-      } catch {}
-      return healed;
     }
   } catch (e) {
     console.warn("[ReaderStorage] Error reading reading activity:", e);
@@ -643,7 +625,18 @@ export function getReadingActivityData(): ReadingStreakData {
   return defaultData;
 }
 
-export function addActiveReadingTime(secondsToAdd: number): {
+export function saveReadingActivityData(data: ReadingStreakData, uid?: string | null): void {
+  if (typeof window === "undefined") return;
+  try {
+    const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+    const userKey = getActivityStorageKey(targetUid);
+    localStorage.setItem(userKey, JSON.stringify(data));
+  } catch (e) {
+    console.warn("[ReaderStorage] Error saving reading activity:", e);
+  }
+}
+
+export function addActiveReadingTime(secondsToAdd: number, uid?: string | null): {
   todaySeconds: number;
   qualified: boolean;
   justQualified: boolean;
@@ -653,7 +646,8 @@ export function addActiveReadingTime(secondsToAdd: number): {
     return { todaySeconds: 0, qualified: false, justQualified: false, currentStreak: 0 };
   }
 
-  const currentData = getReadingActivityData();
+  const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+  const currentData = getReadingActivityData(targetUid);
   const todayKey = getLocalDateKey();
   const todayEntry = currentData.daily[todayKey] || {
     seconds: 0,
@@ -679,11 +673,7 @@ export function addActiveReadingTime(secondsToAdd: number): {
   currentData.longestStreak = Math.max(longestStreak, currentData.longestStreak || 0);
   currentData.lastQualifiedDate = lastQualifiedDate;
 
-  try {
-    localStorage.setItem(ACTIVITY_KEY, JSON.stringify(currentData));
-  } catch (e) {
-    console.warn("[ReaderStorage] Error saving reading activity:", e);
-  }
+  saveReadingActivityData(currentData, targetUid);
 
   // Invalidate activeTimeCache so next getWebsiteActiveTimeData() reflects the updated reading seconds
   activeTimeCache = null;
@@ -1624,10 +1614,11 @@ export function clearAllAnnotations(): void {
   }
 }
 
-export function clearStreakData(): void {
+export function clearStreakData(uid?: string | null): void {
   if (typeof window === "undefined") return;
   try {
-    localStorage.removeItem(ACTIVITY_KEY);
+    const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+    localStorage.removeItem(getActivityStorageKey(targetUid));
   } catch (e) {
     console.warn("[ReaderStorage] Failed to clear streak:", e);
   }
@@ -1699,7 +1690,7 @@ export function clearAllUserDataOnLogout(): void {
   }
 }
 
-export function exportAllStorageDataForSync(): {
+export function exportAllStorageDataForSync(uid?: string | null): {
   favorites: string[];
   readingHistory: ReadingProgressItem[];
   readingActivity: ReadingStreakData;
@@ -1734,7 +1725,7 @@ export function exportAllStorageDataForSync(): {
     readingHistory = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
   } catch (e) {}
 
-  const readingActivity = getReadingActivityData();
+  const readingActivity = getReadingActivityData(uid);
   const activeTime = getWebsiteActiveTimeData();
   const readingMemories = getAllReadingMemories();
   const annotations = getAllBookAnnotations();
@@ -1755,17 +1746,20 @@ export function exportAllStorageDataForSync(): {
   };
 }
 
-export function hydrateStorageFromCloudData(data: {
-  favorites?: string[];
-  readingHistory?: ReadingProgressItem[];
-  readingActivity?: ReadingStreakData;
-  activeTime?: WebsiteActiveTimeData;
-  readingMemories?: Record<string, BookReadingMemory>;
-  annotations?: Record<string, BookAnnotations>;
-  collections?: ReadingCollection[];
-  reflections?: Record<string, BookReflection>;
-  shelfDismissals?: ShelfDismissalsMap;
-}): void {
+export function hydrateStorageFromCloudData(
+  data: {
+    favorites?: string[];
+    readingHistory?: ReadingProgressItem[];
+    readingActivity?: ReadingStreakData;
+    activeTime?: WebsiteActiveTimeData;
+    readingMemories?: Record<string, BookReadingMemory>;
+    annotations?: Record<string, BookAnnotations>;
+    collections?: ReadingCollection[];
+    reflections?: Record<string, BookReflection>;
+    shelfDismissals?: ShelfDismissalsMap;
+  },
+  uid?: string | null
+): void {
   if (typeof window === "undefined") return;
 
   try {
@@ -1833,25 +1827,21 @@ export function hydrateStorageFromCloudData(data: {
       });
     }
 
-    // 3. Reading Activity: Safeguard historical activity
+    // 3. Reading Activity: Safeguard historical activity per user UID
     if (data.readingActivity) {
       const incomingDays = Object.keys(data.readingActivity.daily || {}).length;
       if (incomingDays > 0) {
-        let existingDaily: Record<string, DailyReadingActivity> = {};
-        try {
-          const raw = localStorage.getItem(ACTIVITY_KEY);
-          if (raw) {
-            const parsed = JSON.parse(raw);
-            if (parsed.daily && typeof parsed.daily === "object") existingDaily = parsed.daily;
-          }
-        } catch {}
+        const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+        const existingActivity = getReadingActivityData(targetUid);
+        const existingDaily = existingActivity.daily || {};
 
         const mergedDaily: Record<string, DailyReadingActivity> = { ...existingDaily };
         Object.entries(data.readingActivity.daily || {}).forEach(([dateKey, act]) => {
           if (mergedDaily[dateKey]) {
+            const secs = Math.max(mergedDaily[dateKey].seconds || 0, act.seconds || 0);
             mergedDaily[dateKey] = {
-              seconds: Math.max(mergedDaily[dateKey].seconds || 0, act.seconds || 0),
-              qualified: Boolean(mergedDaily[dateKey].qualified || act.qualified || (act.seconds || 0) >= 900),
+              seconds: secs,
+              qualified: Boolean(mergedDaily[dateKey].qualified || act.qualified || secs >= 900),
               lastUpdated: Math.max(mergedDaily[dateKey].lastUpdated || 0, act.lastUpdated || 0),
             };
           } else {
@@ -1862,11 +1852,11 @@ export function hydrateStorageFromCloudData(data: {
         const { currentStreak, longestStreak, lastQualifiedDate } = calculateStreak(mergedDaily);
         const finalActivity: ReadingStreakData = {
           daily: mergedDaily,
-          currentStreak: Math.max(currentStreak, data.readingActivity.currentStreak || 0),
-          longestStreak: Math.max(longestStreak, data.readingActivity.longestStreak || 0, 9),
+          currentStreak,
+          longestStreak: Math.max(longestStreak, data.readingActivity.longestStreak || 0),
           lastQualifiedDate: lastQualifiedDate || data.readingActivity.lastQualifiedDate,
         };
-        localStorage.setItem(ACTIVITY_KEY, JSON.stringify(finalActivity));
+        saveReadingActivityData(finalActivity, targetUid);
       }
     }
 

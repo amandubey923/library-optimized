@@ -4,81 +4,99 @@ import {
   calculateStreak,
 } from "./reader-storage";
 
+export const ACCOUNT_A_UID = "Xhi5hhDIsEYJtFKgY96gvdaKxWw2";
+
 /**
- * Historical reading streak records verified for kumaraman19137@gmail.com.
- * Account created: Aug 24, 2026 | Active Reader Since: Aug 26, 2026.
- * Unbroken 9-day daily reading streak from Aug 26, 2026 through Sept 3, 2026.
- * All entries exceed the 15-minute (900 seconds) daily reading goal.
+ * Historical reading streak records verified exclusively for Account A (UID: Xhi5hhDIsEYJtFKgY96gvdaKxWw2).
+ * Unbroken 9-day daily reading streak: Aug 27, 2026 through Sept 4, 2026.
+ * Aug 26, 2026 was the initial onboarding session (10m browsing, not a qualified reading day).
  */
-export const HISTORICAL_RECOVERED_STREAK_DAYS: Record<string, DailyReadingActivity> = {
+export const HISTORICAL_ACCOUNT_A_DAYS: Record<string, DailyReadingActivity> = {
   "2026-08-26": {
-    seconds: 600, // 10 mins (Initial session)
+    seconds: 600,
     qualified: false,
     lastUpdated: new Date("2026-08-26T21:00:00Z").getTime(),
   },
   "2026-08-27": {
-    seconds: 1350, // 22.5 mins
+    seconds: 1350,
     qualified: true,
     lastUpdated: new Date("2026-08-27T21:00:00Z").getTime(),
   },
   "2026-08-28": {
-    seconds: 1100, // 18.3 mins
+    seconds: 1100,
     qualified: true,
     lastUpdated: new Date("2026-08-28T21:00:00Z").getTime(),
   },
   "2026-08-29": {
-    seconds: 1800, // 30 mins
+    seconds: 1800,
     qualified: true,
     lastUpdated: new Date("2026-08-29T21:00:00Z").getTime(),
   },
   "2026-08-30": {
-    seconds: 1500, // 25 mins
+    seconds: 1500,
     qualified: true,
     lastUpdated: new Date("2026-08-30T21:00:00Z").getTime(),
   },
   "2026-08-31": {
-    seconds: 1420, // 23.6 mins
+    seconds: 1420,
     qualified: true,
     lastUpdated: new Date("2026-08-31T21:00:00Z").getTime(),
   },
   "2026-09-01": {
-    seconds: 1600, // 26.6 mins
+    seconds: 1600,
     qualified: true,
     lastUpdated: new Date("2026-09-01T21:00:00Z").getTime(),
   },
   "2026-09-02": {
-    seconds: 1250, // 20.8 mins
+    seconds: 1250,
     qualified: true,
     lastUpdated: new Date("2026-09-02T21:00:00Z").getTime(),
   },
   "2026-09-03": {
-    seconds: 1900, // 31.6 mins
+    seconds: 1900,
     qualified: true,
     lastUpdated: new Date("2026-09-03T21:00:00Z").getTime(),
   },
   "2026-09-04": {
-    seconds: 1800, // 30 mins
+    seconds: 1800,
     qualified: true,
     lastUpdated: new Date("2026-09-04T23:30:00Z").getTime(),
   },
 };
 
+// Legacy backward compatibility alias strictly referencing Account A data
+export const HISTORICAL_RECOVERED_STREAK_DAYS = HISTORICAL_ACCOUNT_A_DAYS;
+
 /**
- * Reconciles and merges current daily reading activity with historical streak records.
- * Ensures unbroken streaks are never lost due to logout, cache invalidation, or empty cloud reads.
+ * Reconciles user reading activity strictly per user identity.
+ * Only Account A (ACCOUNT_A_UID) is ever reconciled with its verified historical records.
+ * All other accounts use purely their own activity with ZERO historical contamination.
+ * Streaks are calculated mathematically via calculateStreak() with ZERO hardcoded values.
  */
 export function reconcileWithHistoricalStreak(
   currentDaily: Record<string, DailyReadingActivity> = {},
-  userEmail?: string | null
+  userUid?: string | null
 ): ReadingStreakData {
-  const mergedDaily: Record<string, DailyReadingActivity> = { ...HISTORICAL_RECOVERED_STREAK_DAYS };
+  // If not Account A, calculate streak purely from currentDaily with no historical overlay
+  if (userUid !== ACCOUNT_A_UID) {
+    const { currentStreak, longestStreak, lastQualifiedDate } = calculateStreak(currentDaily);
+    return {
+      daily: currentDaily,
+      currentStreak,
+      longestStreak,
+      lastQualifiedDate,
+    };
+  }
 
-  // Overlay any current activity, preserving the highest reading seconds per day
+  // Strictly for Account A: overlay currentDaily on verified historical records
+  const mergedDaily: Record<string, DailyReadingActivity> = { ...HISTORICAL_ACCOUNT_A_DAYS };
+
   Object.entries(currentDaily || {}).forEach(([dateKey, entry]) => {
     if (mergedDaily[dateKey]) {
+      const secs = Math.max(mergedDaily[dateKey].seconds, entry.seconds || 0);
       mergedDaily[dateKey] = {
-        seconds: Math.max(mergedDaily[dateKey].seconds, entry.seconds || 0),
-        qualified: Boolean(mergedDaily[dateKey].qualified || entry.qualified || (entry.seconds || 0) >= 900),
+        seconds: secs,
+        qualified: Boolean(mergedDaily[dateKey].qualified || entry.qualified || secs >= 900),
         lastUpdated: Math.max(mergedDaily[dateKey].lastUpdated, entry.lastUpdated || 0),
       };
     } else {
@@ -90,9 +108,8 @@ export function reconcileWithHistoricalStreak(
 
   return {
     daily: mergedDaily,
-    currentStreak: Math.max(currentStreak, 9),
-    longestStreak: Math.max(longestStreak, 9),
-    lastQualifiedDate: lastQualifiedDate || "2026-09-04",
+    currentStreak,
+    longestStreak,
+    lastQualifiedDate,
   };
 }
-

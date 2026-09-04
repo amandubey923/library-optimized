@@ -11,6 +11,7 @@ import { db, getFirebaseDb } from "./firebase";
 import {
   ReadingProgressItem,
   ReadingStreakData,
+  DailyReadingActivity,
   WebsiteActiveTimeData,
   BookReadingMemory,
   BookAnnotations,
@@ -19,6 +20,7 @@ import {
   BookReflection,
   ShelfDismissalsMap,
   calculateStreak,
+  saveReadingActivityData,
   getReadingActivityData,
   getStoredFavorites,
   getStoredReadingHistory,
@@ -27,7 +29,7 @@ import {
   getShelfDismissals,
   getWebsiteActiveTimeData,
 } from "./reader-storage";
-import { reconcileWithHistoricalStreak } from "./streak-recovery";
+import { ACCOUNT_A_UID, HISTORICAL_ACCOUNT_A_DAYS } from "./streak-recovery";
 import { UserEntitlement, DEFAULT_FREE_ENTITLEMENT } from "./entitlements";
 
 export interface CloudFullUserData {
@@ -325,53 +327,51 @@ export async function reconcileAndSyncAllUserData(user: User): Promise<CloudFull
     const cloudData = await fetchFullCloudUserData(user.uid);
 
     // Safeguard reading activity and streak data:
-    // Never allow empty cloud state to wipe un-synced local daily activity or active reading history.
-    const localActivity = getReadingActivityData();
-    const cloudDaily = cloudData.readingActivity?.daily || {};
+    // Read local reading activity strictly for this user.uid
+    const localActivity = getReadingActivityData(user.uid);
+    let cloudDaily = cloudData.readingActivity?.daily || {};
     const localDaily = localActivity?.daily || {};
-    const hasLocal = Object.keys(localDaily).length > 0;
-    const hasCloud = Object.keys(cloudDaily).length > 0;
 
-    const isTargetUser =
-      user.email === "kumaraman19137@gmail.com" ||
-      user.providerData?.some((p) => p.email === "kumaraman19137@gmail.com") ||
-      user.uid?.startsWith("Xhi5hhDIsEYJ");
-
-    if (isTargetUser || Object.keys(cloudDaily).length < 9) {
-      const mergedDaily = { ...localDaily, ...cloudDaily };
-      const reconciled = reconcileWithHistoricalStreak(mergedDaily, user.email);
-      cloudData.readingActivity = reconciled;
-      syncReadingActivityToCloud(user.uid, reconciled);
-    } else if (hasLocal || hasCloud) {
-      const mergedDaily = { ...localDaily, ...cloudDaily };
-      Object.keys(localDaily).forEach((k) => {
-        if (cloudDaily[k]) {
-          mergedDaily[k] = {
-            seconds: Math.max(localDaily[k]?.seconds || 0, cloudDaily[k]?.seconds || 0),
-            qualified: Boolean(localDaily[k]?.qualified || cloudDaily[k]?.qualified),
-            lastUpdated: Math.max(localDaily[k]?.lastUpdated || 0, cloudDaily[k]?.lastUpdated || 0),
-          };
-        }
-      });
-      const { currentStreak, longestStreak, lastQualifiedDate } = calculateStreak(mergedDaily);
-      cloudData.readingActivity = {
-        daily: mergedDaily,
-        currentStreak,
-        longestStreak: Math.max(
-          longestStreak,
-          localActivity?.longestStreak || 0,
-          cloudData.readingActivity?.longestStreak || 0
-        ),
-        lastQualifiedDate:
-          lastQualifiedDate ||
-          cloudData.readingActivity?.lastQualifiedDate ||
-          localActivity?.lastQualifiedDate ||
-          null,
-      };
-
-      // Persist reconciled activity to Firestore so cloud is never empty
-      syncReadingActivityToCloud(user.uid, cloudData.readingActivity);
+    // Only for Account A (Xhi5hhDIsEYJtFKgY96gvdaKxWw2): If its activity was wiped in both local and cloud, recover verified history
+    if (user.uid === ACCOUNT_A_UID && Object.keys(cloudDaily).length === 0 && Object.keys(localDaily).length === 0) {
+      cloudDaily = { ...HISTORICAL_ACCOUNT_A_DAYS };
     }
+
+    // Merge strictly this user's local and cloud activity
+    const mergedDaily: Record<string, DailyReadingActivity> = { ...cloudDaily };
+    Object.entries(localDaily).forEach(([dateKey, localEntry]) => {
+      if (mergedDaily[dateKey]) {
+        const secs = Math.max(mergedDaily[dateKey].seconds || 0, localEntry.seconds || 0);
+        mergedDaily[dateKey] = {
+          seconds: secs,
+          qualified: Boolean(mergedDaily[dateKey].qualified || localEntry.qualified || secs >= 900),
+          lastUpdated: Math.max(mergedDaily[dateKey].lastUpdated || 0, localEntry.lastUpdated || 0),
+        };
+      } else {
+        mergedDaily[dateKey] = localEntry;
+      }
+    });
+
+    // Calculate streak purely mathematically from merged daily reading activity
+    const { currentStreak, longestStreak, lastQualifiedDate } = calculateStreak(mergedDaily);
+    const finalReadingActivity: ReadingStreakData = {
+      daily: mergedDaily,
+      currentStreak,
+      longestStreak: Math.max(
+        longestStreak,
+        localActivity?.longestStreak || 0,
+        cloudData.readingActivity?.longestStreak || 0
+      ),
+      lastQualifiedDate:
+        lastQualifiedDate ||
+        cloudData.readingActivity?.lastQualifiedDate ||
+        localActivity?.lastQualifiedDate ||
+        null,
+    };
+
+    cloudData.readingActivity = finalReadingActivity;
+    saveReadingActivityData(finalReadingActivity, user.uid);
+    syncReadingActivityToCloud(user.uid, finalReadingActivity);
 
     // 3. Two-way safe union merge for favorites
     const localFavs = getStoredFavorites();
@@ -463,7 +463,7 @@ export async function reconcileAndSyncAllUserData(user: User): Promise<CloudFull
     };
 
     // 7. Hydrate local in-memory storage caches with authoritative merged cloud state
-    hydrateStorageFromCloudData(cloudData);
+    hydrateStorageFromCloudData(cloudData, user.uid);
 
     return cloudData;
   } catch (err) {

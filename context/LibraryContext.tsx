@@ -13,6 +13,7 @@ import {
   exportAllUserData,
   importUserData,
   getReadingActivityData,
+  setActiveUserUid,
   addActiveReadingTime,
   getWebsiteActiveTimeData,
   addWebsiteActiveSeconds,
@@ -225,18 +226,11 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     totalActiveSeconds: number;
     todayActiveSeconds: number;
   }>({ totalActiveSeconds: 0, todayActiveSeconds: 0 });
-  const [streakData, setStreakData] = useState<ReadingStreakData>(() => {
-    if (typeof window !== "undefined") {
-      try {
-        return getReadingActivityData();
-      } catch {}
-    }
-    return {
-      daily: {},
-      currentStreak: 0,
-      longestStreak: 0,
-      lastQualifiedDate: null,
-    };
+  const [streakData, setStreakData] = useState<ReadingStreakData>({
+    daily: {},
+    currentStreak: 0,
+    longestStreak: 0,
+    lastQualifiedDate: null,
   });
   const [stats, setStats] = useState<ReadingStats>({
     booksStarted: 0,
@@ -390,7 +384,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
 
   const refreshStats = useCallback(() => {
     const calculated = calculateReadingStats();
-    const act = getReadingActivityData();
+    const act = getReadingActivityData(user?.uid);
     const actTime = getWebsiteActiveTimeData();
     const todayKey = getLocalDateKey();
     setStats(calculated);
@@ -399,7 +393,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       totalActiveSeconds: actTime.totalActiveSeconds || 0,
       todayActiveSeconds: actTime.daily[todayKey] || 0,
     });
-  }, []);
+  }, [user]);
 
   // Global Website Engagement & Active Time Tracker (Meaningful Site Interaction outside PDF Reader)
   useEffect(() => {
@@ -463,7 +457,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     const handlePageHide = () => {
       flushSiteActiveTime();
       if (user) {
-        const act = getReadingActivityData();
+        const act = getReadingActivityData(user.uid);
         const actTime = getWebsiteActiveTimeData();
         // flushPendingActivitySyncs cancels existing debounce timers and writes immediately.
         flushPendingActivitySyncs(user.uid, act, actTime);
@@ -493,6 +487,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   // Synchronize with Firebase Firestore on authentication state changes (Authoritative Cloud State)
   useEffect(() => {
     if (!user) {
+      setActiveUserUid(null);
       if (prevUserRef.current !== null) {
         // User logged out: abort in-flight debounce timers, clear session caches and reset state to pristine guest defaults
         cancelAllPendingSyncTimers();
@@ -519,6 +514,11 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     }
 
     prevUserRef.current = user.uid;
+    setActiveUserUid(user.uid);
+    // Immediately prime local state with this user's isolated local activity before cloud sync arrives
+    const localUserStreak = getReadingActivityData(user.uid);
+    setStreakData(localUserStreak);
+
     let isCancelled = false;
 
     const performSync = async () => {
@@ -736,8 +736,8 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
 
   // Active Reading Time Tracker (Diwali Diya)
   const recordActiveReading = useCallback((seconds: number) => {
-    const res = addActiveReadingTime(seconds);
-    const act = getReadingActivityData();
+    const res = addActiveReadingTime(seconds, user?.uid);
+    const act = getReadingActivityData(user?.uid);
     const actTime = getWebsiteActiveTimeData();
     const todayKey = getLocalDateKey();
     const calculatedStats = calculateReadingStats();
@@ -846,7 +846,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   }, [refreshStats, showToast]);
 
   const clearStreak = useCallback(() => {
-    purgeStreakData();
+    purgeStreakData(user?.uid);
     setStreakData({
       daily: {},
       currentStreak: 0,
@@ -855,7 +855,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     });
     refreshStats();
     showToast("Daily reading streak reset 🪔");
-  }, [refreshStats, showToast]);
+  }, [user, refreshStats, showToast]);
 
   const clearOfflineStorage = useCallback(async () => {
     await purgeAllOfflineBooks();
