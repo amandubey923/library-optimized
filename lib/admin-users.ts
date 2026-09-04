@@ -203,19 +203,45 @@ export async function getAdminUsersList(options?: {
  * Triggered ONLY when admin clicks "Inspect" on a specific user.
  */
 export async function fetchUserDeepInspection(
-  uid: string
+  uid: string,
+  currentUser?: User | null
 ): Promise<UserDeepInspectionData | null> {
+  if (!uid) return null;
+
+  // 1. Try server-side Admin API first (privileged Firebase Admin SDK read)
+  if (typeof window !== "undefined") {
+    try {
+      const headers: Record<string, string> = {};
+      if (currentUser) {
+        try {
+          const token = await currentUser.getIdToken();
+          if (token) headers["Authorization"] = `Bearer ${token}`;
+        } catch {}
+      }
+
+      const res = await fetch(`/api/admin/users/${encodeURIComponent(uid)}`, { headers });
+      if (res.ok) {
+        const json = await res.json();
+        if (json?.user) {
+          return json.user as UserDeepInspectionData;
+        }
+      }
+    } catch (apiErr) {
+      console.warn("[AdminUsers] /api/admin/users/[uid] fetch notice, falling back to client:", apiErr);
+    }
+  }
+
   const currentDb = getFirebaseDb() || db;
-  if (!currentDb || !uid) return null;
+  if (!currentDb) return null;
 
   try {
-    // 1. User root doc & public profile
+    // 2. Client Firestore fallback
     const userRef = doc(currentDb, "users", uid);
     const profRef = doc(currentDb, "public_profiles", uid);
 
     const [userSnap, profSnap] = await Promise.all([
-      getDoc(userRef),
-      getDoc(profRef),
+      getDoc(userRef).catch(() => ({ exists: () => false, data: () => null })),
+      getDoc(profRef).catch(() => ({ exists: () => false, data: () => null })),
     ]);
 
     if (!userSnap.exists() && !profSnap.exists()) return null;

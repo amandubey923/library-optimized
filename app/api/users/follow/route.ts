@@ -94,24 +94,33 @@ export async function POST(req: NextRequest) {
     const followerFollowers = followerFollowersSnap.data().count || 0;
     const followerFollowing = followerFollowingSnap.data().count || 0;
 
-    // Synchronize public_profiles docs in background with Admin SDK (bypassing client rule blocks)
+    // Synchronize public_profiles docs in background with Admin SDK
+    const enrichAndSyncProfile = async (uid: string, followers: number, following: number) => {
+      const pDoc = await adminDb.collection("public_profiles").doc(uid).get();
+      const pData = pDoc.exists ? pDoc.data() || {} : {};
+
+      const updatePayload: Record<string, any> = {
+        followersCount: followers,
+        followingCount: following,
+        updatedAt: Date.now(),
+      };
+
+      if (!pData.username || !pData.displayName) {
+        const uDoc = await adminDb.collection("users").doc(uid).get();
+        if (uDoc.exists) {
+          const uData = uDoc.data() || {};
+          if (uData.username) updatePayload.username = uData.username;
+          if (uData.displayName) updatePayload.displayName = uData.displayName.replace(/^@+/, "").trim();
+          if (uData.photoURL) updatePayload.photoURL = uData.photoURL;
+        }
+      }
+
+      await adminDb.collection("public_profiles").doc(uid).set(updatePayload, { merge: true });
+    };
+
     await Promise.allSettled([
-      adminDb.collection("public_profiles").doc(targetUid).set(
-        {
-          followersCount: targetFollowers,
-          followingCount: targetFollowing,
-          updatedAt: Date.now(),
-        },
-        { merge: true }
-      ),
-      adminDb.collection("public_profiles").doc(followerUid).set(
-        {
-          followersCount: followerFollowers,
-          followingCount: followerFollowing,
-          updatedAt: Date.now(),
-        },
-        { merge: true }
-      ),
+      enrichAndSyncProfile(targetUid, targetFollowers, targetFollowing),
+      enrichAndSyncProfile(followerUid, followerFollowers, followerFollowing),
     ]);
 
     return NextResponse.json({

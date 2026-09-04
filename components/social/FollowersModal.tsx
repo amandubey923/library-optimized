@@ -28,8 +28,10 @@ export default function FollowersModal({
   const [filterQuery, setFilterQuery] = useState("");
 
   useEffect(() => {
-    setActiveTab(initialTab);
-  }, [initialTab]);
+    if (isOpen) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab, isOpen]);
 
   useEffect(() => {
     if (!isOpen || !targetUid) return;

@@ -31,7 +31,6 @@ import {
   getShelfDismissals,
   getWebsiteActiveTimeData,
 } from "./reader-storage";
-import { ACCOUNT_A_UID, HISTORICAL_ACCOUNT_A_DAYS } from "./streak-recovery";
 import { UserEntitlement, DEFAULT_FREE_ENTITLEMENT } from "./entitlements";
 
 export interface CloudFullUserData {
@@ -334,11 +333,6 @@ export async function reconcileAndSyncAllUserData(user: User): Promise<CloudFull
     let cloudDaily = cloudData.readingActivity?.daily || {};
     const localDaily = localActivity?.daily || {};
 
-    // Only for Account A (Xhi5hhDIsEYJtFKgY96gvdaKxWw2): If its activity was wiped in both local and cloud, recover verified history
-    if (user.uid === ACCOUNT_A_UID && Object.keys(cloudDaily).length === 0 && Object.keys(localDaily).length === 0) {
-      cloudDaily = { ...HISTORICAL_ACCOUNT_A_DAYS };
-    }
-
     // Merge strictly this user's local and cloud activity
     const mergedDaily: Record<string, DailyReadingActivity> = { ...cloudDaily };
     Object.entries(localDaily).forEach(([dateKey, localEntry]) => {
@@ -536,8 +530,25 @@ export function syncReadingActivityToCloud(
     try {
       const activeDb = getFirebaseDb() || db;
       if (!activeDb) return;
+
+      // Critical Safeguard: NEVER overwrite existing cloud activity with empty data!
+      if (!activityData || Object.keys(activityData.daily || {}).length === 0) {
+        return;
+      }
+
       const actRef = doc(activeDb, "users", uid, "data", "activity");
       await setDoc(actRef, activityData, { merge: true });
+
+      // Automated Cloud Backup Snapshot in users/{uid}/backups/latest
+      const backupRef = doc(activeDb, "users", uid, "backups", "latest");
+      await setDoc(
+        backupRef,
+        {
+          readingActivity: activityData,
+          backupTimestamp: Date.now(),
+        },
+        { merge: true }
+      ).catch(() => {});
     } catch (err) {
       console.warn("[Firestore] Failed to sync reading activity:", err);
     }

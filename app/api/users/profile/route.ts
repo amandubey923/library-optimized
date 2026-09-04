@@ -5,11 +5,12 @@ export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
+  const uidParam = searchParams.get("uid")?.trim() || "";
   const rawUsername = searchParams.get("username") || "";
   const clean = rawUsername.toLowerCase().trim().replace(/^@/, "");
 
-  if (!clean) {
-    return NextResponse.json({ error: "Missing username parameter." }, { status: 400 });
+  if (!uidParam && !clean) {
+    return NextResponse.json({ error: "Missing uid or username parameter." }, { status: 400 });
   }
 
   const adminDb = getFirebaseAdminFirestore();
@@ -18,18 +19,67 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // 1. Try resolving UID from usernames collection
-    const usernameDoc = await adminDb.collection("usernames").doc(clean).get();
-    let targetUid: string | null = null;
-
-    if (usernameDoc.exists) {
-      targetUid = usernameDoc.data()?.uid || null;
-    }
-
+    let targetUid: string | null = uidParam || null;
     let profileData: any = null;
 
+    // If UID is provided directly, load public_profiles and users docs
+    if (targetUid) {
+      const [pSnap, uSnap] = await Promise.all([
+        adminDb.collection("public_profiles").doc(targetUid).get(),
+        adminDb.collection("users").doc(targetUid).get(),
+      ]);
+
+      const pData = pSnap.exists ? pSnap.data() || {} : {};
+      const uData = uSnap.exists ? uSnap.data() || {} : {};
+
+      if (pSnap.exists || uSnap.exists) {
+        profileData = {
+          uid: targetUid,
+          username: pData.username || uData.username || `reader_${targetUid.slice(0, 6)}`,
+          displayName: (pData.displayName || uData.displayName || uData.username || "Reader").replace(/^@+/, "").trim(),
+          bio: pData.bio || uData.bio || "Passionate reader exploring literature, philosophy & technology on Reader's HUB.",
+          photoURL: pData.photoURL || uData.photoURL || "",
+          createdAt: pData.createdAt || uData.createdAt || Date.now(),
+          followersCount: pData.followersCount || 0,
+          followingCount: pData.followingCount || 0,
+          isPublic: pData.isPublic !== false,
+          stats: pData.stats || {
+            booksCompleted: 0,
+            currentlyReading: 0,
+            currentStreak: 0,
+            longestStreak: 0,
+            totalActiveSeconds: 0,
+          },
+          achievements: pData.achievements || [],
+          updatedAt: Date.now(),
+        };
+
+        // If public_profiles was missing username or displayName, heal it in Firestore
+        if (!pData.username || !pData.displayName) {
+          adminDb.collection("public_profiles").doc(targetUid).set(
+            {
+              username: profileData.username,
+              displayName: profileData.displayName,
+              photoURL: profileData.photoURL,
+              bio: profileData.bio,
+              updatedAt: Date.now(),
+            },
+            { merge: true }
+          ).catch(() => {});
+        }
+      }
+    }
+
+    // 1. Try resolving UID from usernames collection if looking up by username
+    if (!profileData && clean) {
+      const usernameDoc = await adminDb.collection("usernames").doc(clean).get();
+      if (usernameDoc.exists) {
+        targetUid = usernameDoc.data()?.uid || null;
+      }
+    }
+
     // 2. If not found in usernames, try public_profiles query
-    if (!targetUid) {
+    if (!profileData && !targetUid && clean) {
       const qSnap = await adminDb
         .collection("public_profiles")
         .where("username", "==", clean)

@@ -6,6 +6,7 @@ import Link from "next/link";
 import { UserDeepInspectionData, fetchUserDeepInspection } from "@/lib/admin-users";
 import { getActivityStatus, formatLastSeen } from "@/lib/active-tracker";
 import { BOOKS } from "@/data/books";
+import { useAuth } from "@/context/AuthContext";
 
 interface UserDetailsModalProps {
   uid: string | null;
@@ -13,6 +14,7 @@ interface UserDetailsModalProps {
 }
 
 export default function UserDetailsModal({ uid, onClose }: UserDetailsModalProps) {
+  const { user } = useAuth();
   const [data, setData] = useState<UserDeepInspectionData | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"reading" | "favorites" | "collections" | "activity">("reading");
@@ -23,7 +25,7 @@ export default function UserDetailsModal({ uid, onClose }: UserDetailsModalProps
     let isMounted = true;
     setLoading(true);
 
-    fetchUserDeepInspection(uid).then((res) => {
+    fetchUserDeepInspection(uid, user).then((res) => {
       if (isMounted) {
         setData(res);
         setLoading(false);
@@ -33,7 +35,7 @@ export default function UserDetailsModal({ uid, onClose }: UserDetailsModalProps
     return () => {
       isMounted = false;
     };
-  }, [uid]);
+  }, [uid, user]);
 
   // Handle ESC key to close
   useEffect(() => {

@@ -347,50 +347,76 @@ export async function getProfileByUid(uid: string): Promise<PublicUserProfile | 
   const currentDb = getFirebaseDb() || db;
   if (!currentDb) return null;
 
-  // 1. Try public_profiles collection
+  // 1. Try server API first (Admin SDK privileged read with auto-healing and live counts)
+  if (typeof window !== "undefined") {
+    try {
+      const res = await fetch(`/api/users/profile?uid=${encodeURIComponent(uid)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.profile?.username) {
+          const prof = data.profile as PublicUserProfile;
+          const rawName = prof.displayName || prof.username || "Reader";
+          prof.displayName = typeof rawName === "string" ? rawName.replace(/^@+/, "").trim() : "Reader";
+          try {
+            localStorage.setItem(`reader_social_profile_${uid}`, JSON.stringify(prof));
+          } catch {}
+          return prof;
+        }
+      }
+    } catch (apiErr) {
+      console.warn("[Social] getProfileByUid API notice:", apiErr);
+    }
+  }
+
+  // 2. Try client-side public_profiles collection
   try {
     const profRef = doc(currentDb, "public_profiles", uid);
     const snap = await getDoc(profRef);
     if (snap.exists()) {
       const prof = snap.data() as PublicUserProfile;
       prof.uid = uid;
-      prof.displayName = (prof.displayName || prof.username).replace(/^@+/, "").trim();
-      if (typeof window !== "undefined") {
-        try {
-          localStorage.setItem(`reader_social_profile_${uid}`, JSON.stringify(prof));
-        } catch {}
+      if (prof.username) {
+        const rawName = prof.displayName || prof.username || "Reader";
+        prof.displayName = typeof rawName === "string" ? rawName.replace(/^@+/, "").trim() : "Reader";
+        if (typeof window !== "undefined") {
+          try {
+            localStorage.setItem(`reader_social_profile_${uid}`, JSON.stringify(prof));
+          } catch {}
+        }
+        return prof;
       }
-      return prof;
     }
   } catch (err) {
     console.warn("[Social] getProfileByUid notice:", err);
   }
 
-  // 2. Check local cache fallback
+  // 3. Check local cache fallback
   if (typeof window !== "undefined") {
     try {
       const cached = localStorage.getItem(`reader_social_profile_${uid}`);
       if (cached) {
         const parsed = JSON.parse(cached);
         if (parsed?.uid === uid && parsed?.username) {
-          parsed.displayName = (parsed.displayName || parsed.username).replace(/^@+/, "").trim();
+          const rawName = parsed.displayName || parsed.username || "Reader";
+          parsed.displayName = typeof rawName === "string" ? rawName.replace(/^@+/, "").trim() : "Reader";
           return parsed;
         }
       }
     } catch {}
   }
 
-  // 3. Fallback to /users/{uid} document (which is always readable by the account owner)
+  // 4. Fallback to /users/{uid} document (which is readable by the account owner or admin)
   try {
     const userRef = doc(currentDb, "users", uid);
     const userSnap = await getDoc(userRef);
     if (userSnap.exists()) {
       const data = userSnap.data();
       if (data?.username) {
+        const rawName = data.displayName || data.username || "Reader";
         const fallbackProfile: PublicUserProfile = {
           uid,
           username: data.username,
-          displayName: data.displayName || data.username,
+          displayName: typeof rawName === "string" ? rawName.replace(/^@+/, "").trim() : "Reader",
           bio: data.bio || "Passionate reader exploring literature, philosophy & technology on Reader's HUB.",
           photoURL: data.photoURL || "",
           createdAt: data.createdAt || Date.now(),
