@@ -21,6 +21,7 @@ import {
   PublicUserProfile,
   ensureUserProfile,
   syncPublicProfileMetrics,
+  getFollowCounts,
 } from "@/lib/social";
 import FollowersModal from "@/components/social/FollowersModal";
 import EditProfileModal from "@/components/social/EditProfileModal";
@@ -101,6 +102,18 @@ export default function ProfilePage() {
       const prof = await ensureUserProfile(user);
       if (prof) {
         setSocialProfile(prof);
+        // Synchronize authentic live follower/following counts directly
+        getFollowCounts(user.uid).then((counts) => {
+          setSocialProfile((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  followersCount: counts.followersCount,
+                  followingCount: counts.followingCount,
+                }
+              : prev
+          );
+        });
       }
       if (!prof || !prof.username) {
         // STATE B: Missing username - automatically open setup modal
@@ -117,6 +130,53 @@ export default function ProfilePage() {
   useEffect(() => {
     loadProfile();
   }, [loadProfile]);
+
+  // Synchronize live follow state across the app (e.g. following someone in search modal)
+  useEffect(() => {
+    const handleFollowChanged = (e: Event) => {
+      const custom = e as CustomEvent;
+      if (!user) return;
+      if (custom.detail?.followerUid === user.uid) {
+        if (typeof custom.detail.followerFollowing === "number") {
+          setSocialProfile((prev) =>
+            prev ? { ...prev, followingCount: custom.detail.followerFollowing } : prev
+          );
+        } else {
+          const delta = custom.detail.isFollowing ? 1 : -1;
+          setSocialProfile((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  followingCount: Math.max(0, (prev.followingCount || 0) + delta),
+                }
+              : prev
+          );
+        }
+      }
+      if (custom.detail?.targetUid === user.uid) {
+        if (typeof custom.detail.targetFollowers === "number") {
+          setSocialProfile((prev) =>
+            prev ? { ...prev, followersCount: custom.detail.targetFollowers } : prev
+          );
+        } else {
+          const delta = custom.detail.isFollowing ? 1 : -1;
+          setSocialProfile((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  followersCount: Math.max(0, (prev.followersCount || 0) + delta),
+                }
+              : prev
+          );
+        }
+      }
+    };
+
+    window.addEventListener("readers_hub_follow_changed", handleFollowChanged);
+    return () => {
+      window.removeEventListener("readers_hub_follow_changed", handleFollowChanged);
+    };
+  }, [user?.uid]);
 
   // Background sync for public profile metrics without ever touching profile loading state
   const prevSyncKeyRef = React.useRef<string>("");
@@ -273,6 +333,11 @@ export default function ProfilePage() {
                 <div className="flex items-center gap-2.5 flex-wrap">
                   <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--foreground)] flex items-center gap-2">
                     <span className="truncate">{user?.displayName || profileHeader.userTitle}</span>
+                    <span className="truncate">
+                      {socialProfile?.displayName?.replace(/^@+/, "").trim() ||
+                        user?.displayName?.replace(/^@+/, "").trim() ||
+                        (socialProfile?.username ? socialProfile.username.replace(/^@+/, "") : profileHeader.userTitle)}
+                    </span>
                     <ProBadge />
                   </h1>
 

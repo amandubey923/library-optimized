@@ -77,6 +77,7 @@ export default function UserDetailsModal({ uid, onClose }: UserDetailsModalProps
               <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-lg sm:text-xl font-bold font-serif text-[var(--foreground)] truncate">
                   {data?.displayName || "Reader Profile"}
+                  {data?.displayName?.replace(/^@+/, "") || data?.username || "Reader Profile"}
                 </h2>
                 {data?.username ? (
                   <span className="px-2 py-0.5 rounded-full text-xs font-mono font-semibold bg-[var(--secondary)] text-[var(--accent)] border border-[var(--border)]">

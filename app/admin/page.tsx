@@ -912,6 +912,7 @@ function AdminDashboardContent() {
                               <div className="min-w-0 max-w-[160px]">
                                 <span className="font-bold text-[var(--foreground)] truncate block">
                                   {u.displayName}
+                                  {u.displayName?.replace(/^@+/, "") || u.username || "Reader"}
                                 </span>
                                 <span className="text-[10px] text-[var(--accent)] font-mono truncate block">
                                   @{u.username}

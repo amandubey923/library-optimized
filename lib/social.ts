@@ -12,6 +12,7 @@ import {
   orderBy,
   runTransaction,
   serverTimestamp,
+  getCountFromServer,
 } from "firebase/firestore";
 import { getFirebaseDb, db } from "./firebase";
 import { Book, BOOKS } from "@/data/books";
@@ -219,6 +220,7 @@ export async function getProfileByUsername(username: string): Promise<PublicUser
   if (!clean) return null;
 
   // 1. Check local cache (e.g. if viewing own profile or recently visited)
+  // 1. Query Server API endpoint first (uses Firebase Admin SDK without client-side permission issues and computes live counts)
   if (typeof window !== "undefined") {
     try {
       for (let i = 0; i < localStorage.length; i++) {
@@ -231,9 +233,25 @@ export async function getProfileByUsername(username: string): Promise<PublicUser
               return parsed;
             }
           }
+      const res = await fetch(`/api/users/profile?username=${encodeURIComponent(clean)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data?.profile) {
+          const prof = data.profile as PublicUserProfile;
+          prof.displayName = (prof.displayName || prof.username).replace(/^@+/, "").trim();
+          try {
+            localStorage.setItem(
+              `reader_social_profile_${prof.uid}`,
+              JSON.stringify(prof)
+            );
+          } catch {}
+          return prof;
         }
       }
     } catch {}
+    } catch (apiErr) {
+      console.warn("[Social] Server profile API notice:", apiErr);
+    }
   }
 
   const currentDb = getFirebaseDb() || db;
@@ -265,6 +283,9 @@ export async function getProfileByUsername(username: string): Promise<PublicUser
       if (!snap.empty) {
         const prof = snap.docs[0].data() as PublicUserProfile;
         return { ...prof, uid: snap.docs[0].id };
+        prof.uid = snap.docs[0].id;
+        prof.displayName = (prof.displayName || prof.username).replace(/^@+/, "").trim();
+        return prof;
       }
     } catch (err) {
       console.warn("[Social] getProfileByUsername public_profiles query notice:", err);
@@ -280,10 +301,12 @@ export async function getProfileByUsername(username: string): Promise<PublicUser
       const snap = await getDocs(q);
       if (!snap.empty) {
         const uData = snap.docs[0].data();
+        const rawDisp = uData.displayName || clean;
         const fallbackProfile: PublicUserProfile = {
           uid: snap.docs[0].id,
           username: uData.username || clean,
           displayName: uData.displayName || clean,
+          displayName: rawDisp.replace(/^@+/, "").trim(),
           bio: uData.bio || "Passionate reader exploring literature, philosophy & technology on Reader's HUB.",
           photoURL: uData.photoURL || "",
           createdAt: uData.createdAt || Date.now(),
@@ -308,6 +331,7 @@ export async function getProfileByUsername(username: string): Promise<PublicUser
   }
 
   // 5. Query Server API endpoint (uses Firebase Admin SDK without client-side permission issues)
+  // 5. Fallback to local cache if network/Firestore unavailable
   if (typeof window !== "undefined") {
     try {
       const res = await fetch(`/api/users/profile?username=${encodeURIComponent(clean)}`);
@@ -321,11 +345,23 @@ export async function getProfileByUsername(username: string): Promise<PublicUser
             );
           } catch {}
           return data.profile as PublicUserProfile;
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith("reader_social_profile_")) {
+          const item = localStorage.getItem(key);
+          if (item) {
+            const parsed = JSON.parse(item);
+            if (parsed?.username && parsed.username.toLowerCase() === clean.toLowerCase()) {
+              parsed.displayName = (parsed.displayName || parsed.username).replace(/^@+/, "").trim();
+              return parsed;
+            }
+          }
         }
       }
     } catch (apiErr) {
       console.warn("[Social] Server profile API notice:", apiErr);
     }
+    } catch {}
   }
 
   return null;
@@ -352,11 +388,14 @@ export async function getProfileByUid(uid: string): Promise<PublicUserProfile | 
   if (!currentDb) return null;
 
   // 2. Try public_profiles collection
+  // 1. Try public_profiles collection
   try {
     const profRef = doc(currentDb, "public_profiles", uid);
     const snap = await getDoc(profRef);
     if (snap.exists()) {
       const prof = snap.data() as PublicUserProfile;
+      prof.uid = uid;
+      prof.displayName = (prof.displayName || prof.username).replace(/^@+/, "").trim();
       if (typeof window !== "undefined") {
         try {
           localStorage.setItem(`reader_social_profile_${uid}`, JSON.stringify(prof));
@@ -366,6 +405,20 @@ export async function getProfileByUid(uid: string): Promise<PublicUserProfile | 
     }
   } catch (err) {
     console.warn("[Social] getProfileByUid notice:", err);
+  }
+
+  // 2. Check local cache fallback
+  if (typeof window !== "undefined") {
+    try {
+      const cached = localStorage.getItem(`reader_social_profile_${uid}`);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed?.uid === uid && parsed?.username) {
+          parsed.displayName = (parsed.displayName || parsed.username).replace(/^@+/, "").trim();
+          return parsed;
+        }
+      }
+    } catch {}
   }
 
   // 3. Fallback to /users/{uid} document (which is always readable by the account owner)
@@ -429,6 +482,14 @@ export async function claimUsernameAndCreateProfile(
     uid: user.uid,
     username: clean,
     displayName: extra?.displayName?.trim() || existingProfile?.displayName || user.displayName || clean,
+    displayName: (
+      extra?.displayName?.trim() ||
+      existingProfile?.displayName ||
+      user.displayName ||
+      clean
+    )
+      .replace(/^@+/, "")
+      .trim() || clean,
     bio:
       extra?.bio !== undefined
         ? extra.bio.trim()
@@ -573,6 +634,7 @@ export async function updateUserProfile(
       uid,
       username: cleanNewUsername || currentUsername || "reader",
       displayName: updates.displayName || "Reader",
+      displayName: (updates.displayName || "Reader").replace(/^@+/, "").trim(),
       bio: updates.bio || "",
       photoURL: updates.photoURL || "",
       createdAt: Date.now(),
@@ -590,6 +652,7 @@ export async function updateUserProfile(
       updatedAt: Date.now(),
     }),
     ...(updates.displayName !== undefined ? { displayName: updates.displayName.trim() } : {}),
+    ...(updates.displayName !== undefined ? { displayName: updates.displayName.replace(/^@+/, "").trim() } : {}),
     ...(updates.bio !== undefined ? { bio: updates.bio.trim() } : {}),
     ...(updates.photoURL !== undefined ? { photoURL: updates.photoURL } : {}),
     ...(updates.isPublic !== undefined ? { isPublic: updates.isPublic } : {}),
@@ -646,6 +709,66 @@ export async function checkIsFollowing(followerUid: string, targetUid: string): 
 
 /**
  * Follows a user. Increments follower & following counts appropriately.
+ * Retrieves authentic follower and following counts directly from the follows collection.
+ */
+export async function getFollowCounts(
+  uid: string
+): Promise<{ followersCount: number; followingCount: number }> {
+  if (!uid) return { followersCount: 0, followingCount: 0 };
+
+  // 1. Try server API endpoint (powered by Firebase Admin count aggregation)
+  if (typeof window !== "undefined") {
+    try {
+      const res = await fetch(`/api/users/follow?uid=${encodeURIComponent(uid)}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (typeof data.followersCount === "number" && typeof data.followingCount === "number") {
+          return {
+            followersCount: data.followersCount,
+            followingCount: data.followingCount,
+          };
+        }
+      }
+    } catch (apiErr) {
+      console.warn("[Social] getFollowCounts API notice:", apiErr);
+    }
+  }
+
+  // 2. Fallback to client Firestore count aggregation
+  const currentDb = getFirebaseDb() || db;
+  if (currentDb) {
+    try {
+      const [followersSnap, followingSnap] = await Promise.all([
+        getCountFromServer(
+          query(collection(currentDb, "follows"), where("followingUid", "==", uid))
+        ),
+        getCountFromServer(
+          query(collection(currentDb, "follows"), where("followerUid", "==", uid))
+        ),
+      ]);
+      return {
+        followersCount: followersSnap.data().count || 0,
+        followingCount: followingSnap.data().count || 0,
+      };
+    } catch {
+      try {
+        const [fSnap, gSnap] = await Promise.all([
+          getDocs(query(collection(currentDb, "follows"), where("followingUid", "==", uid), limit(100))),
+          getDocs(query(collection(currentDb, "follows"), where("followerUid", "==", uid), limit(100))),
+        ]);
+        return {
+          followersCount: fSnap.size,
+          followingCount: gSnap.size,
+        };
+      } catch {}
+    }
+  }
+
+  return { followersCount: 0, followingCount: 0 };
+}
+
+/**
+ * Follows a user. Synchronizes across client Firestore, server API, and local state.
  */
 export async function followUser(followerUid: string, targetUid: string): Promise<boolean> {
   if (!followerUid || !targetUid || followerUid === targetUid) return false;
@@ -664,15 +787,41 @@ export async function followUser(followerUid: string, targetUid: string): Promis
     });
 
     // Update counts on public profiles (with local fallback)
+  // 1. Write follow relationship to client Firestore if available
+  if (currentDb) {
     try {
       const followerProfileRef = doc(currentDb, "public_profiles", followerUid);
       const targetProfileRef = doc(currentDb, "public_profiles", targetUid);
+      const followRef = doc(currentDb, "follows", followId);
+      await setDoc(followRef, {
+        followerUid,
+        followingUid: targetUid,
+        createdAt: Date.now(),
+      });
+    } catch (fsErr) {
+      console.warn("[Social] Client follow write notice:", fsErr);
+    }
+  }
 
       const [fSnap, tSnap] = await Promise.all([getDoc(followerProfileRef), getDoc(targetProfileRef)]);
+  // 2. Call server API to perform Admin SDK sync on both user public_profiles
+  let targetFollowers: number | null = null;
+  let followerFollowing: number | null = null;
 
       if (fSnap.exists()) {
         const cur = fSnap.data().followingCount || 0;
         await setDoc(followerProfileRef, { followingCount: cur + 1 }, { merge: true });
+  if (typeof window !== "undefined") {
+    try {
+      const res = await fetch("/api/users/follow", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ followerUid, targetUid, action: "follow" }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        targetFollowers = data.targetFollowers;
+        followerFollowing = data.followerFollowing;
       }
       if (tSnap.exists()) {
         const cur = tSnap.data().followersCount || 0;
@@ -680,17 +829,55 @@ export async function followUser(followerUid: string, targetUid: string): Promis
       }
     } catch (countErr) {
       console.warn("[Social] Non-fatal count increment notice:", countErr);
+    } catch (apiErr) {
+      console.warn("[Social] Follow API notice:", apiErr);
     }
+  }
 
     return true;
   } catch (err) {
     console.error("[Social] followUser failed:", err);
     return false;
+  // 3. Synchronize localStorage cache for both users
+  if (typeof window !== "undefined") {
+    try {
+      const targetCached = localStorage.getItem(`reader_social_profile_${targetUid}`);
+      if (targetCached) {
+        const parsed = JSON.parse(targetCached);
+        parsed.followersCount =
+          targetFollowers !== null ? targetFollowers : (parsed.followersCount || 0) + 1;
+        localStorage.setItem(`reader_social_profile_${targetUid}`, JSON.stringify(parsed));
+      }
+
+      const followerCached = localStorage.getItem(`reader_social_profile_${followerUid}`);
+      if (followerCached) {
+        const parsed = JSON.parse(followerCached);
+        parsed.followingCount =
+          followerFollowing !== null ? followerFollowing : (parsed.followingCount || 0) + 1;
+        localStorage.setItem(`reader_social_profile_${followerUid}`, JSON.stringify(parsed));
+      }
+
+      // Dispatch global event for live UI reactivity across all mounted components
+      window.dispatchEvent(
+        new CustomEvent("readers_hub_follow_changed", {
+          detail: {
+            followerUid,
+            targetUid,
+            isFollowing: true,
+            targetFollowers,
+            followerFollowing,
+          },
+        })
+      );
+    } catch {}
   }
+
+  return true;
 }
 
 /**
  * Unfollows a user. Decrements follower & following counts appropriately.
+ * Unfollows a user. Synchronizes across client Firestore, server API, and local state.
  */
 export async function unfollowUser(followerUid: string, targetUid: string): Promise<boolean> {
   if (!followerUid || !targetUid || followerUid === targetUid) return false;
@@ -705,15 +892,37 @@ export async function unfollowUser(followerUid: string, targetUid: string): Prom
     await deleteDoc(followRef);
 
     // Update counts
+  // 1. Delete follow relationship from client Firestore if available
+  if (currentDb) {
     try {
       const followerProfileRef = doc(currentDb, "public_profiles", followerUid);
       const targetProfileRef = doc(currentDb, "public_profiles", targetUid);
+      const followRef = doc(currentDb, "follows", followId);
+      await deleteDoc(followRef);
+    } catch (fsErr) {
+      console.warn("[Social] Client unfollow write notice:", fsErr);
+    }
+  }
 
       const [fSnap, tSnap] = await Promise.all([getDoc(followerProfileRef), getDoc(targetProfileRef)]);
+  // 2. Call server API to perform Admin SDK sync on both user public_profiles
+  let targetFollowers: number | null = null;
+  let followerFollowing: number | null = null;
 
       if (fSnap.exists()) {
         const cur = fSnap.data().followingCount || 1;
         await setDoc(followerProfileRef, { followingCount: Math.max(0, cur - 1) }, { merge: true });
+  if (typeof window !== "undefined") {
+    try {
+      const res = await fetch("/api/users/follow", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ followerUid, targetUid, action: "unfollow" }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        targetFollowers = data.targetFollowers;
+        followerFollowing = data.followerFollowing;
       }
       if (tSnap.exists()) {
         const cur = tSnap.data().followersCount || 1;
@@ -721,13 +930,54 @@ export async function unfollowUser(followerUid: string, targetUid: string): Prom
       }
     } catch (countErr) {
       console.warn("[Social] Non-fatal count decrement notice:", countErr);
+    } catch (apiErr) {
+      console.warn("[Social] Unfollow API notice:", apiErr);
     }
+  }
 
     return true;
   } catch (err) {
     console.error("[Social] unfollowUser failed:", err);
     return false;
+  // 3. Synchronize localStorage cache for both users
+  if (typeof window !== "undefined") {
+    try {
+      const targetCached = localStorage.getItem(`reader_social_profile_${targetUid}`);
+      if (targetCached) {
+        const parsed = JSON.parse(targetCached);
+        parsed.followersCount =
+          targetFollowers !== null
+            ? targetFollowers
+            : Math.max(0, (parsed.followersCount || 1) - 1);
+        localStorage.setItem(`reader_social_profile_${targetUid}`, JSON.stringify(parsed));
+      }
+
+      const followerCached = localStorage.getItem(`reader_social_profile_${followerUid}`);
+      if (followerCached) {
+        const parsed = JSON.parse(followerCached);
+        parsed.followingCount =
+          followerFollowing !== null
+            ? followerFollowing
+            : Math.max(0, (parsed.followingCount || 1) - 1);
+        localStorage.setItem(`reader_social_profile_${followerUid}`, JSON.stringify(parsed));
+      }
+
+      // Dispatch global event for live UI reactivity across all mounted components
+      window.dispatchEvent(
+        new CustomEvent("readers_hub_follow_changed", {
+          detail: {
+            followerUid,
+            targetUid,
+            isFollowing: false,
+            targetFollowers,
+            followerFollowing,
+          },
+        })
+      );
+    } catch {}
   }
+
+  return true;
 }
 
 /**

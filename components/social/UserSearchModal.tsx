@@ -174,6 +174,7 @@ export default function UserSearchModal({ isOpen, onClose }: UserSearchModalProp
                     <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="font-bold text-xs sm:text-sm text-[var(--foreground)] group-hover:text-[var(--accent)] transition-colors truncate">
                         {reader.displayName}
+                        {reader.displayName?.replace(/^@+/, "") || reader.username}
                       </span>
                       <span className="text-[11px] text-[var(--text-secondary)] font-mono">
                         @{reader.username}

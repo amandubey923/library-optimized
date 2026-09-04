@@ -10,6 +10,7 @@ import {
   PublicActivity,
   Achievement,
   getProfileByUsername,
+  getFollowCounts,
   getUserPublicActivities,
   calculateUserAchievements,
 } from "@/lib/social";
@@ -63,6 +64,21 @@ export default function PublicProfilePage() {
 
       setProfile(prof);
 
+      // Fetch authentic live follower and following counts directly from follows collection
+      getFollowCounts(prof.uid).then((counts) => {
+        if (isMounted) {
+          setProfile((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  followersCount: counts.followersCount,
+                  followingCount: counts.followingCount,
+                }
+              : prev
+          );
+        }
+      });
+
       // Fetch user's public activities
       getUserPublicActivities(prof.uid).then((acts) => {
         if (isMounted) setActivities(acts);
@@ -75,6 +91,35 @@ export default function PublicProfilePage() {
       isMounted = false;
     };
   }, [username]);
+
+  // Synchronize live follow state across the app (e.g. if user follows from search modal)
+  useEffect(() => {
+    const handleFollowChanged = (e: Event) => {
+      const custom = e as CustomEvent;
+      if (custom.detail?.targetUid && profile && custom.detail.targetUid === profile.uid) {
+        if (typeof custom.detail.targetFollowers === "number") {
+          setProfile((prev) =>
+            prev ? { ...prev, followersCount: custom.detail.targetFollowers } : prev
+          );
+        } else {
+          const delta = custom.detail.isFollowing ? 1 : -1;
+          setProfile((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  followersCount: Math.max(0, (prev.followersCount || 0) + delta),
+                }
+              : prev
+          );
+        }
+      }
+    };
+
+    window.addEventListener("readers_hub_follow_changed", handleFollowChanged);
+    return () => {
+      window.removeEventListener("readers_hub_follow_changed", handleFollowChanged);
+    };
+  }, [profile?.uid]);
 
   // Compute Achievements dynamically from stats or stored badges
   const achievements = useMemo(() => {
@@ -195,6 +240,7 @@ export default function PublicProfilePage() {
                 <div className="flex items-center gap-2.5 flex-wrap">
                   <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-[var(--foreground)] font-serif">
                     {profile.displayName}
+                    {profile.displayName?.replace(/^@+/, "") || profile.username}
                   </h1>
                   <span className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/30">
                     @{profile.username}

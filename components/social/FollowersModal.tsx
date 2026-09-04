@@ -177,6 +177,7 @@ export default function FollowersModal({
                   <div className="min-w-0 flex-1">
                     <span className="font-bold text-xs text-[var(--foreground)] group-hover:text-[var(--accent)] transition-colors truncate block">
                       {reader.displayName}
+                      {reader.displayName?.replace(/^@+/, "") || reader.username}
                     </span>
                     <span className="text-[11px] text-[var(--text-secondary)] font-mono truncate block">
                       @{reader.username}

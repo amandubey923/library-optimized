@@ -34,6 +34,8 @@ export async function GET(req: NextRequest) {
       delete data.email;
       seenUids.add(doc.id);
       results.push({ ...data, uid: doc.id });
+      const cleanDisplayName = (data.displayName || data.username || "Reader").replace(/^@+/, "").trim();
+      results.push({ ...data, displayName: cleanDisplayName, uid: doc.id });
     });
 
     // 2. Substring & Display Name matching across public_profiles
@@ -47,6 +49,8 @@ export async function GET(req: NextRequest) {
           delete data.email;
           seenUids.add(doc.id);
           results.push({ ...data, uid: doc.id });
+          const cleanDisplayName = (data.displayName || data.username || "Reader").replace(/^@+/, "").trim();
+          results.push({ ...data, displayName: cleanDisplayName, uid: doc.id });
         }
       }
     });
@@ -60,10 +64,12 @@ export async function GET(req: NextRequest) {
         const d = (data.displayName || "").toLowerCase();
         if ((u && u.includes(clean)) || (d && d.includes(clean))) {
           seenUids.add(doc.id);
+          const cleanDisplayName = (data.displayName || data.username || "Reader").replace(/^@+/, "").trim();
           results.push({
             uid: doc.id,
             username: data.username || null,
             displayName: data.displayName || data.username || "Reader",
+            displayName: cleanDisplayName,
             photoURL: data.photoURL || "",
             bio: data.bio || "",
             followersCount: 0,
