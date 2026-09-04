@@ -19,6 +19,7 @@ import { isAdminUser } from "@/lib/admin";
 const SearchModal = dynamic(() => import("./SearchModal"), { ssr: false });
 
 export default function Navbar() {
+  const [mounted, setMounted] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -27,6 +28,10 @@ export default function Navbar() {
   const { favorites } = useLibrary();
   const { user } = useAuth();
   const { isPro, openProModal, openSupportModal } = useEntitlement();
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -93,7 +98,7 @@ export default function Navbar() {
                   }`}
                 >
                   <span>{link.name}</span>
-                  {link.count !== undefined && link.count > 0 && (
+                  {mounted && link.count !== undefined && link.count > 0 && (
                     <span className="ml-1.5 px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] bg-[var(--accent)] text-[var(--accent-foreground)] font-extrabold shadow-xs">
                       {link.count}
                     </span>
@@ -405,7 +410,7 @@ export default function Navbar() {
                     }`}
                   >
                     <span>{link.name}</span>
-                    {link.count !== undefined && link.count > 0 && (
+                    {mounted && link.count !== undefined && link.count > 0 && (
                       <span className="px-2 py-0.5 text-xs rounded-full bg-[var(--accent)]/20 text-[var(--accent)] font-bold">
                         {link.count}
                       </span>
