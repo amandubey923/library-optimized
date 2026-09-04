@@ -49,38 +49,26 @@ export default function UserSearchModal({ isOpen, onClose }: UserSearchModalProp
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200">
       <div className="relative w-full max-w-lg rounded-3xl border border-[var(--border)] bg-[var(--card)]/95 backdrop-blur-xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
         {/* Search Header */}
-        <div className="p-4 sm:p-5 border-b border-[var(--border)] flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl bg-[var(--secondary)] flex items-center justify-center text-sm text-[var(--text-secondary)]">
-            🔍
-          </div>
         <div className="p-4 sm:p-5 border-b border-[var(--border)]">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-[var(--secondary)] flex items-center justify-center text-sm text-[var(--accent)] font-bold">
-              👤
+              🔍
             </div>
 
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search readers by @username or name..."
-            autoFocus
-            className="flex-1 bg-transparent text-sm sm:text-base text-[var(--foreground)] placeholder:text-[var(--text-secondary)]/70 focus:outline-hidden font-medium"
-          />
             <div className="flex-1 min-w-0">
               <input
                 type="text"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search username or display name..."
+                placeholder="Search readers by @username or name..."
                 autoFocus
                 className="w-full bg-transparent text-sm sm:text-base text-[var(--foreground)] placeholder:text-[var(--text-secondary)]/70 focus:outline-hidden font-medium"
               />
             </div>
 
-          {query && (
             {query && (
               <button
+                type="button"
                 onClick={() => setQuery("")}
                 className="text-xs text-[var(--text-secondary)] hover:text-[var(--foreground)] px-2 py-1 cursor-pointer"
               >
@@ -89,23 +77,14 @@ export default function UserSearchModal({ isOpen, onClose }: UserSearchModalProp
             )}
 
             <button
-              onClick={() => setQuery("")}
-              className="text-xs text-[var(--text-secondary)] hover:text-[var(--foreground)] px-2 py-1"
+              type="button"
               onClick={onClose}
               className="w-8 h-8 rounded-full bg-[var(--secondary)] hover:bg-[var(--secondary)]/80 text-[var(--text-secondary)] hover:text-[var(--foreground)] flex items-center justify-center transition-all cursor-pointer"
             >
-              Clear
               ✕
             </button>
-          )}
           </div>
 
-          <button
-            onClick={onClose}
-            className="w-8 h-8 rounded-full bg-[var(--secondary)] hover:bg-[var(--secondary)]/80 text-[var(--text-secondary)] hover:text-[var(--foreground)] flex items-center justify-center transition-all cursor-pointer"
-          >
-            ✕
-          </button>
           <div className="mt-2 flex items-center justify-between text-[11px] text-[var(--text-secondary)]">
             <span>Search readers by <strong>@username</strong> or <strong>display name</strong></span>
             <span className="font-mono text-[10px] text-[var(--accent)]">Reader Hub Social</span>

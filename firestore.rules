@@ -8,32 +8,22 @@ service cloud.firestore {
     }
 
     // 1. Private User root document and personal subcollections
-    // (reading_progress, favorites, bookmarks, daily_activity)
     // (reading_progress, favorites, bookmarks, daily_activity, etc.)
     match /users/{userId} {
-      allow read: if request.auth != null && (request.auth.uid == userId || request.auth.token.email == 'kumaraman19137@gmail.com');
-      allow write: if request.auth != null && request.auth.uid == userId;
-      allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
-      allow write: if request.auth != null && (request.auth.uid == userId || isAdmin());
+      allow read, write: if request.auth != null && (request.auth.uid == userId || isAdmin());
 
       match /{document=**} {
-        allow read: if request.auth != null && (request.auth.uid == userId || request.auth.token.email == 'kumaraman19137@gmail.com');
-        allow write: if request.auth != null && request.auth.uid == userId;
-        allow read: if request.auth != null && (request.auth.uid == userId || isAdmin());
-        allow write: if request.auth != null && (request.auth.uid == userId || isAdmin());
+        allow read, write: if request.auth != null && (request.auth.uid == userId || isAdmin());
       }
     }
 
     match /users {
-      allow list: if request.auth != null && request.auth.token.email == 'kumaraman19137@gmail.com';
       allow list: if isAdmin();
     }
 
     // 2. Public User Profiles (Instagram + LeetCode social layer)
     match /public_profiles/{userId} {
       allow read: if true;
-      allow create, update: if request.auth != null && request.auth.uid == userId;
-      allow delete: if request.auth != null && request.auth.uid == userId;
       allow create, update: if request.auth != null && (request.auth.uid == userId || isAdmin());
       allow delete: if request.auth != null && (request.auth.uid == userId || isAdmin());
     }
@@ -41,8 +31,6 @@ service cloud.firestore {
     // 3. Unique Username Registry (@username)
     match /usernames/{username} {
       allow read: if true;
-      allow create, update: if request.auth != null && request.auth.uid == request.resource.data.uid;
-      allow delete: if request.auth != null && request.auth.uid == resource.data.uid;
       allow create, update: if request.auth != null && (request.auth.uid == request.resource.data.uid || isAdmin());
       allow delete: if request.auth != null && (request.auth.uid == resource.data.uid || isAdmin());
     }
@@ -53,15 +41,12 @@ service cloud.firestore {
       allow create: if request.auth != null 
                     && request.auth.uid == request.resource.data.followerUid 
                     && request.resource.data.followerUid != request.resource.data.followingUid;
-      allow delete: if request.auth != null && request.auth.uid == resource.data.followerUid;
       allow delete: if request.auth != null && (request.auth.uid == resource.data.followerUid || isAdmin());
     }
 
     // 5. Public Reading Activities
     match /public_activities/{activityId} {
       allow read: if true;
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.uid;
-      allow delete: if request.auth != null && request.auth.uid == resource.data.uid;
       allow create: if request.auth != null && (request.auth.uid == request.resource.data.uid || isAdmin());
       allow delete: if request.auth != null && (request.auth.uid == resource.data.uid || isAdmin());
     }

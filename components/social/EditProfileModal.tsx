@@ -165,7 +165,6 @@ export default function EditProfileModal({
               <input
                 type="text"
                 value={username}
-                onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ""))}
                 onChange={(e) =>
                   setUsername(
                     e.target.value

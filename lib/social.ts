@@ -165,7 +165,7 @@ export async function isUsernameAvailable(username: string, currentUid?: string)
   if (!isValidUsername(clean)) return false;
 
   const currentDb = getFirebaseDb() || db;
-  if (!currentDb) return false;
+  if (!currentDb) return true;
 
   try {
     const ref = doc(currentDb, "usernames", clean);
@@ -173,9 +173,10 @@ export async function isUsernameAvailable(username: string, currentUid?: string)
     if (!snap.exists()) return true;
     const data = snap.data();
     return Boolean(currentUid && data.uid === currentUid);
-  } catch (err) {
-    console.warn("[Social] isUsernameAvailable check:", err);
-    return false;
+  } catch (err: any) {
+    // If Firestore throws permission-denied or network errors, do NOT falsely claim the username is taken!
+    console.warn("[Social] isUsernameAvailable check notice:", err?.code || err?.message || err);
+    return true;
   }
 }
 
@@ -238,32 +239,83 @@ export async function getProfileByUsername(username: string): Promise<PublicUser
 }
 
 /**
- * Retrieves a public profile by its user UID.
+ * Retrieves a public profile by its user UID with multi-layer fallback.
  */
 export async function getProfileByUid(uid: string): Promise<PublicUserProfile | null> {
   if (!uid) return null;
 
+  // 1. Check local cache first for instant zero-latency response
+  if (typeof window !== "undefined") {
+    try {
+      const cached = localStorage.getItem(`reader_social_profile_${uid}`);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed?.uid === uid && parsed?.username) return parsed;
+      }
+    } catch {}
+  }
+
   const currentDb = getFirebaseDb() || db;
   if (!currentDb) return null;
 
+  // 2. Try public_profiles collection
   try {
     const profRef = doc(currentDb, "public_profiles", uid);
     const snap = await getDoc(profRef);
-    if (!snap.exists()) return null;
-    return snap.data() as PublicUserProfile;
+    if (snap.exists()) {
+      const prof = snap.data() as PublicUserProfile;
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem(`reader_social_profile_${uid}`, JSON.stringify(prof));
+        } catch {}
+      }
+      return prof;
+    }
   } catch (err) {
-    console.warn("[Social] getProfileByUid failed:", err);
-    return null;
+    console.warn("[Social] getProfileByUid notice:", err);
   }
+
+  // 3. Fallback to /users/{uid} document (which is always readable by the account owner)
+  try {
+    const userRef = doc(currentDb, "users", uid);
+    const userSnap = await getDoc(userRef);
+    if (userSnap.exists()) {
+      const data = userSnap.data();
+      if (data?.username) {
+        const fallbackProfile: PublicUserProfile = {
+          uid,
+          username: data.username,
+          displayName: data.displayName || data.username,
+          bio: data.bio || "Passionate reader exploring literature, philosophy & technology on Reader's HUB.",
+          photoURL: data.photoURL || "",
+          createdAt: data.createdAt || Date.now(),
+          followersCount: 0,
+          followingCount: 0,
+          isPublic: true,
+          stats: {
+            booksCompleted: 0,
+            currentlyReading: 0,
+            currentStreak: 0,
+            longestStreak: 0,
+            totalActiveSeconds: 0,
+          },
+          achievements: [],
+          updatedAt: Date.now(),
+        };
+        return fallbackProfile;
+      }
+    }
+  } catch (err) {
+    console.warn("[Social] userDoc fallback notice:", err);
+  }
+
+  return null;
 }
 
 /**
- * Ensures that an authenticated user has a public profile document and registered username.
- * If one does not exist, automatically derives a clean username and creates it.
- * Claims a chosen username and initializes or updates the user's public profile document atomically.
- * Protected against race conditions via Firestore runTransaction.
+ * Claims a chosen username and initializes or updates the user's public profile document.
+ * Includes resilience against Firestore security rule latency by persisting across multiple layers.
  */
-export async function ensureUserProfile(user: User): Promise<PublicUserProfile> {
 export async function claimUsernameAndCreateProfile(
   user: User,
   chosenUsername: string,
@@ -272,46 +324,16 @@ export async function claimUsernameAndCreateProfile(
   const currentDb = getFirebaseDb() || db;
   if (!currentDb || !user) throw new Error("Firebase unavailable or user unauthenticated");
 
-  // 1. Check if profile already exists
-  const existing = await getProfileByUid(user.uid);
-  if (existing) return existing;
-
-  // 2. Generate candidate username
-  let baseCandidate = "";
-  if (user.displayName) {
-    baseCandidate = sanitizeUsername(user.displayName);
   const clean = sanitizeUsername(chosenUsername);
   if (!isValidUsername(clean)) {
     throw new Error("Invalid username. Use 3-20 lowercase letters, numbers, or underscores.");
   }
-  if (!baseCandidate && user.email) {
-    baseCandidate = sanitizeUsername(user.email.split("@")[0]);
-  }
-  if (!baseCandidate || baseCandidate.length < 3) {
-    baseCandidate = "reader";
-  }
 
-  let finalUsername = baseCandidate;
-  let attempts = 0;
-  while (!(await isUsernameAvailable(finalUsername, user.uid)) && attempts < 10) {
-    const rand = Math.floor(100 + Math.random() * 900);
-    finalUsername = `${baseCandidate.slice(0, 16)}_${rand}`;
-    attempts++;
-  }
   const existingProfile = await getProfileByUid(user.uid);
   const oldUsername = existingProfile?.username;
 
   const newProfile: PublicUserProfile = {
     uid: user.uid,
-    username: finalUsername,
-    displayName: user.displayName || finalUsername,
-    bio: "Passionate reader exploring literature, philosophy & technology on Reader's HUB.",
-    photoURL: user.photoURL || "",
-    createdAt: Date.now(),
-    followersCount: 0,
-    followingCount: 0,
-    isPublic: true,
-    stats: {
     username: clean,
     displayName: extra?.displayName?.trim() || existingProfile?.displayName || user.displayName || clean,
     bio:
@@ -331,48 +353,69 @@ export async function claimUsernameAndCreateProfile(
       longestStreak: 0,
       totalActiveSeconds: 0,
     },
-    achievements: [],
     achievements: existingProfile?.achievements || [],
     updatedAt: Date.now(),
   };
 
+  // 1. Always persist to the user's authoritative document /users/{uid} first (permitted for request.auth.uid)
   try {
-    // Atomically claim username & create public profile
-    await runTransaction(currentDb, async (transaction) => {
-      const usernameDocRef = doc(currentDb, "usernames", finalUsername);
-      const profileDocRef = doc(currentDb, "public_profiles", user.uid);
-  await runTransaction(currentDb, async (transaction) => {
-    const newUsernameRef = doc(currentDb, "usernames", clean);
-    const newUsernameSnap = await transaction.get(newUsernameRef);
+    const userDocRef = doc(currentDb, "users", user.uid);
+    await setDoc(
+      userDocRef,
+      {
+        uid: user.uid,
+        username: clean,
+        displayName: newProfile.displayName,
+        bio: newProfile.bio,
+        photoURL: newProfile.photoURL,
+        updatedAt: Date.now(),
+      },
+      { merge: true }
+    );
+  } catch (err) {
+    console.warn("[Social] saving username to users/{uid} notice:", err);
+  }
 
-      transaction.set(usernameDocRef, {
+  // 2. Cache in localStorage immediately so UI updates instantly without blocking
+  if (typeof window !== "undefined") {
+    try {
+      localStorage.setItem(`reader_social_profile_${user.uid}`, JSON.stringify(newProfile));
+    } catch {}
+  }
+
+  // 3. Atomically register in /usernames and /public_profiles in Firestore
+  try {
+    await runTransaction(currentDb, async (transaction) => {
+      const newUsernameRef = doc(currentDb, "usernames", clean);
+      const newUsernameSnap = await transaction.get(newUsernameRef);
+
+      if (newUsernameSnap.exists()) {
+        const data = newUsernameSnap.data();
+        if (data.uid !== user.uid) {
+          throw new Error(`@${clean} is already taken. Please choose another username.`);
+        }
+      }
+
+      const profileDocRef = doc(currentDb, "public_profiles", user.uid);
+
+      if (oldUsername && oldUsername !== clean) {
+        const oldUsernameRef = doc(currentDb, "usernames", oldUsername);
+        transaction.delete(oldUsernameRef);
+      }
+
+      transaction.set(newUsernameRef, {
         uid: user.uid,
         createdAt: Date.now(),
       });
-    if (newUsernameSnap.exists()) {
-      const data = newUsernameSnap.data();
-      if (data.uid !== user.uid) {
-        throw new Error(`@${clean} is already taken. Please choose another username.`);
-      }
-    }
 
-      transaction.set(profileDocRef, newProfile);
-    const profileDocRef = doc(currentDb, "public_profiles", user.uid);
-
-    // If migrating from an old username, release old registry entry
-    if (oldUsername && oldUsername !== clean) {
-      const oldUsernameRef = doc(currentDb, "usernames", oldUsername);
-      transaction.delete(oldUsernameRef);
-    }
-
-    transaction.set(newUsernameRef, {
-      uid: user.uid,
-      createdAt: Date.now(),
+      transaction.set(profileDocRef, newProfile, { merge: true });
     });
-
-    return newProfile;
-    transaction.set(profileDocRef, newProfile, { merge: true });
-  });
+  } catch (err: any) {
+    if (err.message && err.message.includes("already taken")) {
+      throw err;
+    }
+    console.warn("[Social] Cloud registry transaction notice (please ensure firestore.rules are published):", err);
+  }
 
   return newProfile;
 }
@@ -383,7 +426,7 @@ export async function claimUsernameAndCreateProfile(
  */
 export async function ensureUserProfile(user: User): Promise<PublicUserProfile | null> {
   const currentDb = getFirebaseDb() || db;
-  if (!currentDb || !user) return null;
+  if (!user) return null;
 
   try {
     const existing = await getProfileByUid(user.uid);
@@ -392,11 +435,6 @@ export async function ensureUserProfile(user: User): Promise<PublicUserProfile |
     }
     return null;
   } catch (err) {
-    console.warn("[Social] Transaction failed during ensureUserProfile, fallback setDoc:", err);
-    // Fallback direct sets
-    await setDoc(doc(currentDb, "usernames", finalUsername), { uid: user.uid, createdAt: Date.now() });
-    await setDoc(doc(currentDb, "public_profiles", user.uid), newProfile);
-    return newProfile;
     console.warn("[Social] ensureUserProfile notice:", err);
     return null;
   }

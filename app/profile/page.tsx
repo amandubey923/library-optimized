@@ -51,9 +51,6 @@ export default function ProfilePage() {
   }, []);
 
   // Initialize and synchronize social profile metrics
-  useEffect(() => {
-    if (!user) return;
-    ensureUserProfile(user).then((prof) => {
   const loadProfile = React.useCallback(async () => {
     if (!user) {
       setProfileLoading(false);
@@ -64,13 +61,6 @@ export default function ProfilePage() {
     try {
       const prof = await ensureUserProfile(user);
       setSocialProfile(prof);
-      syncPublicProfileMetrics(
-        user.uid,
-        readingHistory,
-        streakData,
-        globalActiveSeconds
-      );
-    });
       if (!prof || !prof.username) {
         // STATE B: Missing username - automatically open setup modal
         setIsUsernameSetupOpen(true);
@@ -177,82 +167,80 @@ export default function ProfilePage() {
         {/* =========================================================================
             1. PROFILE HEADER SECTION
            ========================================================================= */}
-        <section 
-          className="relative overflow-hidden rounded-3xl border border-[var(--border)] p-6 sm:p-8 shadow-xl"
-          style={{ background: "linear-gradient(to bottom right, var(--card), color-mix(in srgb, var(--card) 90%, transparent), color-mix(in srgb, var(--secondary) 40%, transparent))" }}
+        {/* =========================================================================
+            1. PROFILE HEADER SECTION — PREMIUM READER IDENTITY CARD
+           ========================================================================= */}
+        <section
+          className="relative overflow-hidden rounded-3xl border border-cyan-500/15 bg-gradient-to-b from-[var(--card)] via-[var(--card)] to-[var(--card)]/90 p-5 sm:p-7 md:p-8 shadow-2xl backdrop-blur-xl"
           aria-label="Profile Header"
         >
-          {/* Ambient Glow */}
-          <div className="absolute top-0 right-0 -mt-8 -mr-8 w-64 h-64 bg-[var(--accent)]/10 rounded-full blur-3xl pointer-events-none" />
-          <div className="absolute bottom-0 left-1/3 -mb-10 w-48 h-48 bg-[var(--primary)]/10 rounded-full blur-2xl pointer-events-none" />
+          {/* Subtle Ambient Depth Glows */}
+          <div className="absolute top-0 right-1/4 -mt-16 w-80 h-80 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 right-0 -mb-12 -mr-12 w-64 h-64 bg-amber-500/5 rounded-full blur-3xl pointer-events-none" />
 
-          <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-            <div className="flex items-center gap-5">
-              {/* User Avatar Glyph / Google Photo */}
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-tr from-[var(--primary)] to-[var(--accent-glow)] p-0.5 shadow-lg flex-shrink-0 relative overflow-hidden">
-                <div className="w-full h-full rounded-[14px] bg-[var(--card)] flex items-center justify-center text-[var(--accent)] relative overflow-hidden">
-                  {user?.photoURL ? (
-                    <Image
-                      src={user.photoURL}
-                      alt={user.displayName || "User avatar"}
-                      fill
-                      sizes="80px"
-                      referrerPolicy="no-referrer"
-                      className="object-cover rounded-[14px]"
-                    />
-                  ) : user?.displayName ? (
-                    <span className="font-bold text-2xl font-serif text-[var(--accent)]">
-                      {user.displayName.charAt(0).toUpperCase()}
-                    </span>
-                  ) : (
-                    <svg className="w-8 h-8 sm:w-10 sm:h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={1.75}
-                        d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+          <div className="relative z-10 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6 lg:gap-8">
+            {/* Left Side: Avatar + Comprehensive Reader Identity */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5 sm:gap-6 flex-1 min-w-0">
+              {/* Avatar */}
+              <div className="relative flex-shrink-0">
+                <div className="w-18 h-18 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-cyan-500/30 via-[var(--border)] to-amber-500/20 p-0.5 shadow-xl">
+                  <div className="w-full h-full rounded-[14px] bg-[var(--card)] flex items-center justify-center text-cyan-400 relative overflow-hidden">
+                    {user?.photoURL ? (
+                      <Image
+                        src={user.photoURL}
+                        alt={user.displayName || "User avatar"}
+                        fill
+                        sizes="80px"
+                        referrerPolicy="no-referrer"
+                        className="object-cover rounded-[14px]"
                       />
-                    </svg>
-                  )}
+                    ) : user?.displayName ? (
+                      <span className="font-bold text-2xl sm:text-3xl font-serif text-cyan-400">
+                        {user.displayName.charAt(0).toUpperCase()}
+                      </span>
+                    ) : (
+                      <svg className="w-9 h-9 text-[var(--text-secondary)]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={1.75}
+                          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
+                        />
+                      </svg>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              <div>
+              {/* Identity Details */}
+              <div className="space-y-2.5 flex-1 min-w-0">
+                {/* Name + Badges Row */}
                 <div className="flex items-center gap-2.5 flex-wrap">
                   <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-[var(--foreground)] flex items-center gap-2">
-                    <span>{user?.displayName || profileHeader.userTitle}</span>
+                    <span className="truncate">{user?.displayName || profileHeader.userTitle}</span>
                     <ProBadge />
                   </h1>
-                  {socialProfile?.username && (
-                    <Link
-                      href={`/profile/${socialProfile.username}`}
-                      className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/30 hover:bg-[var(--accent)]/25 transition-colors"
-                      title="View your public profile"
-                    >
-                      @{socialProfile.username}
-                    </Link>
-                  {/* Social Username Badges: State A, B, or C */}
+
+                  {/* Username Pill */}
                   {user && (
                     <>
                       {profileLoading ? (
                         <span className="px-2.5 py-0.5 rounded-full text-xs font-mono bg-[var(--secondary)] text-[var(--text-secondary)] animate-pulse">
-                          Loading profile...
+                          Loading handle...
                         </span>
                       ) : socialProfile?.username ? (
-                        /* STATE A: Username exists */
                         <Link
                           href={`/profile/${socialProfile.username}`}
-                          className="px-2.5 py-0.5 rounded-full text-xs font-mono font-bold bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/30 hover:bg-[var(--accent)]/25 transition-colors flex items-center gap-1"
+                          className="px-2.5 py-0.5 rounded-full text-xs font-mono font-semibold bg-cyan-500/10 text-cyan-300 border border-cyan-500/25 hover:bg-cyan-500/20 hover:border-cyan-500/40 transition-all inline-flex items-center gap-1 shadow-xs"
                           title="View your public profile"
                         >
                           <span>@{socialProfile.username}</span>
-                          <span className="text-[10px]">↗</span>
+                          <span className="text-[10px] text-cyan-400/80">↗</span>
                         </Link>
                       ) : profileError ? (
-                        /* STATE C: Failed to load profile */
-                        <div className="flex items-center gap-1.5">
-                          <span className="px-2.5 py-0.5 rounded-full text-xs font-medium bg-rose-500/15 text-rose-400 border border-rose-500/30">
-                            Failed to load profile
+                        <div className="inline-flex items-center gap-1.5">
+                          <span className="px-2 py-0.5 rounded-full text-[11px] font-medium bg-rose-500/15 text-rose-400 border border-rose-500/30">
+                            Sync error
                           </span>
                           <button
                             onClick={() => loadProfile()}
@@ -262,119 +250,130 @@ export default function ProfilePage() {
                           </button>
                         </div>
                       ) : (
-                        /* STATE B: Username missing / setup pending */
                         <button
                           onClick={() => setIsUsernameSetupOpen(true)}
-                          className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 transition-all cursor-pointer flex items-center gap-1 animate-pulse"
+                          className="px-3 py-0.5 rounded-full text-xs font-bold bg-amber-500/15 text-amber-300 border border-amber-500/35 hover:bg-amber-500/25 transition-all cursor-pointer inline-flex items-center gap-1 animate-pulse"
                         >
                           <span>✨</span>
-                          <span>Set your @username</span>
+                          <span>Set @username</span>
                         </button>
                       )}
                     </>
                   )}
 
+                  {/* Cloud Synced Badge */}
                   {user ? (
-                    <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5 shadow-xs">
+                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 inline-flex items-center gap-1.5">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                      Cloud Synced ☁️
+                      <span>Cloud Synced</span>
                     </span>
                   ) : (
-                    <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-[var(--accent)]/15 text-[var(--accent)] border border-[var(--accent)]/30">
-                      Local Device (Guest)
+                    <span className="px-2.5 py-0.5 rounded-full text-[11px] font-medium bg-[var(--secondary)] text-[var(--text-secondary)] border border-[var(--border)]">
+                      Guest Device
                     </span>
                   )}
                 </div>
 
+                {/* Bio (if available) */}
                 {socialProfile?.bio && (
-                  <p className="text-xs text-[var(--foreground)]/90 italic mt-1">
+                  <p className="text-xs text-[var(--text-secondary)] italic max-w-xl line-clamp-2 leading-relaxed">
                     &ldquo;{socialProfile.bio}&rdquo;
                   </p>
                 )}
 
-                {/* Social Followers / Following Bar */}
-                {user && socialProfile && (
-                  <div className="flex items-center gap-4 pt-1 text-xs">
+                {/* Social Stats Blocks & View Public Profile Button */}
+                {user && (
+                  <div className="flex items-center gap-3 pt-0.5 flex-wrap">
+                    {/* Followers Block */}
                     <button
+                      type="button"
                       onClick={() => {
                         setFollowersModalTab("followers");
                         setIsFollowersModalOpen(true);
                       }}
-                      className="hover:text-[var(--accent)] transition-colors cursor-pointer"
+                      className="px-3 py-1.5 rounded-xl bg-[var(--secondary)]/50 hover:bg-[var(--secondary)]/80 border border-[var(--border)] hover:border-cyan-500/30 transition-all cursor-pointer flex items-center gap-2 group text-left"
                     >
-                      <strong className="text-[var(--foreground)] font-mono text-sm">
-                        {socialProfile.followersCount || 0}
-                      </strong>{" "}
-                      <span className="text-[var(--text-secondary)]">Followers</span>
+                      <span className="text-sm sm:text-base font-bold font-mono text-[var(--foreground)] group-hover:text-cyan-300 transition-colors">
+                        {socialProfile?.followersCount || 0}
+                      </span>
+                      <span className="text-[11px] text-[var(--text-secondary)] uppercase tracking-wider font-medium">
+                        Followers
+                      </span>
                     </button>
 
-                    <span className="text-[var(--border)]">•</span>
-
+                    {/* Following Block */}
                     <button
+                      type="button"
                       onClick={() => {
                         setFollowersModalTab("following");
                         setIsFollowersModalOpen(true);
                       }}
-                      className="hover:text-[var(--accent)] transition-colors cursor-pointer"
+                      className="px-3 py-1.5 rounded-xl bg-[var(--secondary)]/50 hover:bg-[var(--secondary)]/80 border border-[var(--border)] hover:border-cyan-500/30 transition-all cursor-pointer flex items-center gap-2 group text-left"
                     >
-                      <strong className="text-[var(--foreground)] font-mono text-sm">
-                        {socialProfile.followingCount || 0}
-                      </strong>{" "}
-                      <span className="text-[var(--text-secondary)]">Following</span>
+                      <span className="text-sm sm:text-base font-bold font-mono text-[var(--foreground)] group-hover:text-cyan-300 transition-colors">
+                        {socialProfile?.followingCount || 0}
+                      </span>
+                      <span className="text-[11px] text-[var(--text-secondary)] uppercase tracking-wider font-medium">
+                        Following
+                      </span>
                     </button>
 
-                    <span className="text-[var(--border)]">•</span>
-
-                    <Link
-                      href={`/profile/${socialProfile.username}`}
-                      className="text-[var(--accent)] font-semibold hover:underline flex items-center gap-1"
-                    >
-                      <span>Public Profile</span>
-                      <span>↗</span>
-                    </Link>
+                    {/* View Public Profile Secondary Button */}
+                    {socialProfile?.username && (
+                      <Link
+                        href={`/profile/${socialProfile.username}`}
+                        className="px-3 py-1.5 rounded-xl bg-cyan-500/5 hover:bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 hover:border-cyan-500/50 text-xs font-semibold inline-flex items-center gap-1.5 transition-all shadow-xs"
+                      >
+                        <span>View Public Profile</span>
+                        <span className="text-xs">↗</span>
+                      </Link>
+                    )}
                   </div>
                 )}
 
-                <p className="text-sm text-[var(--text-secondary)] mt-1">
-                  {user
-                    ? `Connected via Google (${user.email}) • Reading progress & library synced to cloud`
-                    : "Your personal reading journey is saved locally in this browser"}
-                </p>
+                {/* Compact Connection Info & Reader Since Metadata */}
+                <div className="text-xs text-[var(--text-secondary)]/80 space-y-1 pt-1">
+                  <div className="flex items-center gap-2 flex-wrap text-[11px]">
+                    {user ? (
+                      <span className="flex items-center gap-1.5">
+                        <span className="text-emerald-400 font-bold">✓</span>
+                        <span>Google connected <span className="opacity-75 font-mono">({user.email})</span></span>
+                        <span>•</span>
+                        <span>Reading & library synced</span>
+                      </span>
+                    ) : (
+                      <span>Saved locally in this browser</span>
+                    )}
+                  </div>
 
-                {profileHeader.memberSince ? (
-                  <p className="text-xs text-[var(--text-secondary)]/80 mt-1 flex items-center gap-1.5">
-                    <span>🗓️ Reader since <strong>{profileHeader.memberSince}</strong></span>
-                    <span>•</span>
-                    <span>Active for <strong>{profileHeader.totalDaysSinceFirstActivity} days</strong></span>
-                  </p>
-                ) : (
-                  <p className="text-xs text-[var(--text-secondary)]/80 mt-1">
-                    First reading session begins today!
-                  </p>
-                )}
+                  {profileHeader.memberSince ? (
+                    <div className="flex items-center gap-2 flex-wrap text-[11px]">
+                      <span>📅 Reader since <strong>{profileHeader.memberSince}</strong></span>
+                      <span>•</span>
+                      <span>Active for <strong>{profileHeader.totalDaysSinceFirstActivity} days</strong></span>
+                    </div>
+                  ) : (
+                    <div className="text-[11px]">First reading session begins today!</div>
+                  )}
+                </div>
 
-                {/* Primary Auth & Monetization Action Trigger */}
-                <div className="flex items-center gap-2.5 flex-wrap mt-3">
-                  {socialProfile && (
-                    <button
-                      onClick={() => setIsEditProfileModalOpen(true)}
-                      className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-[var(--secondary)] hover:bg-[var(--secondary)]/80 text-[var(--foreground)] border border-[var(--border)] hover:border-[var(--accent)]/40 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 shadow-xs"
-                    >
-                      <span>✏️</span>
-                      <span>Edit Profile</span>
-                    </button>
+                {/* Clean Action Button Hierarchy */}
+                <div className="flex items-center gap-2.5 flex-wrap pt-2">
+                  {/* Primary / Secondary Social Actions */}
                   {user && !profileLoading && (
                     <>
                       {socialProfile?.username ? (
                         <button
+                          type="button"
                           onClick={() => setIsEditProfileModalOpen(true)}
-                          className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-[var(--secondary)] hover:bg-[var(--secondary)]/80 text-[var(--foreground)] border border-[var(--border)] hover:border-[var(--accent)]/40 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 shadow-xs"
+                          className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 hover:border-cyan-500/50 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 shadow-xs"
                         >
                           <span>✏️</span>
                           <span>Edit Profile</span>
                         </button>
                       ) : (
                         <button
+                          type="button"
                           onClick={() => setIsUsernameSetupOpen(true)}
                           className="px-4 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 text-black shadow-md hover:shadow-amber-500/20 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
                         >
@@ -385,18 +384,22 @@ export default function ProfilePage() {
                     </>
                   )}
 
+                  {/* Find Readers */}
                   <button
+                    type="button"
                     onClick={() => setIsUserSearchModalOpen(true)}
-                    className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-[var(--card)] hover:bg-[var(--secondary)] text-[var(--foreground)] border border-[var(--border)] transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 shadow-xs"
+                    className="px-3.5 py-1.5 rounded-xl text-xs font-medium bg-[var(--secondary)] hover:bg-[var(--secondary)]/80 text-[var(--foreground)] border border-[var(--border)] hover:border-[var(--border)]/80 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 shadow-xs"
                   >
                     <span>🔍</span>
                     <span>Find Readers</span>
                   </button>
 
+                  {/* Upgrade to Pro (Primary) */}
                   {!isPro ? (
                     <button
+                      type="button"
                       onClick={() => openProModal()}
-                      className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-amber-500 to-orange-500 hover:opacity-95 text-zinc-950 shadow-md transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+                      className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-amber-500 to-orange-500 hover:opacity-95 text-zinc-950 shadow-md shadow-amber-500/10 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
                     >
                       <span>✨</span>
                       <span>Upgrade to Pro</span>
@@ -408,33 +411,39 @@ export default function ProfilePage() {
                     </span>
                   )}
 
+                  {/* Support */}
                   <button
+                    type="button"
                     onClick={() => openSupportModal()}
-                    className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-[var(--card)] hover:bg-[var(--secondary)] text-[var(--foreground)] border border-[var(--border)] transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
+                    className="px-3 py-1.5 rounded-xl text-xs font-medium bg-[var(--secondary)]/60 hover:bg-[var(--secondary)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)] transition-all cursor-pointer flex items-center gap-1.5 active:scale-95"
                   >
                     <span>💛</span>
                     <span>Support</span>
                   </button>
 
+                  {/* Admin Portal (if admin) */}
                   {isAdminUser(user?.email) && (
                     <Link
                       href="/admin"
-                      className="px-3.5 py-1.5 rounded-xl text-xs font-bold bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 shadow-xs"
+                      className="px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 transition-all cursor-pointer flex items-center gap-1.5 active:scale-95 shadow-xs"
                     >
                       <span>🛡️</span>
-                      <span>Admin Portal</span>
+                      <span>Admin</span>
                     </Link>
                   )}
 
+                  {/* Danger: Sign Out */}
                   {user ? (
                     <button
+                      type="button"
                       onClick={signOutUser}
-                      className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 transition-all cursor-pointer shadow-xs active:scale-95"
+                      className="px-3 py-1.5 rounded-xl text-xs font-medium bg-rose-500/5 hover:bg-rose-500/15 text-rose-400 border border-rose-500/25 hover:border-rose-500/40 transition-all cursor-pointer shadow-xs active:scale-95"
                     >
                       Sign Out
                     </button>
                   ) : (
                     <button
+                      type="button"
                       onClick={() => setIsAuthModalOpen(true)}
                       className="px-4 py-2 rounded-xl text-xs font-bold bg-white hover:bg-zinc-100 text-zinc-900 shadow-md hover:shadow-lg transition-all flex items-center gap-2.5 cursor-pointer active:scale-95 border border-zinc-200"
                     >
@@ -456,30 +465,36 @@ export default function ProfilePage() {
                           d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.36 0 3.27 2.64 1.26 6.58l4.02 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
                         />
                       </svg>
-                      <span>Sign In with Google to Sync</span>
+                      <span>Sign In with Google</span>
                     </button>
                   )}
                 </div>
               </div>
             </div>
 
-            {/* Quick Header Badges */}
-            <div className="flex items-center gap-3 self-stretch md:self-auto justify-between md:justify-end border-t md:border-t-0 pt-4 md:pt-0 border-[var(--border)]">
-              <div className="flex items-center gap-3 bg-[var(--background)]/70 border border-[var(--border)] px-4 py-2.5 rounded-2xl shadow-inner text-center">
-                <div>
-                  <div className="text-xs text-[var(--text-secondary)] font-medium">Current Streak</div>
-                  <div className="text-xl sm:text-2xl font-black text-[var(--accent)] flex items-center justify-center gap-1">
+            {/* Right Side: Compact "Reading Streak" Mini-Card */}
+            <div className="w-full lg:w-auto flex-shrink-0 self-stretch lg:self-center">
+              <div className="rounded-2xl border border-amber-500/20 bg-gradient-to-b from-amber-500/10 via-[var(--card)] to-[var(--card)]/90 p-4 sm:p-5 shadow-lg flex flex-row lg:flex-col items-center lg:items-start justify-between gap-4 min-w-[200px]">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wider text-amber-400">
                     <span>🔥</span>
-                    <span>{profileHeader.currentStreak}d</span>
+                    <span>Reading Streak</span>
+                  </div>
+                  <div className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-[var(--foreground)] flex items-baseline gap-1">
+                    <span>{profileHeader.currentStreak}</span>
+                    <span className="text-xs font-semibold text-[var(--text-secondary)]">days</span>
+                  </div>
+                  <div className="text-[11px] text-[var(--text-secondary)] font-medium">
+                    {profileHeader.currentStreak > 0 ? "Keep the flame alive!" : "Begin your streak today"}
                   </div>
                 </div>
-                <div className="h-8 w-px bg-[var(--border)]" />
-                <div>
-                  <div className="text-xs text-[var(--text-secondary)] font-medium">Longest Streak</div>
-                  <div className="text-xl sm:text-2xl font-black text-[var(--foreground)] flex items-center justify-center gap-1">
+
+                <div className="pt-0 lg:pt-3 border-l lg:border-l-0 lg:border-t border-[var(--border)] pl-4 lg:pl-0 w-auto lg:w-full flex items-center justify-between gap-2 text-xs">
+                  <span className="text-[11px] text-[var(--text-secondary)]">All-Time Best:</span>
+                  <span className="font-bold font-mono text-[var(--foreground)] flex items-center gap-1">
                     <span>🏆</span>
                     <span>{profileHeader.longestStreak}d</span>
-                  </div>
+                  </span>
                 </div>
               </div>
             </div>

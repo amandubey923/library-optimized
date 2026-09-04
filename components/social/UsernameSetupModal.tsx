@@ -105,7 +105,6 @@ export default function UsernameSetupModal({
     }
 
     if (status === "taken") {
-      setErrorMessage(@ is already taken. Please choose another username.);
       setErrorMessage(`@${clean} is already taken. Please choose another username.`);
       return;
     }
