@@ -1270,26 +1270,10 @@ export async function syncPublicProfileMetrics(
 
   try {
     const profRef = doc(currentDb, "public_profiles", uid);
-    const existingSnap = await getDoc(profRef);
-    const existingStats = existingSnap.exists() ? existingSnap.data()?.stats : null;
-
-    const safeCurrentStreak = Math.max(
-      streakData.currentStreak || 0,
-      streakData.currentStreak === 0 && existingStats?.currentStreak ? existingStats.currentStreak : 0
-    );
-    const safeLongestStreak = Math.max(
-      streakData.longestStreak || 0,
-      existingStats?.longestStreak || 0
-    );
-    const safeReadingSeconds = Math.max(
-      totalReadingSeconds || 0,
-      existingStats?.totalReadingSeconds || 0
-    );
-    const safeActiveSeconds = Math.max(
-      totalActiveSeconds || 0,
-      existingStats?.totalActiveSeconds || 0,
-      safeReadingSeconds
-    );
+    const currentStreak = Math.max(0, streakData.currentStreak || 0);
+    const longestStreak = Math.max(0, streakData.longestStreak || 0);
+    const safeReadingSeconds = Math.max(0, totalReadingSeconds || 0);
+    const safeActiveSeconds = Math.max(0, totalActiveSeconds || 0, safeReadingSeconds);
 
     await setDoc(
       profRef,
@@ -1297,8 +1281,8 @@ export async function syncPublicProfileMetrics(
         stats: {
           booksCompleted: completedBooksCount,
           currentlyReading: currentlyReading.length,
-          currentStreak: safeCurrentStreak,
-          longestStreak: safeLongestStreak,
+          currentStreak,
+          longestStreak,
           totalReadingSeconds: safeReadingSeconds,
           totalActiveSeconds: safeActiveSeconds,
         },

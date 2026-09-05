@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback, useMemo, useRef } from "react";
 import { usePathname } from "next/navigation";
+import type { User } from "firebase/auth";
 import { Book, BOOKS } from "@/data/books";
 import {
   BookmarkItem,
@@ -63,6 +64,7 @@ import {
   saveStoredFavorites,
   getStoredReadingHistory,
   saveStoredReadingHistory,
+  removeStoredReadingProgressItem,
   clearStoredReadingHistory,
   clearStoredFavorites,
   clearAllUserDataForUid,
@@ -72,9 +74,12 @@ import {
   syncUserProfile,
   reconcileAndSyncAllUserData,
   syncReadingProgressToCloud,
+  deleteCloudBookProgress,
   syncReadingActivityToCloud,
   syncActiveTimeToCloud,
   syncReadingMemoryToCloud,
+  syncAnnotationsToCloud,
+  syncBookmarksToCloud,
   syncFavoriteToCloud,
   syncCollectionsToCloud,
   syncReflectionsToCloud,
@@ -113,6 +118,7 @@ export interface ActiveReadingSession {
 }
 
 interface LibraryContextType {
+  user: User | null;
   favorites: string[];
   isFavorite: (bookId: string) => boolean;
   toggleFavorite: (bookId: string) => void;
@@ -702,7 +708,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       const curTotal = totalPages || (existing ? existing.totalPages : 100);
       finalPage = curPage;
       finalTotal = curTotal;
-      const progress = Math.min(100, Math.max(5, Math.round((curPage / curTotal) * 100)));
+      const progress = curTotal > 0 ? Math.min(100, Math.round((curPage / curTotal) * 100)) : 0;
 
       // Avoid unnecessary state update if progress, page, and totalPages are identical
       if (
@@ -724,7 +730,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
         lastReadAt: Date.now(),
       };
 
-      const updated = [newItem, ...filtered].slice(0, 16);
+      const updated = [newItem, ...filtered];
       saveStoredReadingHistory(updated, user?.uid);
       return updated;
     });
@@ -732,7 +738,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     if (bookId) {
       restoreBookToShelf("reading", bookId);
       restoreBookToShelf("spotlight", bookId);
-      setShelfDismissals(getShelfDismissals());
+      setShelfDismissals(getShelfDismissals(user?.uid));
     }
 
     if (user) {
@@ -771,34 +777,55 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   const removeHistoryItem = useCallback((bookId: string) => {
     setReadingHistory((prev) => {
       const updated = prev.filter((item) => item.bookId !== bookId);
+      saveStoredReadingHistory(updated, user?.uid);
       return updated;
     });
+    removeStoredReadingProgressItem(bookId, user?.uid);
+    if (user?.uid) {
+      deleteCloudBookProgress(user.uid, bookId).catch((err) => {
+        console.warn("[LibraryContext] Failed to delete cloud book progress:", err);
+      });
+    }
     refreshStats();
-  }, [refreshStats]);
+  }, [refreshStats, user]);
 
   const clearHistory = useCallback(() => {
     setReadingHistory([]);
+    clearStoredReadingHistory(user?.uid);
+    if (user?.uid) {
+      deleteCloudReadingProgress(user.uid).catch((err) => {
+        console.warn("[LibraryContext] Failed to clear cloud reading progress:", err);
+      });
+    }
     refreshStats();
     showToast("Reading history cleared");
-  }, [refreshStats, showToast]);
+  }, [refreshStats, showToast, user]);
 
   // Bookmarks Wrapper
-  const getBookmarks = useCallback((bookId: string) => getStoredBookmarks(bookId), []);
+  const getBookmarks = useCallback((bookId: string) => getStoredBookmarks(bookId, user?.uid), [user]);
 
   const addBookmark = useCallback((bookId: string, page: number, label?: string) => {
-    const item = storeBookmark(bookId, page, label);
+    const item = storeBookmark(bookId, page, label, user?.uid);
+    if (user?.uid) {
+      const allBookmarks = getStoredBookmarks(bookId, user.uid);
+      syncBookmarksToCloud(user.uid, bookId, allBookmarks);
+    }
     showToast(`Bookmarked Page ${page} 🔖`);
     refreshStats();
     return item;
-  }, [refreshStats, showToast]);
+  }, [refreshStats, showToast, user]);
 
   const removeBookmark = useCallback((bookId: string, bookmarkId: string) => {
-    deleteStoredBookmark(bookId, bookmarkId);
+    deleteStoredBookmark(bookId, bookmarkId, user?.uid);
+    if (user?.uid) {
+      const allBookmarks = getStoredBookmarks(bookId, user.uid);
+      syncBookmarksToCloud(user.uid, bookId, allBookmarks);
+    }
     showToast(`Bookmark removed 🔖`);
     refreshStats();
-  }, [refreshStats, showToast]);
+  }, [refreshStats, showToast, user]);
 
-  const isBookmarked = useCallback((bookId: string, page: number) => checkIsBookmarked(bookId, page), []);
+  const isBookmarked = useCallback((bookId: string, page: number) => checkIsBookmarked(bookId, page, user?.uid), [user]);
 
   // Active Reading Time Tracker (Diwali Diya)
   const recordActiveReading = useCallback((seconds: number) => {
@@ -1082,6 +1109,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
 
   const contextValue = useMemo<LibraryContextType>(
     () => ({
+      user,
       favorites,
       isFavorite,
       toggleFavorite,
@@ -1147,6 +1175,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       removeReflection,
     }),
     [
+      user,
       favorites,
       isFavorite,
       toggleFavorite,

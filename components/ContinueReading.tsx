@@ -71,7 +71,7 @@ export default function ContinueReading() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {recentBooks.slice(0, 4).map((book) => {
-            const progress = book.progress || 10;
+            const progress = typeof book.progress === "number" ? book.progress : 0;
             return (
               <div
                 key={book.id}

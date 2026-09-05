@@ -66,8 +66,13 @@ function getTodayDateKey(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-const AI_USAGE_KEY = "readers_hub_ai_usage_v1";
-const TRANSLATE_USAGE_KEY = "readers_hub_trans_usage_v1";
+function getAiUsageKey(uid?: string | null): string {
+  return `readershub:ai-usage:v1:${uid || "guest"}`;
+}
+
+function getTranslateUsageKey(uid?: string | null): string {
+  return `readershub:translate-usage:v1:${uid || "guest"}`;
+}
 
 export function EntitlementProvider({ children }: { children: ReactNode }) {
   const { user } = useAuth();
@@ -84,25 +89,42 @@ export function EntitlementProvider({ children }: { children: ReactNode }) {
   const [aiQueriesToday, setAiQueriesToday] = useState<number>(0);
   const [translationsToday, setTranslationsToday] = useState<number>(0);
 
-  // Load today's usage counters
+  // Load today's usage counters (scoped by UID)
   useEffect(() => {
     if (typeof window === "undefined") return;
     try {
       const today = getTodayDateKey();
+      const aiKey = getAiUsageKey(user?.uid);
+      const trKey = getTranslateUsageKey(user?.uid);
 
-      const aiRaw = localStorage.getItem(AI_USAGE_KEY);
+      const aiRaw = localStorage.getItem(aiKey);
       if (aiRaw) {
         const parsed = JSON.parse(aiRaw);
-        if (parsed.date === today) setAiQueriesToday(parsed.count || 0);
+        if (parsed.date === today) {
+          setAiQueriesToday(parsed.count || 0);
+        } else {
+          setAiQueriesToday(0);
+        }
+      } else {
+        setAiQueriesToday(0);
       }
 
-      const trRaw = localStorage.getItem(TRANSLATE_USAGE_KEY);
+      const trRaw = localStorage.getItem(trKey);
       if (trRaw) {
         const parsed = JSON.parse(trRaw);
-        if (parsed.date === today) setTranslationsToday(parsed.count || 0);
+        if (parsed.date === today) {
+          setTranslationsToday(parsed.count || 0);
+        } else {
+          setTranslationsToday(0);
+        }
+      } else {
+        setTranslationsToday(0);
       }
-    } catch {}
-  }, []);
+    } catch {
+      setAiQueriesToday(0);
+      setTranslationsToday(0);
+    }
+  }, [user?.uid]);
 
   // Listen to Firestore entitlement for authenticated users
   useEffect(() => {
@@ -171,12 +193,12 @@ export function EntitlementProvider({ children }: { children: ReactNode }) {
     setAiQueriesToday(nextCount);
     try {
       localStorage.setItem(
-        AI_USAGE_KEY,
+        getAiUsageKey(user?.uid),
         JSON.stringify({ date: getTodayDateKey(), count: nextCount })
       );
     } catch {}
     return true;
-  }, [isPro, aiQueriesToday]);
+  }, [isPro, aiQueriesToday, user?.uid]);
 
   const canTranslateSpread = useCallback((): boolean => {
     // While Pro enforcement is disabled (pending Razorpay verification), all page translations remain 100% free with NO limits
@@ -190,12 +212,12 @@ export function EntitlementProvider({ children }: { children: ReactNode }) {
     setTranslationsToday(nextCount);
     try {
       localStorage.setItem(
-        TRANSLATE_USAGE_KEY,
+        getTranslateUsageKey(user?.uid),
         JSON.stringify({ date: getTodayDateKey(), count: nextCount })
       );
     } catch {}
     return true;
-  }, [isPro, translationsToday]);
+  }, [isPro, translationsToday, user?.uid]);
 
   // Lazy load Razorpay script on demand
   const loadRazorpayScript = async (): Promise<boolean> => {

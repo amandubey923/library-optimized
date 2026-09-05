@@ -188,7 +188,7 @@ export const SHELF_DISMISSALS_KEY = "readershub:shelf-dismissals:v1";
 
 export function getShelfDismissalsStorageKey(uid?: string | null): string {
   const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
-  return targetUid ? `readershub:shelf-dismissals:v1:${targetUid}` : SHELF_DISMISSALS_KEY;
+  return targetUid ? `readershub:shelf-dismissals:v1:${targetUid}` : "readershub:shelf-dismissals:v1:guest";
 }
 
 export function getFavoritesStorageKey(uid?: string | null): string {
@@ -199,6 +199,21 @@ export function getFavoritesStorageKey(uid?: string | null): string {
 export function getHistoryStorageKey(uid?: string | null): string {
   const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
   return targetUid ? `readershub:history:v1:${targetUid}` : HISTORY_KEY;
+}
+
+export function getProgressStorageKey(bookId: string, uid?: string | null): string {
+  const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+  return targetUid ? `readershub:progress:v1:${targetUid}:${bookId}` : `readershub:progress:v1:guest:${bookId}`;
+}
+
+export function getAnnotationsStorageKey(bookId: string, uid?: string | null): string {
+  const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+  return targetUid ? `readershub:annotations:v1:${targetUid}:${bookId}` : `readershub:annotations:v1:guest:${bookId}`;
+}
+
+export function getBookmarksStorageKey(bookId: string, uid?: string | null): string {
+  const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+  return targetUid ? `readershub:bookmarks:v1:${targetUid}:${bookId}` : `readershub:bookmarks:v1:guest:${bookId}`;
 }
 
 export function getStoredFavorites(uid?: string | null): string[] {
@@ -284,27 +299,30 @@ const annotationsCache = new Map<string, BookAnnotations>();
 const bookmarksCache = new Map<string, BookmarkItem[]>();
 const memoryCache = new Map<string, BookReadingMemory>();
 let activeTimeCache: WebsiteActiveTimeData | null = null;
-let shelfDismissalsCache: ShelfDismissalsMap | null = null;
+const shelfDismissalsCache = new Map<string, ShelfDismissalsMap>();
 
 export function getShelfDismissals(uid?: string | null): ShelfDismissalsMap {
   if (typeof window === "undefined") return {};
-  if (shelfDismissalsCache) return shelfDismissalsCache;
+  const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+  const cacheKey = targetUid || "guest";
+  if (shelfDismissalsCache.has(cacheKey)) return shelfDismissalsCache.get(cacheKey)!;
   try {
-    const key = getShelfDismissalsStorageKey(uid);
+    const key = getShelfDismissalsStorageKey(targetUid);
     const raw = localStorage.getItem(key);
     if (raw) {
-      shelfDismissalsCache = JSON.parse(raw);
-      return shelfDismissalsCache || {};
+      const parsed = JSON.parse(raw);
+      shelfDismissalsCache.set(cacheKey, parsed || {});
+      return parsed || {};
     }
-    const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
     if (!targetUid) {
       const legacy = localStorage.getItem(SHELF_DISMISSALS_KEY);
       if (legacy) {
-        shelfDismissalsCache = JSON.parse(legacy);
-        return shelfDismissalsCache || {};
+        const parsed = JSON.parse(legacy);
+        shelfDismissalsCache.set(cacheKey, parsed || {});
+        return parsed || {};
       }
     }
-    shelfDismissalsCache = {};
+    shelfDismissalsCache.set(cacheKey, {});
     return {};
   } catch {
     return {};
@@ -314,17 +332,18 @@ export function getShelfDismissals(uid?: string | null): ShelfDismissalsMap {
 export function dismissBookFromShelf(section: ShelfSectionKey, bookId: string, uid?: string | null): void {
   if (typeof window === "undefined" || !bookId) return;
   try {
-    const current = { ...getShelfDismissals(uid) };
+    const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+    const cacheKey = targetUid || "guest";
+    const current = { ...getShelfDismissals(targetUid) };
     if (!current[section]) {
       current[section] = {};
     } else {
       current[section] = { ...current[section] };
     }
     current[section][bookId] = true;
-    shelfDismissalsCache = current;
-    const key = getShelfDismissalsStorageKey(uid);
+    shelfDismissalsCache.set(cacheKey, current);
+    const key = getShelfDismissalsStorageKey(targetUid);
     localStorage.setItem(key, JSON.stringify(current));
-    const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
     if (!targetUid) {
       localStorage.setItem(SHELF_DISMISSALS_KEY, JSON.stringify(current));
     }
@@ -336,14 +355,15 @@ export function dismissBookFromShelf(section: ShelfSectionKey, bookId: string, u
 export function restoreBookToShelf(section: ShelfSectionKey, bookId: string, uid?: string | null): void {
   if (typeof window === "undefined" || !bookId) return;
   try {
-    const current = { ...getShelfDismissals(uid) };
+    const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+    const cacheKey = targetUid || "guest";
+    const current = { ...getShelfDismissals(targetUid) };
     if (current[section] && current[section][bookId]) {
       current[section] = { ...current[section] };
       delete current[section][bookId];
-      shelfDismissalsCache = current;
-      const key = getShelfDismissalsStorageKey(uid);
+      shelfDismissalsCache.set(cacheKey, current);
+      const key = getShelfDismissalsStorageKey(targetUid);
       localStorage.setItem(key, JSON.stringify(current));
-      const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
       if (!targetUid) {
         localStorage.setItem(SHELF_DISMISSALS_KEY, JSON.stringify(current));
       }
@@ -361,11 +381,12 @@ export function isBookDismissedFromShelf(section: ShelfSectionKey, bookId: strin
 
 export function clearShelfDismissals(uid?: string | null): void {
   if (typeof window === "undefined") return;
-  shelfDismissalsCache = {};
+  const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+  const cacheKey = targetUid || "guest";
+  shelfDismissalsCache.delete(cacheKey);
   try {
-    const key = getShelfDismissalsStorageKey(uid);
+    const key = getShelfDismissalsStorageKey(targetUid);
     localStorage.removeItem(key);
-    const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
     if (!targetUid) {
       localStorage.removeItem(SHELF_DISMISSALS_KEY);
     }
@@ -379,7 +400,7 @@ export const COLLECTIONS_KEY = "readershub:collections:v1";
 
 export function getCollectionsStorageKey(uid?: string | null): string {
   const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
-  return targetUid ? `readershub:collections:v1:${targetUid}` : COLLECTIONS_KEY;
+  return targetUid ? `readershub:collections:v1:${targetUid}` : "readershub:collections:v1:guest";
 }
 
 export interface ReadingCollection {
@@ -392,27 +413,32 @@ export interface ReadingCollection {
   updatedAt: number;
 }
 
-let collectionsCache: ReadingCollection[] | null = null;
+const collectionsCache = new Map<string, ReadingCollection[]>();
 
 export function getReadingCollections(uid?: string | null): ReadingCollection[] {
   if (typeof window === "undefined") return [];
-  if (collectionsCache) return collectionsCache;
+  const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+  const cacheKey = targetUid || "guest";
+  if (collectionsCache.has(cacheKey)) return collectionsCache.get(cacheKey)!;
   try {
-    const key = getCollectionsStorageKey(uid);
+    const key = getCollectionsStorageKey(targetUid);
     const raw = localStorage.getItem(key);
     if (raw) {
-      collectionsCache = JSON.parse(raw);
-      return Array.isArray(collectionsCache) ? collectionsCache : [];
+      const parsed = JSON.parse(raw);
+      const res = Array.isArray(parsed) ? parsed : [];
+      collectionsCache.set(cacheKey, res);
+      return res;
     }
-    const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
     if (!targetUid) {
       const legacy = localStorage.getItem(COLLECTIONS_KEY);
       if (legacy) {
-        collectionsCache = JSON.parse(legacy);
-        return Array.isArray(collectionsCache) ? collectionsCache : [];
+        const parsed = JSON.parse(legacy);
+        const res = Array.isArray(parsed) ? parsed : [];
+        collectionsCache.set(cacheKey, res);
+        return res;
       }
     }
-    collectionsCache = [];
+    collectionsCache.set(cacheKey, []);
     return [];
   } catch {
     return [];
@@ -421,11 +447,12 @@ export function getReadingCollections(uid?: string | null): ReadingCollection[] 
 
 export function saveReadingCollections(collections: ReadingCollection[], uid?: string | null): void {
   if (typeof window === "undefined") return;
-  collectionsCache = collections;
+  const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+  const cacheKey = targetUid || "guest";
+  collectionsCache.set(cacheKey, collections);
   try {
-    const key = getCollectionsStorageKey(uid);
+    const key = getCollectionsStorageKey(targetUid);
     localStorage.setItem(key, JSON.stringify(collections));
-    const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
     if (!targetUid) {
       localStorage.setItem(COLLECTIONS_KEY, JSON.stringify(collections));
     }
@@ -510,11 +537,12 @@ export function getCollectionsForBook(bookId: string, uid?: string | null): Read
 
 export function clearAllCollections(uid?: string | null): void {
   if (typeof window === "undefined") return;
-  collectionsCache = [];
+  const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+  const cacheKey = targetUid || "guest";
+  collectionsCache.delete(cacheKey);
   try {
-    const key = getCollectionsStorageKey(uid);
+    const key = getCollectionsStorageKey(targetUid);
     localStorage.removeItem(key);
-    const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
     if (!targetUid) {
       localStorage.removeItem(COLLECTIONS_KEY);
     }
@@ -528,7 +556,7 @@ export const REFLECTIONS_KEY = "readershub:reflections:v1";
 
 export function getReflectionsStorageKey(uid?: string | null): string {
   const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
-  return targetUid ? `readershub:reflections:v1:${targetUid}` : REFLECTIONS_KEY;
+  return targetUid ? `readershub:reflections:v1:${targetUid}` : "readershub:reflections:v1:guest";
 }
 
 export interface BookReflection {
@@ -538,27 +566,32 @@ export interface BookReflection {
   rating?: number;
 }
 
-let reflectionsCache: Record<string, BookReflection> | null = null;
+const reflectionsCache = new Map<string, Record<string, BookReflection>>();
 
 export function getBookReflections(uid?: string | null): Record<string, BookReflection> {
   if (typeof window === "undefined") return {};
-  if (reflectionsCache) return reflectionsCache;
+  const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+  const cacheKey = targetUid || "guest";
+  if (reflectionsCache.has(cacheKey)) return reflectionsCache.get(cacheKey)!;
   try {
-    const key = getReflectionsStorageKey(uid);
+    const key = getReflectionsStorageKey(targetUid);
     const raw = localStorage.getItem(key);
     if (raw) {
-      reflectionsCache = JSON.parse(raw);
-      return reflectionsCache || {};
+      const parsed = JSON.parse(raw);
+      const res = parsed || {};
+      reflectionsCache.set(cacheKey, res);
+      return res;
     }
-    const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
     if (!targetUid) {
       const legacy = localStorage.getItem(REFLECTIONS_KEY);
       if (legacy) {
-        reflectionsCache = JSON.parse(legacy);
-        return reflectionsCache || {};
+        const parsed = JSON.parse(legacy);
+        const res = parsed || {};
+        reflectionsCache.set(cacheKey, res);
+        return res;
       }
     }
-    reflectionsCache = {};
+    reflectionsCache.set(cacheKey, {});
     return {};
   } catch {
     return {};
@@ -579,17 +612,18 @@ export function saveBookReflection(
 ): void {
   if (typeof window === "undefined" || !bookId) return;
   try {
-    const current = { ...getBookReflections(uid) };
+    const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+    const cacheKey = targetUid || "guest";
+    const current = { ...getBookReflections(targetUid) };
     current[bookId] = {
       bookId,
       reflection: reflection.trim(),
       completedAt: Date.now(),
       rating,
     };
-    reflectionsCache = current;
-    const key = getReflectionsStorageKey(uid);
+    reflectionsCache.set(cacheKey, current);
+    const key = getReflectionsStorageKey(targetUid);
     localStorage.setItem(key, JSON.stringify(current));
-    const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
     if (!targetUid) {
       localStorage.setItem(REFLECTIONS_KEY, JSON.stringify(current));
     }
@@ -601,13 +635,14 @@ export function saveBookReflection(
 export function removeBookReflection(bookId: string, uid?: string | null): void {
   if (typeof window === "undefined" || !bookId) return;
   try {
-    const current = { ...getBookReflections(uid) };
+    const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+    const cacheKey = targetUid || "guest";
+    const current = { ...getBookReflections(targetUid) };
     if (current[bookId]) {
       delete current[bookId];
-      reflectionsCache = current;
-      const key = getReflectionsStorageKey(uid);
+      reflectionsCache.set(cacheKey, current);
+      const key = getReflectionsStorageKey(targetUid);
       localStorage.setItem(key, JSON.stringify(current));
-      const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
       if (!targetUid) {
         localStorage.setItem(REFLECTIONS_KEY, JSON.stringify(current));
       }
@@ -619,11 +654,12 @@ export function removeBookReflection(bookId: string, uid?: string | null): void 
 
 export function clearAllReflections(uid?: string | null): void {
   if (typeof window === "undefined") return;
-  reflectionsCache = {};
+  const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+  const cacheKey = targetUid || "guest";
+  reflectionsCache.delete(cacheKey);
   try {
-    const key = getReflectionsStorageKey(uid);
+    const key = getReflectionsStorageKey(targetUid);
     localStorage.removeItem(key);
-    const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
     if (!targetUid) {
       localStorage.removeItem(REFLECTIONS_KEY);
     }
@@ -1191,17 +1227,23 @@ export async function getOfflineBooksList(): Promise<string[]> {
 // Reading Progress Storage
 // -------------------------------------------------------------
 
-export function getSavedProgress(bookId: string): ReadingProgressData | null {
-  if (progressCache.has(bookId)) {
-    return progressCache.get(bookId)!;
+export function getSavedProgress(bookId: string, uid?: string | null): ReadingProgressData | null {
+  const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+  const cacheKey = `${targetUid || "guest"}:${bookId}`;
+  if (progressCache.has(cacheKey)) {
+    return progressCache.get(cacheKey)!;
   }
 
   if (typeof window === "undefined") return null;
   try {
-    const raw = localStorage.getItem(`${PROGRESS_KEY_PREFIX}:${bookId}`);
+    const userKey = getProgressStorageKey(bookId, targetUid);
+    let raw = localStorage.getItem(userKey);
+    if (!raw && !targetUid) {
+      raw = localStorage.getItem(`${PROGRESS_KEY_PREFIX}:${bookId}`);
+    }
     if (raw) {
       const parsed = JSON.parse(raw);
-      progressCache.set(bookId, parsed);
+      progressCache.set(cacheKey, parsed);
       return parsed;
     }
   } catch (e) {
@@ -1210,9 +1252,11 @@ export function getSavedProgress(bookId: string): ReadingProgressData | null {
   return null;
 }
 
-export function saveProgress(bookId: string, page: number, totalPages: number): void {
+export function saveProgress(bookId: string, page: number, totalPages: number, uid?: string | null): void {
   if (typeof window === "undefined" || !bookId || page < 1) return;
   try {
+    const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+    const cacheKey = `${targetUid || "guest"}:${bookId}`;
     const progress = totalPages > 0 ? Math.min(100, Math.round((page / totalPages) * 100)) : 0;
     const data: ReadingProgressData = {
       bookId,
@@ -1221,10 +1265,35 @@ export function saveProgress(bookId: string, page: number, totalPages: number): 
       progress,
       lastReadAt: Date.now(),
     };
-    progressCache.set(bookId, data);
-    localStorage.setItem(`${PROGRESS_KEY_PREFIX}:${bookId}`, JSON.stringify(data));
+    progressCache.set(cacheKey, data);
+    const key = getProgressStorageKey(bookId, targetUid);
+    localStorage.setItem(key, JSON.stringify(data));
+    if (!targetUid) {
+      localStorage.setItem(`${PROGRESS_KEY_PREFIX}:${bookId}`, JSON.stringify(data));
+    }
   } catch (e) {
     console.warn(`[ReaderStorage] Failed to save progress for ${bookId}:`, e);
+  }
+}
+
+export function removeStoredReadingProgressItem(bookId: string, uid?: string | null): void {
+  if (typeof window === "undefined" || !bookId) return;
+  try {
+    const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+    const cacheKey = `${targetUid || "guest"}:${bookId}`;
+    progressCache.delete(cacheKey);
+
+    const userKey = getProgressStorageKey(bookId, targetUid);
+    localStorage.removeItem(userKey);
+    if (!targetUid) {
+      localStorage.removeItem(`${PROGRESS_KEY_PREFIX}:${bookId}`);
+    }
+
+    const history = getStoredReadingHistory(targetUid);
+    const filtered = history.filter((h) => h.bookId !== bookId);
+    saveStoredReadingHistory(filtered, targetUid);
+  } catch (e) {
+    console.warn(`[ReaderStorage] Failed to remove reading progress for ${bookId}:`, e);
   }
 }
 
@@ -1232,34 +1301,46 @@ export function saveProgress(bookId: string, page: number, totalPages: number): 
 // Bookmarks Storage
 // -------------------------------------------------------------
 
-export function getBookmarks(bookId: string): BookmarkItem[] {
-  if (bookmarksCache.has(bookId)) {
-    return bookmarksCache.get(bookId)!;
+export function getBookmarks(bookId: string, uid?: string | null): BookmarkItem[] {
+  const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+  const cacheKey = `${targetUid || "guest"}:${bookId}`;
+  if (bookmarksCache.has(cacheKey)) {
+    return bookmarksCache.get(cacheKey)!;
   }
 
   if (typeof window === "undefined" || !bookId) return [];
   try {
-    const raw = localStorage.getItem(`${BOOKMARKS_KEY_PREFIX}:${bookId}`);
+    const userKey = getBookmarksStorageKey(bookId, targetUid);
+    let raw = localStorage.getItem(userKey);
+    if (!raw && !targetUid) {
+      raw = localStorage.getItem(`${BOOKMARKS_KEY_PREFIX}:${bookId}`);
+    }
     if (raw) {
       const parsed = JSON.parse(raw);
-      bookmarksCache.set(bookId, parsed);
+      bookmarksCache.set(cacheKey, parsed);
       return parsed;
     }
   } catch (e) {
     console.warn(`[ReaderStorage] Failed to read bookmarks for ${bookId}:`, e);
   }
-  bookmarksCache.set(bookId, []);
+  bookmarksCache.set(cacheKey, []);
   return [];
 }
 
-export function saveBookmark(bookId: string, page: number, label?: string): BookmarkItem {
-  const current = getBookmarks(bookId);
+export function saveBookmark(bookId: string, page: number, label?: string, uid?: string | null): BookmarkItem {
+  const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+  const cacheKey = `${targetUid || "guest"}:${bookId}`;
+  const current = getBookmarks(bookId, targetUid);
   const existing = current.find((b) => b.page === page);
   if (existing) {
     if (label !== undefined) {
       existing.label = label;
-      bookmarksCache.set(bookId, current);
-      localStorage.setItem(`${BOOKMARKS_KEY_PREFIX}:${bookId}`, JSON.stringify(current));
+      bookmarksCache.set(cacheKey, current);
+      const userKey = getBookmarksStorageKey(bookId, targetUid);
+      localStorage.setItem(userKey, JSON.stringify(current));
+      if (!targetUid) {
+        localStorage.setItem(`${BOOKMARKS_KEY_PREFIX}:${bookId}`, JSON.stringify(current));
+      }
     }
     return existing;
   }
@@ -1273,28 +1354,38 @@ export function saveBookmark(bookId: string, page: number, label?: string): Book
   };
 
   const updated = [...current, newItem].sort((a, b) => a.page - b.page);
-  bookmarksCache.set(bookId, updated);
+  bookmarksCache.set(cacheKey, updated);
   try {
-    localStorage.setItem(`${BOOKMARKS_KEY_PREFIX}:${bookId}`, JSON.stringify(updated));
+    const userKey = getBookmarksStorageKey(bookId, targetUid);
+    localStorage.setItem(userKey, JSON.stringify(updated));
+    if (!targetUid) {
+      localStorage.setItem(`${BOOKMARKS_KEY_PREFIX}:${bookId}`, JSON.stringify(updated));
+    }
   } catch (e) {
     console.warn(`[ReaderStorage] Failed to save bookmark for ${bookId}:`, e);
   }
   return newItem;
 }
 
-export function deleteBookmark(bookId: string, bookmarkId: string): void {
-  const current = getBookmarks(bookId);
+export function deleteBookmark(bookId: string, bookmarkId: string, uid?: string | null): void {
+  const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+  const cacheKey = `${targetUid || "guest"}:${bookId}`;
+  const current = getBookmarks(bookId, targetUid);
   const updated = current.filter((b) => b.id !== bookmarkId && String(b.page) !== bookmarkId);
-  bookmarksCache.set(bookId, updated);
+  bookmarksCache.set(cacheKey, updated);
   try {
-    localStorage.setItem(`${BOOKMARKS_KEY_PREFIX}:${bookId}`, JSON.stringify(updated));
+    const userKey = getBookmarksStorageKey(bookId, targetUid);
+    localStorage.setItem(userKey, JSON.stringify(updated));
+    if (!targetUid) {
+      localStorage.setItem(`${BOOKMARKS_KEY_PREFIX}:${bookId}`, JSON.stringify(updated));
+    }
   } catch (e) {
     console.warn(`[ReaderStorage] Failed to delete bookmark for ${bookId}:`, e);
   }
 }
 
-export function isPageBookmarked(bookId: string, page: number): boolean {
-  const list = getBookmarks(bookId);
+export function isPageBookmarked(bookId: string, page: number, uid?: string | null): boolean {
+  const list = getBookmarks(bookId, uid);
   return list.some((b) => b.page === page);
 }
 
@@ -1302,9 +1393,11 @@ export function isPageBookmarked(bookId: string, page: number): boolean {
 // Annotations Storage (Highlights, Notes, Drawings, Shapes)
 // -------------------------------------------------------------
 
-export function getBookAnnotations(bookId: string): BookAnnotations {
-  if (annotationsCache.has(bookId)) {
-    return annotationsCache.get(bookId)!;
+export function getBookAnnotations(bookId: string, uid?: string | null): BookAnnotations {
+  const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+  const cacheKey = `${targetUid || "guest"}:${bookId}`;
+  if (annotationsCache.has(cacheKey)) {
+    return annotationsCache.get(cacheKey)!;
   }
 
   const defaultVal: BookAnnotations = {
@@ -1317,8 +1410,12 @@ export function getBookAnnotations(bookId: string): BookAnnotations {
   if (typeof window === "undefined" || !bookId) return defaultVal;
 
   try {
-    const raw = localStorage.getItem(`${ANNOTATIONS_KEY_PREFIX}:${bookId}`);
-    const bms = getBookmarks(bookId);
+    const userKey = getAnnotationsStorageKey(bookId, targetUid);
+    let raw = localStorage.getItem(userKey);
+    if (!raw && !targetUid) {
+      raw = localStorage.getItem(`${ANNOTATIONS_KEY_PREFIX}:${bookId}`);
+    }
+    const bms = getBookmarks(bookId, targetUid);
 
     if (raw) {
       const parsed = JSON.parse(raw);
@@ -1328,11 +1425,11 @@ export function getBookAnnotations(bookId: string): BookAnnotations {
         drawings: parsed.drawings && typeof parsed.drawings === "object" ? parsed.drawings : {},
         bookmarks: bms,
       };
-      annotationsCache.set(bookId, res);
+      annotationsCache.set(cacheKey, res);
       return res;
     }
     const res = { ...defaultVal, bookmarks: bms };
-    annotationsCache.set(bookId, res);
+    annotationsCache.set(cacheKey, res);
     return res;
   } catch (e) {
     console.warn(`[ReaderStorage] Failed to read annotations for ${bookId}:`, e);
@@ -1341,26 +1438,38 @@ export function getBookAnnotations(bookId: string): BookAnnotations {
   return defaultVal;
 }
 
-export function saveBookAnnotations(bookId: string, annotations: BookAnnotations): void {
+export function saveBookAnnotations(bookId: string, annotations: BookAnnotations, uid?: string | null): void {
   if (typeof window === "undefined" || !bookId) return;
-  annotationsCache.set(bookId, annotations);
+  const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+  const cacheKey = `${targetUid || "guest"}:${bookId}`;
+  annotationsCache.set(cacheKey, annotations);
   try {
-    localStorage.setItem(`${ANNOTATIONS_KEY_PREFIX}:${bookId}`, JSON.stringify(annotations));
+    const userKey = getAnnotationsStorageKey(bookId, targetUid);
+    localStorage.setItem(userKey, JSON.stringify(annotations));
+    if (!targetUid) {
+      localStorage.setItem(`${ANNOTATIONS_KEY_PREFIX}:${bookId}`, JSON.stringify(annotations));
+    }
   } catch (e) {
     console.warn(`[ReaderStorage] Failed to save annotations for ${bookId}:`, e);
   }
 }
 
-export function getAllBookAnnotations(): Record<string, BookAnnotations> {
+export function getAllBookAnnotations(uid?: string | null): Record<string, BookAnnotations> {
   const result: Record<string, BookAnnotations> = {};
   if (typeof window === "undefined") return result;
+
+  const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+  const prefix = targetUid ? `readershub:annotations:v1:${targetUid}:` : `readershub:annotations:v1:guest:`;
 
   try {
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-      if (key && key.startsWith(ANNOTATIONS_KEY_PREFIX)) {
+      if (key && key.startsWith(prefix)) {
+        const bookId = key.substring(prefix.length);
+        if (bookId) result[bookId] = getBookAnnotations(bookId, targetUid);
+      } else if (!targetUid && key && key.startsWith(`${ANNOTATIONS_KEY_PREFIX}:`) && !key.startsWith("readershub:annotations:v1:")) {
         const bookId = key.replace(`${ANNOTATIONS_KEY_PREFIX}:`, "");
-        result[bookId] = getBookAnnotations(bookId);
+        if (bookId) result[bookId] = getBookAnnotations(bookId, targetUid);
       }
     }
   } catch (e) {
@@ -1374,8 +1483,8 @@ export function getAllBookAnnotations(): Record<string, BookAnnotations> {
 // Highlight Helpers
 // -------------------------------------------------------------
 
-export function addHighlight(bookId: string, highlight: Omit<HighlightItem, "id" | "createdAt">): HighlightItem {
-  const current = getBookAnnotations(bookId);
+export function addHighlight(bookId: string, highlight: Omit<HighlightItem, "id" | "createdAt">, uid?: string | null): HighlightItem {
+  const current = getBookAnnotations(bookId, uid);
   const newItem: HighlightItem = {
     ...highlight,
     id: `hl_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
@@ -1383,22 +1492,22 @@ export function addHighlight(bookId: string, highlight: Omit<HighlightItem, "id"
   };
 
   current.highlights.push(newItem);
-  saveBookAnnotations(bookId, current);
+  saveBookAnnotations(bookId, current, uid);
   return newItem;
 }
 
-export function deleteHighlight(bookId: string, highlightId: string): void {
-  const current = getBookAnnotations(bookId);
+export function deleteHighlight(bookId: string, highlightId: string, uid?: string | null): void {
+  const current = getBookAnnotations(bookId, uid);
   current.highlights = current.highlights.filter((h) => h.id !== highlightId);
-  saveBookAnnotations(bookId, current);
+  saveBookAnnotations(bookId, current, uid);
 }
 
 // -------------------------------------------------------------
 // Notes Helpers
 // -------------------------------------------------------------
 
-export function addNote(bookId: string, note: Omit<NoteItem, "id" | "createdAt" | "updatedAt">): NoteItem {
-  const current = getBookAnnotations(bookId);
+export function addNote(bookId: string, note: Omit<NoteItem, "id" | "createdAt" | "updatedAt">, uid?: string | null): NoteItem {
+  const current = getBookAnnotations(bookId, uid);
   const newItem: NoteItem = {
     ...note,
     id: `note_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
@@ -1407,44 +1516,44 @@ export function addNote(bookId: string, note: Omit<NoteItem, "id" | "createdAt" 
   };
 
   current.notes.push(newItem);
-  saveBookAnnotations(bookId, current);
+  saveBookAnnotations(bookId, current, uid);
   return newItem;
 }
 
-export function updateNote(bookId: string, noteId: string, updatedText: string): void {
-  const current = getBookAnnotations(bookId);
+export function updateNote(bookId: string, noteId: string, updatedText: string, uid?: string | null): void {
+  const current = getBookAnnotations(bookId, uid);
   const note = current.notes.find((n) => n.id === noteId);
   if (note) {
     note.note = updatedText;
     note.updatedAt = Date.now();
-    saveBookAnnotations(bookId, current);
+    saveBookAnnotations(bookId, current, uid);
   }
 }
 
-export function deleteNote(bookId: string, noteId: string): void {
-  const current = getBookAnnotations(bookId);
+export function deleteNote(bookId: string, noteId: string, uid?: string | null): void {
+  const current = getBookAnnotations(bookId, uid);
   current.notes = current.notes.filter((n) => n.id !== noteId);
-  saveBookAnnotations(bookId, current);
+  saveBookAnnotations(bookId, current, uid);
 }
 
 // -------------------------------------------------------------
 // Drawing & Shapes Helpers
 // -------------------------------------------------------------
 
-export function savePageDrawings(bookId: string, page: number, strokes: DrawingStroke[]): void {
-  const current = getBookAnnotations(bookId);
+export function savePageDrawings(bookId: string, page: number, strokes: DrawingStroke[], uid?: string | null): void {
+  const current = getBookAnnotations(bookId, uid);
   if (strokes.length === 0) {
     delete current.drawings[page];
   } else {
     current.drawings[page] = strokes;
   }
-  saveBookAnnotations(bookId, current);
+  saveBookAnnotations(bookId, current, uid);
 }
 
-export function clearPageDrawings(bookId: string, page: number): void {
-  const current = getBookAnnotations(bookId);
+export function clearPageDrawings(bookId: string, page: number, uid?: string | null): void {
+  const current = getBookAnnotations(bookId, uid);
   delete current.drawings[page];
-  saveBookAnnotations(bookId, current);
+  saveBookAnnotations(bookId, current, uid);
 }
 
 /**
@@ -1577,31 +1686,33 @@ export function calculateReadingStats(
       }
     }
 
-    // If reading time > 0 but no history items reached threshold, compute plausible pages read
-    if (totalReadingSeconds > 0 && pagesRead === 0) {
-      pagesRead = Math.max(1, Math.floor(totalReadingSeconds / 60));
-      if (booksStarted === 0) booksStarted = 1;
-    }
+    // 3. Scan LocalStorage for Bookmarks & Annotations scoped strictly to targetUid
+    const userBmPrefix = targetUid ? `readershub:bookmarks:v1:${targetUid}:` : "readershub:bookmarks:v1:guest:";
+    const userAnnPrefix = targetUid ? `readershub:annotations:v1:${targetUid}:` : "readershub:annotations:v1:guest:";
 
-    // 3. Scan LocalStorage for Bookmarks & Annotations
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (!key) continue;
 
-      if (key.startsWith(BOOKMARKS_KEY_PREFIX)) {
+      if (key.startsWith(userBmPrefix) || (!targetUid && key.startsWith(`${BOOKMARKS_KEY_PREFIX}:`) && !key.startsWith("readershub:bookmarks:v1:"))) {
         const raw = localStorage.getItem(key);
         if (raw) {
-          totalBookmarks += JSON.parse(raw).length;
+          try {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) totalBookmarks += parsed.length;
+          } catch {}
         }
-      } else if (key.startsWith(ANNOTATIONS_KEY_PREFIX)) {
+      } else if (key.startsWith(userAnnPrefix) || (!targetUid && key.startsWith(`${ANNOTATIONS_KEY_PREFIX}:`) && !key.startsWith("readershub:annotations:v1:"))) {
         const raw = localStorage.getItem(key);
         if (raw) {
-          const parsedAnn = JSON.parse(raw);
-          if (Array.isArray(parsedAnn.notes)) totalNotes += parsedAnn.notes.length;
-          if (Array.isArray(parsedAnn.highlights)) totalHighlights += parsedAnn.highlights.length;
-          if (parsedAnn.drawings) {
-            totalDrawings += Object.keys(parsedAnn.drawings).length;
-          }
+          try {
+            const parsedAnn = JSON.parse(raw);
+            if (Array.isArray(parsedAnn.notes)) totalNotes += parsedAnn.notes.length;
+            if (Array.isArray(parsedAnn.highlights)) totalHighlights += parsedAnn.highlights.length;
+            if (parsedAnn.drawings && typeof parsedAnn.drawings === "object") {
+              totalDrawings += Object.keys(parsedAnn.drawings).length;
+            }
+          } catch {}
         }
       }
     }
@@ -1806,10 +1917,16 @@ export function clearStoredReadingHistory(uid?: string | null): void {
     if (!targetUid) {
       localStorage.removeItem(HISTORY_KEY);
     }
-    progressCache.clear();
+    const prefix = targetUid ? `${targetUid}:` : "guest:";
+    for (const k of Array.from(progressCache.keys())) {
+      if (k.startsWith(prefix) || (!targetUid && !k.includes(":"))) {
+        progressCache.delete(k);
+      }
+    }
+    const targetKeyPrefix = targetUid ? `readershub:progress:v1:${targetUid}:` : "readershub:progress:v1:guest:";
     for (let i = localStorage.length - 1; i >= 0; i--) {
       const key = localStorage.key(i);
-      if (key && (key.startsWith(PROGRESS_KEY_PREFIX) || (targetUid && key.includes(targetUid)))) {
+      if (key && (key.startsWith(targetKeyPrefix) || (!targetUid && key.startsWith(`${PROGRESS_KEY_PREFIX}:`)))) {
         localStorage.removeItem(key);
       }
     }
@@ -1923,9 +2040,9 @@ export function invalidateAllCaches(): void {
   bookmarksCache.clear();
   memoryCache.clear();
   activeTimeCache = null;
-  shelfDismissalsCache = null;
-  collectionsCache = null;
-  reflectionsCache = null;
+  shelfDismissalsCache.clear();
+  collectionsCache.clear();
+  reflectionsCache.clear();
 }
 
 export function clearAllUserDataOnLogout(): void {
@@ -1940,6 +2057,16 @@ export function clearAllUserDataOnLogout(): void {
     localStorage.removeItem("readershub:collections:v1:guest");
     localStorage.removeItem("readershub:reflections:v1:guest");
     localStorage.removeItem("readershub:shelf-dismissals:v1:guest");
+
+    const guestAnnPrefix = "readershub:annotations:v1:guest:";
+    const guestBmPrefix = "readershub:bookmarks:v1:guest:";
+    const guestProgPrefix = "readershub:progress:v1:guest:";
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const key = localStorage.key(i);
+      if (key && (key.startsWith(guestAnnPrefix) || key.startsWith(guestBmPrefix) || key.startsWith(guestProgPrefix))) {
+        localStorage.removeItem(key);
+      }
+    }
   } catch (e) {
     console.warn("[ReaderStorage] Failed to clear user data on logout:", e);
   }
@@ -2051,8 +2178,8 @@ export function hydrateStorageFromCloudData(
       // Also update individual progress keys
       mergedHist.forEach((item) => {
         if (item.bookId) {
-          const key = `${PROGRESS_KEY_PREFIX}:${item.bookId}`;
-          const existingProg = getSavedProgress(item.bookId);
+          const key = getProgressStorageKey(item.bookId, targetUid);
+          const existingProg = getSavedProgress(item.bookId, targetUid);
           if (!existingProg || item.page > (existingProg.page || 0)) {
             localStorage.setItem(
               key,
@@ -2064,6 +2191,18 @@ export function hydrateStorageFromCloudData(
                 lastReadAt: item.lastReadAt,
               })
             );
+            if (!targetUid) {
+              localStorage.setItem(
+                `${PROGRESS_KEY_PREFIX}:${item.bookId}`,
+                JSON.stringify({
+                  bookId: item.bookId,
+                  page: item.page,
+                  totalPages: item.totalPages,
+                  progress: item.progress,
+                  lastReadAt: item.lastReadAt,
+                })
+              );
+            }
           }
         }
       });
@@ -2147,14 +2286,18 @@ export function hydrateStorageFromCloudData(
     if (data.annotations && Object.keys(data.annotations).length > 0) {
       for (const [bookId, ann] of Object.entries(data.annotations)) {
         if (bookId && ann) {
-          const curAnn = getBookAnnotations(bookId);
+          const curAnn = getBookAnnotations(bookId, targetUid);
           const mergedAnn: BookAnnotations = {
             highlights: [...(curAnn.highlights || []), ...(ann.highlights || []).filter((h) => !curAnn.highlights.some((ch) => ch.id === h.id))],
             notes: [...(curAnn.notes || []), ...(ann.notes || []).filter((n) => !curAnn.notes.some((cn) => cn.id === n.id))],
             drawings: { ...(curAnn.drawings || {}), ...(ann.drawings || {}) },
             bookmarks: [...(curAnn.bookmarks || []), ...(ann.bookmarks || []).filter((b) => !curAnn.bookmarks?.some((cb) => cb.id === b.id))],
           };
-          localStorage.setItem(`${ANNOTATIONS_KEY_PREFIX}:${bookId}`, JSON.stringify(mergedAnn));
+          const annKey = getAnnotationsStorageKey(bookId, targetUid);
+          localStorage.setItem(annKey, JSON.stringify(mergedAnn));
+          if (!targetUid) {
+            localStorage.setItem(`${ANNOTATIONS_KEY_PREFIX}:${bookId}`, JSON.stringify(mergedAnn));
+          }
         }
       }
     }

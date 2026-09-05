@@ -75,9 +75,9 @@ export async function GET(req: NextRequest) {
               bio: data.bio || undefined,
               followersCount: data.followersCount || 0,
               followingCount: data.followingCount || 0,
-              readingStreak: data.readingStreak || 0,
-              booksCompleted: data.booksCompleted || 0,
-              totalReadingSeconds: data.totalReadingSeconds || 0,
+              readingStreak: data.stats?.currentStreak ?? data.readingStreak ?? 0,
+              booksCompleted: data.stats?.booksCompleted ?? data.booksCompleted ?? 0,
+              totalReadingSeconds: data.stats?.totalReadingSeconds ?? data.totalReadingSeconds ?? 0,
             };
           })
           .filter(Boolean);

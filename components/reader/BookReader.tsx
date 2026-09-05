@@ -41,6 +41,10 @@ import {
   DrawingPoint,
   AnnotationToolType,
 } from "@/lib/reader-storage";
+import {
+  syncAnnotationsToCloud,
+  syncBookmarksToCloud,
+} from "@/lib/firestore-sync";
 
 interface BookReaderProps {
   book: Book;
@@ -87,6 +91,7 @@ const EMPTY_DRAWINGS: DrawingStroke[] = [];
 
 export default function BookReader({ book }: BookReaderProps) {
   const {
+    user,
     getReadingProgress,
     updateReadingProgress,
     showToast,
@@ -103,11 +108,13 @@ export default function BookReader({ book }: BookReaderProps) {
 
   const { isPro, canTranslateSpread, recordTranslationSpread, openProModal } = useEntitlement();
 
-  // Load saved position from centralized storage or context
+  // Load saved position from centralized storage or context (prioritize user context if authenticated)
   const savedContextProgress = getReadingProgress(book.id);
-  const savedLocalProgress = getSavedProgress(book.id);
+  const savedLocalProgress = getSavedProgress(book.id, user?.uid);
   const initialPage =
-    savedLocalProgress?.page && savedLocalProgress.page > 0
+    user && savedContextProgress?.page && savedContextProgress.page > 0
+      ? savedContextProgress.page
+      : savedLocalProgress?.page && savedLocalProgress.page > 0
       ? savedLocalProgress.page
       : savedContextProgress?.page && savedContextProgress.page > 0
       ? savedContextProgress.page
@@ -360,8 +367,8 @@ export default function BookReader({ book }: BookReaderProps) {
 
   // 1. Load Initial Annotations, Bookmarks, Offline Status & Screen Size
   useEffect(() => {
-    const loaded = getBookAnnotations(book.id);
-    const bms = getBookmarks(book.id);
+    const loaded = getBookAnnotations(book.id, user?.uid);
+    const bms = getBookmarks(book.id, user?.uid);
     setAnnotations(loaded);
     setBookmarks(bms);
 
@@ -387,7 +394,7 @@ export default function BookReader({ book }: BookReaderProps) {
     }
 
     return () => window.removeEventListener("resize", checkScreen);
-  }, [book.id, book.pdf, checkOfflineStatus]);
+  }, [book.id, book.pdf, checkOfflineStatus, user?.uid]);
 
   // Desktop / Laptop Trackpad Pinch & Ctrl+Wheel Zoom Listener
   useEffect(() => {
@@ -583,7 +590,7 @@ export default function BookReader({ book }: BookReaderProps) {
 
         const targetPage = Math.min(doc.numPages, Math.max(1, initialPage));
         setCurrentPage(targetPage);
-        saveProgress(book.id, targetPage, doc.numPages);
+        saveProgress(book.id, targetPage, doc.numPages, user?.uid);
 
         // Extract PDF Outline
         try {
@@ -762,7 +769,7 @@ export default function BookReader({ book }: BookReaderProps) {
       renderPageToCanvas(currentPage, canvasSingleRef.current, "single");
     }
 
-    saveProgress(book.id, currentPage, numPages);
+    saveProgress(book.id, currentPage, numPages, user?.uid);
   }, [
     currentPage,
     numPages,
@@ -773,6 +780,7 @@ export default function BookReader({ book }: BookReaderProps) {
     loading,
     renderPageToCanvas,
     book.id,
+    user?.uid,
   ]);
 
   // 6. Navigation Logic
@@ -1187,13 +1195,21 @@ export default function BookReader({ book }: BookReaderProps) {
     if (isCurrentBookmarked) {
       const bm = bookmarks.find((b) => b.page === currentPage);
       if (bm) {
-        deleteBookmark(book.id, bm.id);
-        setBookmarks(getBookmarks(book.id));
+        deleteBookmark(book.id, bm.id, user?.uid);
+        const updatedBms = getBookmarks(book.id, user?.uid);
+        setBookmarks(updatedBms);
+        if (user?.uid) {
+          syncBookmarksToCloud(user.uid, book.id, updatedBms);
+        }
         showToast(`Removed bookmark from Page ${currentPage} 🔖`);
       }
     } else {
-      saveBookmark(book.id, currentPage, `Page ${currentPage} Bookmark`);
-      setBookmarks(getBookmarks(book.id));
+      saveBookmark(book.id, currentPage, `Page ${currentPage} Bookmark`, user?.uid);
+      const updatedBms = getBookmarks(book.id, user?.uid);
+      setBookmarks(updatedBms);
+      if (user?.uid) {
+        syncBookmarksToCloud(user.uid, book.id, updatedBms);
+      }
       showToast(`Bookmarked Page ${currentPage} 🔖`);
     }
   };
@@ -1286,8 +1302,12 @@ export default function BookReader({ book }: BookReaderProps) {
       [page]: [],
     }));
 
-    savePageDrawings(book.id, page, newStrokes);
-    setAnnotations(getBookAnnotations(book.id));
+    savePageDrawings(book.id, page, newStrokes, user?.uid);
+    const updated = getBookAnnotations(book.id, user?.uid);
+    setAnnotations(updated);
+    if (user?.uid) {
+      syncAnnotationsToCloud(user.uid, book.id, updated);
+    }
   };
 
   const handleUndo = (page: number) => {
@@ -1307,8 +1327,12 @@ export default function BookReader({ book }: BookReaderProps) {
       [page]: pageUndo.slice(0, -1),
     }));
 
-    savePageDrawings(book.id, page, previousState);
-    setAnnotations(getBookAnnotations(book.id));
+    savePageDrawings(book.id, page, previousState, user?.uid);
+    const updated = getBookAnnotations(book.id, user?.uid);
+    setAnnotations(updated);
+    if (user?.uid) {
+      syncAnnotationsToCloud(user.uid, book.id, updated);
+    }
     showToast("Undo action ↩️");
   };
 
@@ -1329,8 +1353,12 @@ export default function BookReader({ book }: BookReaderProps) {
       [page]: pageRedo.slice(0, -1),
     }));
 
-    savePageDrawings(book.id, page, nextState);
-    setAnnotations(getBookAnnotations(book.id));
+    savePageDrawings(book.id, page, nextState, user?.uid);
+    const updated = getBookAnnotations(book.id, user?.uid);
+    setAnnotations(updated);
+    if (user?.uid) {
+      syncAnnotationsToCloud(user.uid, book.id, updated);
+    }
     showToast("Redo action ↪️");
   };
 
@@ -1743,16 +1771,26 @@ export default function BookReader({ book }: BookReaderProps) {
     if (!selectionPopover) return;
     registerActivity();
     sessionMarksCountRef.current += 1;
-    const newItem = addHighlight(book.id, {
-      bookId: book.id,
-      page: selectionPopover.page,
-      text: selectionPopover.text,
-      color,
+    const newItem = addHighlight(
+      book.id,
+      {
+        bookId: book.id,
+        page: selectionPopover.page,
+        text: selectionPopover.text,
+        color,
+      },
+      user?.uid
+    );
+    setAnnotations((prev) => {
+      const next = {
+        ...prev,
+        highlights: [...prev.highlights, newItem],
+      };
+      if (user?.uid) {
+        syncAnnotationsToCloud(user.uid, book.id, next);
+      }
+      return next;
     });
-    setAnnotations((prev) => ({
-      ...prev,
-      highlights: [...prev.highlights, newItem],
-    }));
     window.getSelection()?.removeAllRanges();
     setSelectionPopover(null);
     showToast("Text highlighted 🌟");
@@ -1773,16 +1811,26 @@ export default function BookReader({ book }: BookReaderProps) {
     if (!noteModal.noteText.trim()) return;
     registerActivity();
     sessionMarksCountRef.current += 1;
-    const newNote = addNote(book.id, {
-      bookId: book.id,
-      page: noteModal.page,
-      selectedText: noteModal.selectedText,
-      note: noteModal.noteText.trim(),
+    const newNote = addNote(
+      book.id,
+      {
+        bookId: book.id,
+        page: noteModal.page,
+        selectedText: noteModal.selectedText,
+        note: noteModal.noteText.trim(),
+      },
+      user?.uid
+    );
+    setAnnotations((prev) => {
+      const next = {
+        ...prev,
+        notes: [...prev.notes, newNote],
+      };
+      if (user?.uid) {
+        syncAnnotationsToCloud(user.uid, book.id, next);
+      }
+      return next;
     });
-    setAnnotations((prev) => ({
-      ...prev,
-      notes: [...prev.notes, newNote],
-    }));
     setNoteModal({ isOpen: false, page: 1, noteText: "" });
     showToast("Note saved 📝");
   };
@@ -3086,24 +3134,44 @@ export default function BookReader({ book }: BookReaderProps) {
         bookmarks={bookmarks}
         onJumpToPage={handleJumpToPage}
         onDeleteHighlight={(id) => {
-          deleteHighlight(book.id, id);
-          setAnnotations(getBookAnnotations(book.id));
+          deleteHighlight(book.id, id, user?.uid);
+          const updated = getBookAnnotations(book.id, user?.uid);
+          setAnnotations(updated);
+          if (user?.uid) {
+            syncAnnotationsToCloud(user.uid, book.id, updated);
+          }
         }}
         onUpdateNote={(id, text) => {
-          updateNote(book.id, id, text);
-          setAnnotations(getBookAnnotations(book.id));
+          updateNote(book.id, id, text, user?.uid);
+          const updated = getBookAnnotations(book.id, user?.uid);
+          setAnnotations(updated);
+          if (user?.uid) {
+            syncAnnotationsToCloud(user.uid, book.id, updated);
+          }
         }}
         onDeleteNote={(id) => {
-          deleteNote(book.id, id);
-          setAnnotations(getBookAnnotations(book.id));
+          deleteNote(book.id, id, user?.uid);
+          const updated = getBookAnnotations(book.id, user?.uid);
+          setAnnotations(updated);
+          if (user?.uid) {
+            syncAnnotationsToCloud(user.uid, book.id, updated);
+          }
         }}
         onClearDrawing={(page) => {
-          clearPageDrawings(book.id, page);
-          setAnnotations(getBookAnnotations(book.id));
+          clearPageDrawings(book.id, page, user?.uid);
+          const updated = getBookAnnotations(book.id, user?.uid);
+          setAnnotations(updated);
+          if (user?.uid) {
+            syncAnnotationsToCloud(user.uid, book.id, updated);
+          }
         }}
         onDeleteBookmark={(id) => {
-          deleteBookmark(book.id, id);
-          setBookmarks(getBookmarks(book.id));
+          deleteBookmark(book.id, id, user?.uid);
+          const updated = getBookmarks(book.id, user?.uid);
+          setBookmarks(updated);
+          if (user?.uid) {
+            syncBookmarksToCloud(user.uid, book.id, updated);
+          }
         }}
       />
 

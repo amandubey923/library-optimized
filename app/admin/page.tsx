@@ -301,7 +301,7 @@ function AdminDashboardContent() {
     const ok = await softDeleteBook(
       deletingBook.id,
       deletingBook.title,
-      { email: user.email || ADMIN_EMAIL, uid: user.uid },
+      { email: user.email || "system@admin", uid: user.uid },
       reason
     );
     if (ok) {
@@ -326,7 +326,7 @@ function AdminDashboardContent() {
     const ok = await restoreBook(
       book.id,
       book.title,
-      { email: user.email || ADMIN_EMAIL, uid: user.uid }
+      { email: user.email || "system@admin", uid: user.uid }
     );
     if (ok) {
       setCatalogOverrides((prev) => ({
@@ -355,7 +355,7 @@ function AdminDashboardContent() {
       editingBook.id,
       editingBook.title,
       updates,
-      { email: user.email || ADMIN_EMAIL, uid: user.uid }
+      { email: user.email || "system@admin", uid: user.uid }
     );
     if (ok) {
       setCatalogOverrides((prev) => ({
@@ -380,7 +380,7 @@ function AdminDashboardContent() {
       editingSeries.id,
       editingSeries.title,
       updates,
-      { email: user.email || ADMIN_EMAIL, uid: user.uid }
+      { email: user.email || "system@admin", uid: user.uid }
     );
     if (ok) {
       setSeriesOverrides((prev) => ({
@@ -402,7 +402,7 @@ function AdminDashboardContent() {
       const ok = await softDeleteSeries(
         editingSeries.id,
         editingSeries.title,
-        { email: user.email || ADMIN_EMAIL, uid: user.uid },
+        { email: user.email || "system@admin", uid: user.uid },
         reason
       );
       if (ok) {
@@ -421,7 +421,7 @@ function AdminDashboardContent() {
       const ok = await restoreSeries(
         editingSeries.id,
         editingSeries.title,
-        { email: user.email || ADMIN_EMAIL, uid: user.uid }
+        { email: user.email || "system@admin", uid: user.uid }
       );
       if (ok) {
         setSeriesOverrides((prev) => ({

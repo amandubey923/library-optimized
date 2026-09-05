@@ -206,13 +206,14 @@ export async function GET(req: NextRequest) {
         });
       }
 
-      const currentStreak = actData?.currentStreak ?? profileData.stats?.currentStreak ?? 0;
-      const longestStreak = actData?.longestStreak ?? profileData.stats?.longestStreak ?? 0;
-      const totalReadingSeconds = Math.max(liveReadingSecs, profileData.stats?.totalReadingSeconds || 0);
+      const currentStreak = actDoc.exists ? (actData?.currentStreak ?? 0) : (profileData.stats?.currentStreak ?? 0);
+      const longestStreak = actDoc.exists ? (actData?.longestStreak ?? 0) : (profileData.stats?.longestStreak ?? 0);
+      const totalReadingSeconds = actDoc.exists ? liveReadingSecs : (profileData.stats?.totalReadingSeconds || 0);
       const totalActiveSeconds = Math.max(
-        timeData?.totalActiveSeconds ?? profileData.stats?.totalActiveSeconds ?? 0,
-        totalReadingSeconds
+        totalReadingSeconds,
+        timeDoc.exists ? (Number(timeData?.totalActiveSeconds) || 0) : (profileData.stats?.totalActiveSeconds ?? 0)
       );
+      const booksCompleted = progDocs.docs !== undefined ? completedBooksCount : (profileData.stats?.booksCompleted || 0);
 
       profileData.stats = {
         ...(profileData.stats || {}),
@@ -220,7 +221,7 @@ export async function GET(req: NextRequest) {
         longestStreak,
         totalReadingSeconds,
         totalActiveSeconds,
-        booksCompleted: Math.max(profileData.stats?.booksCompleted || 0, completedBooksCount),
+        booksCompleted,
       };
 
       // Keep public_profiles in sync if counts or stats differ

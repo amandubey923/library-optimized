@@ -18,6 +18,7 @@ import {
   WebsiteActiveTimeData,
   BookReadingMemory,
   BookAnnotations,
+  BookmarkItem,
   hydrateStorageFromCloudData,
   ReadingCollection,
   BookReflection,
@@ -57,6 +58,8 @@ const memoryDebounceTimers: Record<string, NodeJS.Timeout> = {};
 const collectionsDebounceTimers: Record<string, NodeJS.Timeout> = {};
 const reflectionsDebounceTimers: Record<string, NodeJS.Timeout> = {};
 const dismissalsDebounceTimers: Record<string, NodeJS.Timeout> = {};
+const annotationsDebounceTimers: Record<string, NodeJS.Timeout> = {};
+const bookmarksDebounceTimers: Record<string, NodeJS.Timeout> = {};
 
 /**
  * Cancel and clear all pending debounced background synchronization timers.
@@ -70,6 +73,8 @@ export function cancelAllPendingSyncTimers(): void {
   Object.values(collectionsDebounceTimers).forEach(clearTimeout);
   Object.values(reflectionsDebounceTimers).forEach(clearTimeout);
   Object.values(dismissalsDebounceTimers).forEach(clearTimeout);
+  Object.values(annotationsDebounceTimers).forEach(clearTimeout);
+  Object.values(bookmarksDebounceTimers).forEach(clearTimeout);
 
   for (const k of Object.keys(progressDebounceTimers)) delete progressDebounceTimers[k];
   for (const k of Object.keys(activityDebounceTimers)) delete activityDebounceTimers[k];
@@ -78,6 +83,8 @@ export function cancelAllPendingSyncTimers(): void {
   for (const k of Object.keys(collectionsDebounceTimers)) delete collectionsDebounceTimers[k];
   for (const k of Object.keys(reflectionsDebounceTimers)) delete reflectionsDebounceTimers[k];
   for (const k of Object.keys(dismissalsDebounceTimers)) delete dismissalsDebounceTimers[k];
+  for (const k of Object.keys(annotationsDebounceTimers)) delete annotationsDebounceTimers[k];
+  for (const k of Object.keys(bookmarksDebounceTimers)) delete bookmarksDebounceTimers[k];
 }
 
 /**
@@ -419,7 +426,7 @@ export async function reconcileAndSyncAllUserData(user: User): Promise<CloudFull
     saveStoredReadingHistory(cloudData.readingHistory, user.uid);
 
     // 5. Two-way safe union merge for collections & reflections
-    const localCollections = getReadingCollections();
+    const localCollections = getReadingCollections(user.uid);
     const cloudCollections = Array.isArray(cloudData.collections) ? cloudData.collections : [];
     const colMap = new Map<string, ReadingCollection>();
     cloudCollections.forEach((c) => {
@@ -439,10 +446,10 @@ export async function reconcileAndSyncAllUserData(user: User): Promise<CloudFull
       syncCollectionsToCloud(user.uid, cloudData.collections);
     }
 
-    const localReflections = getBookReflections();
+    const localReflections = getBookReflections(user.uid);
     cloudData.reflections = { ...localReflections, ...(cloudData.reflections || {}) };
 
-    const localDismissals = getShelfDismissals();
+    const localDismissals = getShelfDismissals(user.uid);
     const cloudDismissals = cloudData.shelfDismissals || {};
     const mergedDismissals: ShelfDismissalsMap = { ...cloudDismissals };
     Object.entries(localDismissals).forEach(([sec, bMap]) => {
@@ -477,9 +484,9 @@ export async function reconcileAndSyncAllUserData(user: User): Promise<CloudFull
       activeTime: getWebsiteActiveTimeData(user.uid),
       readingMemories: {},
       annotations: {},
-      collections: getReadingCollections(),
-      reflections: getBookReflections(),
-      shelfDismissals: getShelfDismissals(),
+      collections: getReadingCollections(user.uid),
+      reflections: getBookReflections(user.uid),
+      shelfDismissals: getShelfDismissals(user.uid),
       entitlement: DEFAULT_FREE_ENTITLEMENT,
     };
   }
@@ -523,6 +530,101 @@ export function syncReadingProgressToCloud(
       console.warn(`[Firestore] Failed to sync progress for ${bookId}:`, err);
     }
   }, 2000); // 2-second debounce
+}
+
+/**
+ * Permanently delete a single book's reading progress document from /users/{uid}/reading_progress/{bookId}
+ */
+export async function deleteCloudBookProgress(uid: string, bookId: string): Promise<boolean> {
+  const currentDb = getFirebaseDb() || db;
+  if (!currentDb || !uid || !bookId) return false;
+  try {
+    const key = `${uid}_${bookId}`;
+    if (progressDebounceTimers[key]) {
+      clearTimeout(progressDebounceTimers[key]);
+      delete progressDebounceTimers[key];
+    }
+    const progDocRef = doc(currentDb, "users", uid, "reading_progress", bookId);
+    await deleteDoc(progDocRef);
+    return true;
+  } catch (err) {
+    console.error(`[Firestore] Failed to delete cloud book progress for ${bookId}:`, err);
+    return false;
+  }
+}
+
+/**
+ * Debounced sync for book annotations to /users/{uid}/data/annotations
+ */
+export function syncAnnotationsToCloud(
+  uid: string,
+  bookId: string,
+  annotations: BookAnnotations
+): void {
+  const currentDb = getFirebaseDb() || db;
+  if (!currentDb || !uid || !bookId || !annotations) return;
+
+  const key = `${uid}_ann_${bookId}`;
+  if (annotationsDebounceTimers[key]) {
+    clearTimeout(annotationsDebounceTimers[key]);
+  }
+
+  annotationsDebounceTimers[key] = setTimeout(async () => {
+    delete annotationsDebounceTimers[key];
+    try {
+      const activeDb = getFirebaseDb() || db;
+      if (!activeDb) return;
+      const annRef = doc(activeDb, "users", uid, "data", "annotations");
+      await setDoc(
+        annRef,
+        {
+          annotations: {
+            [bookId]: annotations,
+          },
+        },
+        { merge: true }
+      );
+    } catch (err) {
+      console.warn(`[Firestore] Failed to sync annotations for ${bookId}:`, err);
+    }
+  }, 2000);
+}
+
+/**
+ * Debounced sync for book bookmarks to /users/{uid}/data/bookmarks
+ */
+export function syncBookmarksToCloud(
+  uid: string,
+  bookId: string,
+  bookmarks: BookmarkItem[]
+): void {
+  const currentDb = getFirebaseDb() || db;
+  if (!currentDb || !uid || !bookId || !bookmarks) return;
+
+  const key = `${uid}_bm_${bookId}`;
+  if (bookmarksDebounceTimers[key]) {
+    clearTimeout(bookmarksDebounceTimers[key]);
+  }
+
+  bookmarksDebounceTimers[key] = setTimeout(async () => {
+    delete bookmarksDebounceTimers[key];
+    try {
+      const activeDb = getFirebaseDb() || db;
+      if (!activeDb) return;
+      const bmRef = doc(activeDb, "users", uid, "data", "bookmarks");
+      await setDoc(
+        bmRef,
+        {
+          bookmarks: {
+            [bookId]: bookmarks,
+          },
+        },
+        { merge: true }
+      );
+    } catch (err) {
+      console.warn(`[Firestore] Failed to sync bookmarks for ${bookId}:`, err);
+    }
+  }, 2000);
 }
 
 /**

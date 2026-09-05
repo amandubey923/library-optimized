@@ -131,12 +131,17 @@ export async function GET(req: NextRequest) {
         }
       }
 
-      const currentStreak = Math.max(Number(actData.currentStreak) || 0, Number(profile.stats?.currentStreak) || 0);
-      const longestStreak = Math.max(Number(actData.longestStreak) || 0, Number(profile.stats?.longestStreak) || 0, currentStreak);
+      const hasAct = activitiesMap[authUser.uid] !== undefined;
+      const currentStreak = hasAct ? (Number(actData.currentStreak) || 0) : (Number(profile.stats?.currentStreak) || 0);
+      const longestStreak = hasAct ? (Number(actData.longestStreak) || 0) : (Number(profile.stats?.longestStreak) || 0);
       let totalReadingSecs = 0;
-      Object.values((actData.daily || {}) as Record<string, any>).forEach((d) => {
-        totalReadingSecs += Number(d?.seconds) || 0;
-      });
+      if (hasAct) {
+        Object.values((actData.daily || {}) as Record<string, any>).forEach((d) => {
+          totalReadingSecs += Number(d?.seconds) || 0;
+        });
+      } else {
+        totalReadingSecs = Number(profile.stats?.totalReadingSeconds) || 0;
+      }
       const totalActiveSeconds = Math.max(
         totalReadingSecs,
         Number(profile.stats?.totalActiveSeconds) || 0
