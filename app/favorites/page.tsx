@@ -930,7 +930,10 @@ export default function FavoritesPage() {
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 sm:gap-4 w-full min-w-0">
-            <div className="p-4 sm:p-5 rounded-2xl bg-[var(--card)] border border-[var(--border)] shadow-xs hover:border-[var(--accent)]/40 hover:shadow-md transition-all text-center space-y-1.5 flex flex-col justify-between">
+            <div
+              className="p-4 sm:p-5 rounded-2xl bg-[var(--card)] border border-[var(--border)] shadow-xs hover:border-[var(--accent)]/40 hover:shadow-md transition-all text-center space-y-1.5 flex flex-col justify-between"
+              title="Books you have opened and read pages from in your history."
+            >
               <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
                 <span>📖 Explored</span>
                 <span className="text-[9.5px] px-1.5 py-0.2 rounded-full bg-[var(--secondary)] text-[var(--foreground)] font-bold">Catalog</span>
@@ -941,7 +944,10 @@ export default function FavoritesPage() {
               <p className="text-[11px] text-[var(--text-secondary)] font-medium">Books Explored</p>
             </div>
 
-            <div className="p-4 sm:p-5 rounded-2xl bg-[var(--card)] border border-[var(--border)] shadow-xs hover:border-[var(--accent)]/40 hover:shadow-md transition-all text-center space-y-1.5 flex flex-col justify-between">
+            <div
+              className="p-4 sm:p-5 rounded-2xl bg-[var(--card)] border border-[var(--border)] shadow-xs hover:border-[var(--accent)]/40 hover:shadow-md transition-all text-center space-y-1.5 flex flex-col justify-between"
+              title="Books verified completed (≥95% progress or reached final page with active study)."
+            >
               <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
                 <span>🏆 Finished</span>
                 <span className="text-[9.5px] px-1.5 py-0.2 rounded-full bg-emerald-500/15 text-emerald-400 font-bold border border-emerald-500/25">100%</span>

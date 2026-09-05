@@ -127,7 +127,7 @@ export default function UserDetailsModal({ uid, onClose }: UserDetailsModalProps
           ) : data ? (
             <>
               {/* Quick KPI Row */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
                 <div className="p-3.5 rounded-2xl bg-[var(--secondary)]/40 border border-[var(--border)]">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)] block">
                     Completed Books
@@ -143,6 +143,28 @@ export default function UserDetailsModal({ uid, onClose }: UserDetailsModalProps
                   </span>
                   <span className="text-xl sm:text-2xl font-extrabold text-[var(--foreground)] font-serif mt-1 block">
                     {data.currentlyReading}
+                  </span>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-[var(--secondary)]/40 border border-[var(--border)]">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)] block">
+                    Reading Time
+                  </span>
+                  <span className="text-xl sm:text-2xl font-extrabold text-[var(--accent)] font-serif mt-1 block">
+                    {data.totalReadingSeconds && data.totalReadingSeconds >= 60
+                      ? `${Math.floor(data.totalReadingSeconds / 3600)}h ${Math.floor((data.totalReadingSeconds % 3600) / 60)}m`
+                      : "0h 0m"}
+                  </span>
+                </div>
+
+                <div className="p-3.5 rounded-2xl bg-[var(--secondary)]/40 border border-[var(--border)]">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-[var(--text-secondary)] block">
+                    Active Time
+                  </span>
+                  <span className="text-xl sm:text-2xl font-extrabold text-emerald-400 font-serif mt-1 block">
+                    {data.totalActiveSeconds && data.totalActiveSeconds >= 60
+                      ? `${Math.floor(data.totalActiveSeconds / 3600)}h ${Math.floor((data.totalActiveSeconds % 3600) / 60)}m`
+                      : "0h 0m"}
                   </span>
                 </div>
 

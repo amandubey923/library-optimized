@@ -121,20 +121,28 @@ export async function GET(
     });
     recentActivities.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
 
-    // Real Activity & Streak
+    // Real Activity, Reading Time & Streak
     let liveStreak = profData.stats?.currentStreak || 0;
     let liveLongest = profData.stats?.longestStreak || 0;
+    let liveReadingSecs = profData.stats?.totalReadingSeconds || 0;
     if (activityDocSnap && (activityDocSnap as any).exists && typeof (activityDocSnap as any).data === "function") {
       const actData = (activityDocSnap as any).data();
       if (actData?.currentStreak !== undefined) liveStreak = Math.max(liveStreak, actData.currentStreak);
       if (actData?.longestStreak !== undefined) liveLongest = Math.max(liveLongest, actData.longestStreak);
+      if (actData?.daily && typeof actData.daily === "object") {
+        let sumSecs = 0;
+        Object.values(actData.daily).forEach((d: any) => {
+          sumSecs += Number(d?.seconds) || 0;
+        });
+        liveReadingSecs = Math.max(liveReadingSecs, sumSecs);
+      }
     }
 
     // Real Active Time
-    let liveActiveSecs = profData.stats?.totalActiveSeconds || 0;
+    let liveActiveSecs = Math.max(profData.stats?.totalActiveSeconds || 0, liveReadingSecs);
     if (activeTimeDocSnap && (activeTimeDocSnap as any).exists && typeof (activeTimeDocSnap as any).data === "function") {
       const atData = (activeTimeDocSnap as any).data();
-      if (atData?.totalActiveSeconds !== undefined) liveActiveSecs = Math.max(liveActiveSecs, atData.totalActiveSeconds);
+      if (atData?.totalActiveSeconds !== undefined) liveActiveSecs = Math.max(liveActiveSecs, atData.totalActiveSeconds, liveReadingSecs);
     }
 
     // Accurate book counts
@@ -161,6 +169,7 @@ export async function GET(
       currentlyReading: readingCount,
       currentStreak: liveStreak,
       longestStreak: liveLongest,
+      totalReadingSeconds: liveReadingSecs,
       totalActiveSeconds: liveActiveSecs,
       followersCount: profData.followersCount || 0,
       followingCount: profData.followingCount || 0,

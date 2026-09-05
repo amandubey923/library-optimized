@@ -16,6 +16,7 @@ import {
 } from "firebase/firestore";
 import { getFirebaseDb, db } from "./firebase";
 import { Book, BOOKS } from "@/data/books";
+import { getGenuinelyCompletedBookIds } from "@/lib/reader-storage";
 
 export interface PublicUserProfile {
   uid: string;
@@ -32,6 +33,7 @@ export interface PublicUserProfile {
     currentlyReading: number;
     currentStreak: number;
     longestStreak: number;
+    totalReadingSeconds?: number;
     totalActiveSeconds: number;
   };
   achievements: string[];
@@ -1248,18 +1250,19 @@ export async function syncPublicProfileMetrics(
   readingHistory: { bookId: string; progress: number; page: number; totalPages: number }[],
   streakData: { currentStreak?: number; longestStreak?: number },
   totalActiveSeconds: number,
-  reflections: Record<string, any> = {}
+  reflections: Record<string, any> = {},
+  totalReadingSeconds: number = 0,
+  memories: Record<string, any> = {}
 ): Promise<void> {
   if (!uid) return;
 
   const currentDb = getFirebaseDb() || db;
   if (!currentDb) return;
 
-  const completedBooks = readingHistory.filter(
-    (h) => h.progress >= 95 || (h.totalPages > 0 && h.page >= h.totalPages)
-  );
+  const genuinelyCompletedIds = new Set(getGenuinelyCompletedBookIds(readingHistory as any, memories, uid));
+  const completedBooksCount = genuinelyCompletedIds.size;
   const currentlyReading = readingHistory.filter(
-    (h) => h.progress > 0 && h.progress < 95 && (h.totalPages <= 0 || h.page < h.totalPages)
+    (h) => !genuinelyCompletedIds.has(h.bookId) && h.progress > 0 && (h.totalPages <= 0 || h.page < h.totalPages)
   );
 
   const achievements = calculateUserAchievements(readingHistory, streakData, reflections, BOOKS);
@@ -1278,16 +1281,26 @@ export async function syncPublicProfileMetrics(
       streakData.longestStreak || 0,
       existingStats?.longestStreak || 0
     );
+    const safeReadingSeconds = Math.max(
+      totalReadingSeconds || 0,
+      existingStats?.totalReadingSeconds || 0
+    );
+    const safeActiveSeconds = Math.max(
+      totalActiveSeconds || 0,
+      existingStats?.totalActiveSeconds || 0,
+      safeReadingSeconds
+    );
 
     await setDoc(
       profRef,
       {
         stats: {
-          booksCompleted: completedBooks.length,
+          booksCompleted: completedBooksCount,
           currentlyReading: currentlyReading.length,
           currentStreak: safeCurrentStreak,
           longestStreak: safeLongestStreak,
-          totalActiveSeconds: totalActiveSeconds || 0,
+          totalReadingSeconds: safeReadingSeconds,
+          totalActiveSeconds: safeActiveSeconds,
         },
         achievements: earnedAchievementIds,
         updatedAt: Date.now(),

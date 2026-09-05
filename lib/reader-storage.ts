@@ -184,7 +184,12 @@ export function getActiveTimeStorageKey(uid?: string | null): string {
 export const FAVORITES_KEY = "readers_hub_favorites_v2";
 export const HISTORY_KEY = "readers_hub_reading_progress_v2";
 const OFFLINE_CACHE_NAME = "readershub-offline-books-v1";
-const SHELF_DISMISSALS_KEY = "readershub:shelf-dismissals:v1";
+export const SHELF_DISMISSALS_KEY = "readershub:shelf-dismissals:v1";
+
+export function getShelfDismissalsStorageKey(uid?: string | null): string {
+  const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+  return targetUid ? `readershub:shelf-dismissals:v1:${targetUid}` : SHELF_DISMISSALS_KEY;
+}
 
 export function getFavoritesStorageKey(uid?: string | null): string {
   const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
@@ -281,26 +286,35 @@ const memoryCache = new Map<string, BookReadingMemory>();
 let activeTimeCache: WebsiteActiveTimeData | null = null;
 let shelfDismissalsCache: ShelfDismissalsMap | null = null;
 
-export function getShelfDismissals(): ShelfDismissalsMap {
+export function getShelfDismissals(uid?: string | null): ShelfDismissalsMap {
   if (typeof window === "undefined") return {};
   if (shelfDismissalsCache) return shelfDismissalsCache;
   try {
-    const raw = localStorage.getItem(SHELF_DISMISSALS_KEY);
-    if (!raw) {
-      shelfDismissalsCache = {};
-      return {};
+    const key = getShelfDismissalsStorageKey(uid);
+    const raw = localStorage.getItem(key);
+    if (raw) {
+      shelfDismissalsCache = JSON.parse(raw);
+      return shelfDismissalsCache || {};
     }
-    shelfDismissalsCache = JSON.parse(raw);
-    return shelfDismissalsCache || {};
+    const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+    if (!targetUid) {
+      const legacy = localStorage.getItem(SHELF_DISMISSALS_KEY);
+      if (legacy) {
+        shelfDismissalsCache = JSON.parse(legacy);
+        return shelfDismissalsCache || {};
+      }
+    }
+    shelfDismissalsCache = {};
+    return {};
   } catch {
     return {};
   }
 }
 
-export function dismissBookFromShelf(section: ShelfSectionKey, bookId: string): void {
+export function dismissBookFromShelf(section: ShelfSectionKey, bookId: string, uid?: string | null): void {
   if (typeof window === "undefined" || !bookId) return;
   try {
-    const current = { ...getShelfDismissals() };
+    const current = { ...getShelfDismissals(uid) };
     if (!current[section]) {
       current[section] = {};
     } else {
@@ -308,38 +322,53 @@ export function dismissBookFromShelf(section: ShelfSectionKey, bookId: string): 
     }
     current[section][bookId] = true;
     shelfDismissalsCache = current;
-    localStorage.setItem(SHELF_DISMISSALS_KEY, JSON.stringify(current));
+    const key = getShelfDismissalsStorageKey(uid);
+    localStorage.setItem(key, JSON.stringify(current));
+    const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+    if (!targetUid) {
+      localStorage.setItem(SHELF_DISMISSALS_KEY, JSON.stringify(current));
+    }
   } catch (e) {
     console.warn("[ReaderStorage] Failed to dismiss book from shelf:", e);
   }
 }
 
-export function restoreBookToShelf(section: ShelfSectionKey, bookId: string): void {
+export function restoreBookToShelf(section: ShelfSectionKey, bookId: string, uid?: string | null): void {
   if (typeof window === "undefined" || !bookId) return;
   try {
-    const current = { ...getShelfDismissals() };
+    const current = { ...getShelfDismissals(uid) };
     if (current[section] && current[section][bookId]) {
       current[section] = { ...current[section] };
       delete current[section][bookId];
       shelfDismissalsCache = current;
-      localStorage.setItem(SHELF_DISMISSALS_KEY, JSON.stringify(current));
+      const key = getShelfDismissalsStorageKey(uid);
+      localStorage.setItem(key, JSON.stringify(current));
+      const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+      if (!targetUid) {
+        localStorage.setItem(SHELF_DISMISSALS_KEY, JSON.stringify(current));
+      }
     }
   } catch (e) {
     console.warn("[ReaderStorage] Failed to restore book to shelf:", e);
   }
 }
 
-export function isBookDismissedFromShelf(section: ShelfSectionKey, bookId: string): boolean {
+export function isBookDismissedFromShelf(section: ShelfSectionKey, bookId: string, uid?: string | null): boolean {
   if (typeof window === "undefined" || !bookId) return false;
-  const dismissals = getShelfDismissals();
+  const dismissals = getShelfDismissals(uid);
   return Boolean(dismissals[section]?.[bookId]);
 }
 
-export function clearShelfDismissals(): void {
+export function clearShelfDismissals(uid?: string | null): void {
   if (typeof window === "undefined") return;
   shelfDismissalsCache = {};
   try {
-    localStorage.removeItem(SHELF_DISMISSALS_KEY);
+    const key = getShelfDismissalsStorageKey(uid);
+    localStorage.removeItem(key);
+    const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+    if (!targetUid) {
+      localStorage.removeItem(SHELF_DISMISSALS_KEY);
+    }
   } catch {}
 }
 
@@ -347,6 +376,11 @@ export function clearShelfDismissals(): void {
 // 2.7 Smart Reading Collections (Isolated Namespace: readershub:collections:v1)
 // ---------------------------------------------------------------------------
 export const COLLECTIONS_KEY = "readershub:collections:v1";
+
+export function getCollectionsStorageKey(uid?: string | null): string {
+  const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+  return targetUid ? `readershub:collections:v1:${targetUid}` : COLLECTIONS_KEY;
+}
 
 export interface ReadingCollection {
   id: string;
@@ -360,27 +394,41 @@ export interface ReadingCollection {
 
 let collectionsCache: ReadingCollection[] | null = null;
 
-export function getReadingCollections(): ReadingCollection[] {
+export function getReadingCollections(uid?: string | null): ReadingCollection[] {
   if (typeof window === "undefined") return [];
   if (collectionsCache) return collectionsCache;
   try {
-    const raw = localStorage.getItem(COLLECTIONS_KEY);
-    if (!raw) {
-      collectionsCache = [];
-      return [];
+    const key = getCollectionsStorageKey(uid);
+    const raw = localStorage.getItem(key);
+    if (raw) {
+      collectionsCache = JSON.parse(raw);
+      return Array.isArray(collectionsCache) ? collectionsCache : [];
     }
-    collectionsCache = JSON.parse(raw);
-    return Array.isArray(collectionsCache) ? collectionsCache : [];
+    const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+    if (!targetUid) {
+      const legacy = localStorage.getItem(COLLECTIONS_KEY);
+      if (legacy) {
+        collectionsCache = JSON.parse(legacy);
+        return Array.isArray(collectionsCache) ? collectionsCache : [];
+      }
+    }
+    collectionsCache = [];
+    return [];
   } catch {
     return [];
   }
 }
 
-export function saveReadingCollections(collections: ReadingCollection[]): void {
+export function saveReadingCollections(collections: ReadingCollection[], uid?: string | null): void {
   if (typeof window === "undefined") return;
   collectionsCache = collections;
   try {
-    localStorage.setItem(COLLECTIONS_KEY, JSON.stringify(collections));
+    const key = getCollectionsStorageKey(uid);
+    localStorage.setItem(key, JSON.stringify(collections));
+    const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+    if (!targetUid) {
+      localStorage.setItem(COLLECTIONS_KEY, JSON.stringify(collections));
+    }
   } catch (e) {
     console.warn("[ReaderStorage] Failed to save collections:", e);
   }
@@ -389,9 +437,10 @@ export function saveReadingCollections(collections: ReadingCollection[]): void {
 export function createReadingCollection(
   name: string,
   description?: string,
-  color?: string
+  color?: string,
+  uid?: string | null
 ): ReadingCollection {
-  const collections = [...getReadingCollections()];
+  const collections = [...getReadingCollections(uid)];
   const id = `col-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
   const newCol: ReadingCollection = {
     id,
@@ -403,15 +452,16 @@ export function createReadingCollection(
     updatedAt: Date.now(),
   };
   collections.unshift(newCol);
-  saveReadingCollections(collections);
+  saveReadingCollections(collections, uid);
   return newCol;
 }
 
 export function updateReadingCollection(
   id: string,
-  updates: Partial<Pick<ReadingCollection, "name" | "description" | "color">>
+  updates: Partial<Pick<ReadingCollection, "name" | "description" | "color">>,
+  uid?: string | null
 ): ReadingCollection | null {
-  const collections = [...getReadingCollections()];
+  const collections = [...getReadingCollections(uid)];
   const idx = collections.findIndex((c) => c.id === id);
   if (idx === -1) return null;
   const updated: ReadingCollection = {
@@ -420,49 +470,54 @@ export function updateReadingCollection(
     updatedAt: Date.now(),
   };
   collections[idx] = updated;
-  saveReadingCollections(collections);
+  saveReadingCollections(collections, uid);
   return updated;
 }
 
-export function deleteReadingCollection(id: string): void {
-  const collections = getReadingCollections().filter((c) => c.id !== id);
-  saveReadingCollections(collections);
+export function deleteReadingCollection(id: string, uid?: string | null): void {
+  const collections = getReadingCollections(uid).filter((c) => c.id !== id);
+  saveReadingCollections(collections, uid);
 }
 
-export function addBookToCollection(collectionId: string, bookId: string): void {
+export function addBookToCollection(collectionId: string, bookId: string, uid?: string | null): void {
   if (!bookId) return;
-  const collections = [...getReadingCollections()];
+  const collections = [...getReadingCollections(uid)];
   const col = collections.find((c) => c.id === collectionId);
   if (!col) return;
   if (!col.bookIds.includes(bookId)) {
     col.bookIds = [...col.bookIds, bookId];
     col.updatedAt = Date.now();
-    saveReadingCollections(collections);
+    saveReadingCollections(collections, uid);
   }
 }
 
-export function removeBookFromCollection(collectionId: string, bookId: string): void {
+export function removeBookFromCollection(collectionId: string, bookId: string, uid?: string | null): void {
   if (!bookId) return;
-  const collections = [...getReadingCollections()];
+  const collections = [...getReadingCollections(uid)];
   const col = collections.find((c) => c.id === collectionId);
   if (!col) return;
   if (col.bookIds.includes(bookId)) {
     col.bookIds = col.bookIds.filter((id) => id !== bookId);
     col.updatedAt = Date.now();
-    saveReadingCollections(collections);
+    saveReadingCollections(collections, uid);
   }
 }
 
-export function getCollectionsForBook(bookId: string): ReadingCollection[] {
+export function getCollectionsForBook(bookId: string, uid?: string | null): ReadingCollection[] {
   if (!bookId) return [];
-  return getReadingCollections().filter((c) => c.bookIds.includes(bookId));
+  return getReadingCollections(uid).filter((c) => c.bookIds.includes(bookId));
 }
 
-export function clearAllCollections(): void {
+export function clearAllCollections(uid?: string | null): void {
   if (typeof window === "undefined") return;
   collectionsCache = [];
   try {
-    localStorage.removeItem(COLLECTIONS_KEY);
+    const key = getCollectionsStorageKey(uid);
+    localStorage.removeItem(key);
+    const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+    if (!targetUid) {
+      localStorage.removeItem(COLLECTIONS_KEY);
+    }
   } catch {}
 }
 
@@ -470,6 +525,11 @@ export function clearAllCollections(): void {
 // 2.8 Post-Completion Reflections (Isolated Namespace: readershub:reflections:v1)
 // ---------------------------------------------------------------------------
 export const REFLECTIONS_KEY = "readershub:reflections:v1";
+
+export function getReflectionsStorageKey(uid?: string | null): string {
+  const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+  return targetUid ? `readershub:reflections:v1:${targetUid}` : REFLECTIONS_KEY;
+}
 
 export interface BookReflection {
   bookId: string;
@@ -480,36 +540,46 @@ export interface BookReflection {
 
 let reflectionsCache: Record<string, BookReflection> | null = null;
 
-export function getBookReflections(): Record<string, BookReflection> {
+export function getBookReflections(uid?: string | null): Record<string, BookReflection> {
   if (typeof window === "undefined") return {};
   if (reflectionsCache) return reflectionsCache;
   try {
-    const raw = localStorage.getItem(REFLECTIONS_KEY);
-    if (!raw) {
-      reflectionsCache = {};
-      return {};
+    const key = getReflectionsStorageKey(uid);
+    const raw = localStorage.getItem(key);
+    if (raw) {
+      reflectionsCache = JSON.parse(raw);
+      return reflectionsCache || {};
     }
-    reflectionsCache = JSON.parse(raw);
-    return reflectionsCache || {};
+    const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+    if (!targetUid) {
+      const legacy = localStorage.getItem(REFLECTIONS_KEY);
+      if (legacy) {
+        reflectionsCache = JSON.parse(legacy);
+        return reflectionsCache || {};
+      }
+    }
+    reflectionsCache = {};
+    return {};
   } catch {
     return {};
   }
 }
 
-export function getBookReflection(bookId: string): BookReflection | null {
+export function getBookReflection(bookId: string, uid?: string | null): BookReflection | null {
   if (!bookId) return null;
-  const all = getBookReflections();
+  const all = getBookReflections(uid);
   return all[bookId] || null;
 }
 
 export function saveBookReflection(
   bookId: string,
   reflection: string,
-  rating?: number
+  rating?: number,
+  uid?: string | null
 ): void {
   if (typeof window === "undefined" || !bookId) return;
   try {
-    const current = { ...getBookReflections() };
+    const current = { ...getBookReflections(uid) };
     current[bookId] = {
       bookId,
       reflection: reflection.trim(),
@@ -517,31 +587,46 @@ export function saveBookReflection(
       rating,
     };
     reflectionsCache = current;
-    localStorage.setItem(REFLECTIONS_KEY, JSON.stringify(current));
+    const key = getReflectionsStorageKey(uid);
+    localStorage.setItem(key, JSON.stringify(current));
+    const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+    if (!targetUid) {
+      localStorage.setItem(REFLECTIONS_KEY, JSON.stringify(current));
+    }
   } catch (e) {
     console.warn("[ReaderStorage] Failed to save reflection:", e);
   }
 }
 
-export function removeBookReflection(bookId: string): void {
+export function removeBookReflection(bookId: string, uid?: string | null): void {
   if (typeof window === "undefined" || !bookId) return;
   try {
-    const current = { ...getBookReflections() };
+    const current = { ...getBookReflections(uid) };
     if (current[bookId]) {
       delete current[bookId];
       reflectionsCache = current;
-      localStorage.setItem(REFLECTIONS_KEY, JSON.stringify(current));
+      const key = getReflectionsStorageKey(uid);
+      localStorage.setItem(key, JSON.stringify(current));
+      const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+      if (!targetUid) {
+        localStorage.setItem(REFLECTIONS_KEY, JSON.stringify(current));
+      }
     }
   } catch (e) {
     console.warn("[ReaderStorage] Failed to remove reflection:", e);
   }
 }
 
-export function clearAllReflections(): void {
+export function clearAllReflections(uid?: string | null): void {
   if (typeof window === "undefined") return;
   reflectionsCache = {};
   try {
-    localStorage.removeItem(REFLECTIONS_KEY);
+    const key = getReflectionsStorageKey(uid);
+    localStorage.removeItem(key);
+    const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+    if (!targetUid) {
+      localStorage.removeItem(REFLECTIONS_KEY);
+    }
   } catch {}
 }
 
@@ -1809,6 +1894,10 @@ export function clearAllUserDataOnLogout(): void {
     localStorage.removeItem("readershub:reading-activity:v1:guest");
     localStorage.removeItem("readershub:favorites:v1:guest");
     localStorage.removeItem("readershub:history:v1:guest");
+    localStorage.removeItem("readershub:active-time:v1:guest");
+    localStorage.removeItem("readershub:collections:v1:guest");
+    localStorage.removeItem("readershub:reflections:v1:guest");
+    localStorage.removeItem("readershub:shelf-dismissals:v1:guest");
   } catch (e) {
     console.warn("[ReaderStorage] Failed to clear user data on logout:", e);
   }
@@ -1847,9 +1936,9 @@ export function exportAllStorageDataForSync(uid?: string | null): {
   const activeTime = getWebsiteActiveTimeData(targetUid);
   const readingMemories = getAllReadingMemories(targetUid);
   const annotations = getAllBookAnnotations();
-  const collections = getReadingCollections();
-  const reflections = getBookReflections();
-  const shelfDismissals = getShelfDismissals();
+  const collections = getReadingCollections(targetUid);
+  const reflections = getBookReflections(targetUid);
+  const shelfDismissals = getShelfDismissals(targetUid);
 
   return {
     favorites,
@@ -2030,7 +2119,7 @@ export function hydrateStorageFromCloudData(
 
     // 7. Collections: Non-destructive merge
     if (Array.isArray(data.collections) && data.collections.length > 0) {
-      const curCols = getReadingCollections();
+      const curCols = getReadingCollections(targetUid);
       const colMap = new Map<string, ReadingCollection>();
       curCols.forEach((c) => colMap.set(c.id, c));
       data.collections.forEach((c) => {
@@ -2047,30 +2136,39 @@ export function hydrateStorageFromCloudData(
           });
         }
       });
-      localStorage.setItem(COLLECTIONS_KEY, JSON.stringify(Array.from(colMap.values())));
+      const mergedCols = Array.from(colMap.values());
+      saveReadingCollections(mergedCols, targetUid);
     }
 
     // 8. Reflections: Non-destructive merge
     if (data.reflections && Object.keys(data.reflections).length > 0) {
-      const curRefs = getBookReflections();
+      const curRefs = getBookReflections(targetUid);
       const mergedRefs = { ...curRefs };
       Object.entries(data.reflections).forEach(([bookId, ref]) => {
         if (!mergedRefs[bookId] || (ref.completedAt || 0) > (mergedRefs[bookId].completedAt || 0)) {
           mergedRefs[bookId] = ref;
         }
       });
-      localStorage.setItem(REFLECTIONS_KEY, JSON.stringify(mergedRefs));
+      const refKey = getReflectionsStorageKey(targetUid);
+      localStorage.setItem(refKey, JSON.stringify(mergedRefs));
+      if (!targetUid) {
+        localStorage.setItem(REFLECTIONS_KEY, JSON.stringify(mergedRefs));
+      }
     }
 
     // 9. Shelf Dismissals: Non-destructive merge
     if (data.shelfDismissals && Object.keys(data.shelfDismissals).length > 0) {
-      const curDism = getShelfDismissals();
+      const curDism = getShelfDismissals(targetUid);
       const mergedDism: ShelfDismissalsMap = { ...curDism };
       Object.entries(data.shelfDismissals).forEach(([sec, bMap]) => {
         if (!mergedDism[sec]) mergedDism[sec] = {};
         mergedDism[sec] = { ...mergedDism[sec], ...bMap };
       });
-      localStorage.setItem(SHELF_DISMISSALS_KEY, JSON.stringify(mergedDism));
+      const dismKey = getShelfDismissalsStorageKey(targetUid);
+      localStorage.setItem(dismKey, JSON.stringify(mergedDism));
+      if (!targetUid) {
+        localStorage.setItem(SHELF_DISMISSALS_KEY, JSON.stringify(mergedDism));
+      }
     }
 
     // Invalidate in-memory caches so subsequent calls immediately read the hydrated values

@@ -29,7 +29,7 @@ import UserSearchModal from "@/components/social/UserSearchModal";
 import UsernameSetupModal from "@/components/social/UsernameSetupModal";
 
 export default function ProfilePage() {
-  const { favorites, readingHistory, streakData, stats, activeTimeData, globalActiveSeconds, todayReadingSeconds, todayActiveSeconds } = useLibrary();
+  const { favorites, readingHistory, streakData, stats, activeTimeData, globalActiveSeconds, todayReadingSeconds, todayActiveSeconds, reflections } = useLibrary();
   const { user, signOutUser } = useAuth();
   const { isPro, isSupporter, openProModal, openSupportModal } = useEntitlement();
   const [timeFilter, setTimeFilter] = useState<AnalyticsTimeFilter>("all");
@@ -158,7 +158,7 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!user || !socialProfile?.username) return;
 
-    const syncKey = `${readingHistory.length}_${streakData.currentStreak}_${Math.floor(globalActiveSeconds / 15)}`;
+    const syncKey = `${readingHistory.length}_${streakData.currentStreak}_${Math.floor(globalActiveSeconds / 15)}_${stats.totalReadingSeconds}`;
     if (prevSyncKeyRef.current === syncKey) return;
     prevSyncKeyRef.current = syncKey;
 
@@ -167,12 +167,14 @@ export default function ProfilePage() {
         user.uid,
         readingHistory,
         streakData,
-        globalActiveSeconds
+        globalActiveSeconds,
+        reflections,
+        stats.totalReadingSeconds
       );
     }, 1200);
 
     return () => clearTimeout(timer);
-  }, [user, socialProfile?.username, readingHistory, streakData, globalActiveSeconds]);
+  }, [user, socialProfile?.username, readingHistory, streakData, globalActiveSeconds, reflections, stats.totalReadingSeconds]);
 
   // Compute analytics dynamically based on authenticated storage & state
   const analytics = useMemo(() => {

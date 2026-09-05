@@ -166,11 +166,12 @@ export default function PublicProfilePage() {
       <main className="min-h-screen bg-[var(--background)] text-[var(--foreground)] pt-24 pb-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-5xl mx-auto space-y-8 animate-pulse">
           <div className="h-56 rounded-3xl bg-[var(--card)]/70 border border-[var(--border)]" />
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 sm:gap-4">
             <div className="h-24 rounded-2xl bg-[var(--card)]/70 border border-[var(--border)]" />
             <div className="h-24 rounded-2xl bg-[var(--card)]/70 border border-[var(--border)]" />
             <div className="h-24 rounded-2xl bg-[var(--card)]/70 border border-[var(--border)]" />
             <div className="h-24 rounded-2xl bg-[var(--card)]/70 border border-[var(--border)]" />
+            <div className="h-24 rounded-2xl bg-[var(--card)]/70 border border-[var(--border)] col-span-2 sm:col-span-1" />
           </div>
           <div className="h-96 rounded-3xl bg-[var(--card)]/70 border border-[var(--border)]" />
         </div>
@@ -399,54 +400,76 @@ export default function PublicProfilePage() {
             {activeTab === "shelf" && (
               <div className="space-y-8 animate-in fade-in duration-300">
                 {/* LeetCode-style Stats Banner */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  <div className="glass-card rounded-2xl p-5 border border-[var(--border)] bg-[var(--card)]">
-                    <span className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider block mb-1">
-                      Books Completed
-                    </span>
-                    <span className="text-2xl sm:text-3xl font-extrabold font-serif text-[var(--foreground)]">
-                      {profile.stats?.booksCompleted || 0}
-                    </span>
-                    <span className="text-[11px] text-emerald-400 font-medium block mt-0.5">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 sm:gap-4">
+                  <div className="glass-card rounded-2xl p-4 sm:p-5 border border-[var(--border)] bg-[var(--card)] flex flex-col justify-between">
+                    <div>
+                      <span className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider block mb-1">
+                        Books Completed
+                      </span>
+                      <span className="text-2xl sm:text-3xl font-extrabold font-serif text-[var(--foreground)]">
+                        {profile.stats?.booksCompleted || 0}
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-emerald-400 font-medium block mt-1">
                       Verified read
                     </span>
                   </div>
 
-                  <div className="glass-card rounded-2xl p-5 border border-[var(--border)] bg-[var(--card)]">
-                    <span className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider block mb-1">
-                      Currently Reading
-                    </span>
-                    <span className="text-2xl sm:text-3xl font-extrabold font-serif text-[var(--foreground)]">
-                      {profile.stats?.currentlyReading || 0}
-                    </span>
-                    <span className="text-[11px] text-[var(--accent)] font-medium block mt-0.5">
+                  <div className="glass-card rounded-2xl p-4 sm:p-5 border border-[var(--border)] bg-[var(--card)] flex flex-col justify-between">
+                    <div>
+                      <span className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider block mb-1">
+                        Currently Reading
+                      </span>
+                      <span className="text-2xl sm:text-3xl font-extrabold font-serif text-[var(--foreground)]">
+                        {profile.stats?.currentlyReading || 0}
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-[var(--accent)] font-medium block mt-1">
                       In progress
                     </span>
                   </div>
 
-                  <div className="glass-card rounded-2xl p-5 border border-[var(--border)] bg-[var(--card)]">
-                    <span className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider block mb-1">
-                      Daily Streak
-                    </span>
-                    <span className="text-2xl sm:text-3xl font-extrabold font-serif text-amber-400 flex items-center gap-1.5">
-                      <span>🪔</span>
-                      <span>{profile.stats?.currentStreak || 0}</span>
-                      <span className="text-xs text-[var(--text-secondary)] font-normal font-sans">days</span>
-                    </span>
-                    <span className="text-[11px] text-[var(--text-secondary)] font-mono block mt-0.5">
+                  <div className="glass-card rounded-2xl p-4 sm:p-5 border border-[var(--border)] bg-[var(--card)] flex flex-col justify-between">
+                    <div>
+                      <span className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider block mb-1">
+                        Daily Streak
+                      </span>
+                      <span className="text-2xl sm:text-3xl font-extrabold font-serif text-amber-400 flex items-center gap-1.5">
+                        <span>🪔</span>
+                        <span>{profile.stats?.currentStreak || 0}</span>
+                        <span className="text-xs text-[var(--text-secondary)] font-normal font-sans">days</span>
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-[var(--text-secondary)] font-mono block mt-1">
                       Best: {profile.stats?.longestStreak || 0} days
                     </span>
                   </div>
 
-                  <div className="glass-card rounded-2xl p-5 border border-[var(--border)] bg-[var(--card)]">
-                    <span className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider block mb-1">
-                      Reading Time
+                  <div className="glass-card rounded-2xl p-4 sm:p-5 border border-[var(--border)] bg-[var(--card)] flex flex-col justify-between">
+                    <div>
+                      <span className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider block mb-1">
+                        Reading Time
+                      </span>
+                      <span className="text-2xl sm:text-3xl font-extrabold font-serif text-[var(--foreground)]">
+                        {formatDuration(profile.stats?.totalReadingSeconds || 0)}
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-[var(--accent)] font-medium block mt-1">
+                      Genuine book reading
                     </span>
-                    <span className="text-2xl sm:text-3xl font-extrabold font-serif text-[var(--foreground)]">
-                      {formatDuration(profile.stats?.totalActiveSeconds || 0)}
-                    </span>
-                    <span className="text-[11px] text-[var(--text-secondary)] block mt-0.5">
-                      Deep active focus
+                  </div>
+
+                  <div className="glass-card rounded-2xl p-4 sm:p-5 border border-[var(--border)] bg-[var(--card)] flex flex-col justify-between col-span-2 sm:col-span-1">
+                    <div>
+                      <span className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider block mb-1">
+                        Active Time
+                      </span>
+                      <span className="text-2xl sm:text-3xl font-extrabold font-serif text-[var(--foreground)]">
+                        {formatDuration(profile.stats?.totalActiveSeconds || 0)}
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-[var(--text-secondary)] block mt-1">
+                      Website engagement
                     </span>
                   </div>
                 </div>

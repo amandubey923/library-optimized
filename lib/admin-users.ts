@@ -45,6 +45,7 @@ export interface UserDeepInspectionData {
   currentlyReading: number;
   currentStreak: number;
   longestStreak: number;
+  totalReadingSeconds?: number;
   totalActiveSeconds: number;
   followersCount: number;
   followingCount: number;

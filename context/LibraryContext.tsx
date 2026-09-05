@@ -566,6 +566,18 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     if (localHist && localHist.length > 0) {
       setReadingHistory(localHist);
     }
+    const localCols = getReadingCollections(user.uid);
+    if (localCols && localCols.length > 0) {
+      setCollections(localCols);
+    }
+    const localRefs = getBookReflections(user.uid);
+    if (localRefs && Object.keys(localRefs).length > 0) {
+      setReflections(localRefs);
+    }
+    const localDism = getShelfDismissals(user.uid);
+    if (localDism && Object.keys(localDism).length > 0) {
+      setShelfDismissals(localDism);
+    }
 
     let isCancelled = false;
 

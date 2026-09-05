@@ -48,6 +48,7 @@ export async function GET(req: NextRequest) {
             currentlyReading: 0,
             currentStreak: 0,
             longestStreak: 0,
+            totalReadingSeconds: 0,
             totalActiveSeconds: 0,
           },
           achievements: pData.achievements || [],
@@ -118,6 +119,7 @@ export async function GET(req: NextRequest) {
               currentlyReading: 0,
               currentStreak: 0,
               longestStreak: 0,
+              totalReadingSeconds: 0,
               totalActiveSeconds: 0,
             },
             achievements: [],
@@ -154,6 +156,7 @@ export async function GET(req: NextRequest) {
             currentlyReading: 0,
             currentStreak: 0,
             longestStreak: 0,
+            totalReadingSeconds: 0,
             totalActiveSeconds: 0,
           },
           achievements: [],
@@ -196,14 +199,26 @@ export async function GET(req: NextRequest) {
         return p.progress >= 95 || (p.totalPages > 0 && p.page >= p.totalPages);
       }).length;
 
+      let liveReadingSecs = 0;
+      if (actData?.daily && typeof actData.daily === "object") {
+        Object.values(actData.daily).forEach((d: any) => {
+          liveReadingSecs += Number(d?.seconds) || 0;
+        });
+      }
+
       const currentStreak = actData?.currentStreak ?? profileData.stats?.currentStreak ?? 0;
       const longestStreak = actData?.longestStreak ?? profileData.stats?.longestStreak ?? 0;
-      const totalActiveSeconds = timeData?.totalActiveSeconds ?? profileData.stats?.totalActiveSeconds ?? 0;
+      const totalReadingSeconds = Math.max(liveReadingSecs, profileData.stats?.totalReadingSeconds || 0);
+      const totalActiveSeconds = Math.max(
+        timeData?.totalActiveSeconds ?? profileData.stats?.totalActiveSeconds ?? 0,
+        totalReadingSeconds
+      );
 
       profileData.stats = {
         ...(profileData.stats || {}),
         currentStreak,
         longestStreak,
+        totalReadingSeconds,
         totalActiveSeconds,
         booksCompleted: Math.max(profileData.stats?.booksCompleted || 0, completedBooksCount),
       };
