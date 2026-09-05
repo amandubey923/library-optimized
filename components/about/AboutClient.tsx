@@ -577,7 +577,7 @@ export default function AboutClient({ totalBooks, totalCategories }: AboutClient
                     Explore my complete background, production projects, and technical milestones:
                   </p>
                   <a
-                    href="https://aman-portfolio-next.netlify.app/dossier"
+                    href="https://portfolio-next-aman.vercel.app/dossier"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 text-xs font-bold text-[var(--accent)] hover:underline hover:scale-102 transition-transform"
