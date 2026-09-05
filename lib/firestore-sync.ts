@@ -465,8 +465,20 @@ export async function reconcileAndSyncAllUserData(user: User): Promise<CloudFull
 
     return cloudData;
   } catch (err) {
-    console.warn("[Firestore] Error in cloud user sync:", err);
-    return defaultEmpty;
+    console.warn("[Firestore] Error in cloud user sync, safely falling back to local UID cache:", err);
+    // CRITICAL: On network failure, NEVER return blank empty state if the user has local UID data!
+    return {
+      favorites: getStoredFavorites(user.uid),
+      readingHistory: getStoredReadingHistory(user.uid),
+      readingActivity: getReadingActivityData(user.uid),
+      activeTime: getWebsiteActiveTimeData(user.uid),
+      readingMemories: {},
+      annotations: {},
+      collections: getReadingCollections(),
+      reflections: getBookReflections(),
+      shelfDismissals: getShelfDismissals(),
+      entitlement: DEFAULT_FREE_ENTITLEMENT,
+    };
   }
 }
 
