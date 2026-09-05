@@ -8,6 +8,27 @@ interface CardTiltProps {
   maxTilt?: number;
 }
 
+let cachedEnabled: boolean | null = null;
+let listenersInitialized = false;
+
+function checkTiltEnabled(): boolean {
+  if (typeof window === "undefined") return false;
+  if (cachedEnabled !== null) return cachedEnabled;
+
+  const isTouch = "ontouchstart" in window || (navigator.maxTouchPoints && navigator.maxTouchPoints > 0);
+  const prefersReducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches ?? false;
+  cachedEnabled = !isTouch && !prefersReducedMotion;
+
+  if (!listenersInitialized && window.matchMedia) {
+    listenersInitialized = true;
+    window.matchMedia("(prefers-reduced-motion: reduce)").addEventListener?.("change", (e) => {
+      cachedEnabled = !isTouch && !e.matches;
+    });
+  }
+
+  return cachedEnabled;
+}
+
 export default function CardTilt({
   children,
   className = "",
@@ -15,15 +36,14 @@ export default function CardTilt({
 }: CardTiltProps) {
   const cardRef = useRef<HTMLDivElement>(null);
   const glareRef = useRef<HTMLDivElement>(null);
-  const [enabled, setEnabled] = useState(false);
+  const [enabled, setEnabled] = useState(() => (typeof window !== "undefined" ? checkTiltEnabled() : false));
 
   useEffect(() => {
-    const isTouch = "ontouchstart" in window || navigator.maxTouchPoints > 0;
-    const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (!isTouch && !prefersReducedMotion) {
-      setEnabled(true);
+    const isNow = checkTiltEnabled();
+    if (isNow !== enabled) {
+      setEnabled(isNow);
     }
-  }, []);
+  }, [enabled]);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!enabled || !cardRef.current) return;

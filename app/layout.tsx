@@ -9,11 +9,7 @@ import CustomCursor from "@/components/visual/CustomCursor";
 import AmbientEffects from "@/components/visual/AmbientEffects";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
-import Toast from "@/components/Toast";
-import LibraryAssistant from "@/components/assistant/LibraryAssistant";
-import ProUpgradeModal from "@/components/payment/ProUpgradeModal";
-import ProPaymentStatusModal from "@/components/payment/ProPaymentStatusModal";
-import SupportReaderModal from "@/components/monetization/SupportReaderModal";
+import GlobalModals from "@/components/GlobalModals";
 
 import Script from "next/script";
 
@@ -121,11 +117,7 @@ export default function RootLayout({
                   {children}
                 </div>
                 <Footer />
-                <LibraryAssistant />
-                <Toast />
-                <ProUpgradeModal />
-                <ProPaymentStatusModal />
-                <SupportReaderModal />
+                <GlobalModals />
               </LibraryProvider>
             </EntitlementProvider>
           </AuthProvider>

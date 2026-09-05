@@ -6,6 +6,9 @@ import {
   collection,
   getDocs,
   serverTimestamp,
+  writeBatch,
+  deleteDoc,
+  updateDoc,
 } from "firebase/firestore";
 import { db, getFirebaseDb } from "./firebase";
 import {
@@ -787,6 +790,163 @@ export async function migrateLocalStateToCloud(
     await batch.commit();
   } catch (e) {
     console.warn("[Firestore] Legacy migration notice:", e);
+  }
+}
+
+/**
+ * Permanently delete all reading progress documents from /users/{uid}/reading_progress
+ */
+export async function deleteCloudReadingProgress(uid: string): Promise<boolean> {
+  const currentDb = getFirebaseDb() || db;
+  if (!currentDb || !uid) return false;
+  try {
+    cancelAllPendingSyncTimers();
+    const progRef = collection(currentDb, "users", uid, "reading_progress");
+    const snap = await getDocs(progRef);
+    if (!snap.empty) {
+      const batch = writeBatch(currentDb);
+      snap.forEach((d) => batch.delete(d.ref));
+      await batch.commit();
+    }
+    const pubRef = doc(currentDb, "public_profiles", uid);
+    await updateDoc(pubRef, {
+      "stats.booksCompleted": 0,
+      "stats.currentlyReading": 0,
+      "stats.booksStarted": 0,
+    }).catch(() => {});
+    return true;
+  } catch (err) {
+    console.error("[Firestore] Failed to delete cloud reading progress:", err);
+    throw err;
+  }
+}
+
+/**
+ * Permanently reset daily reading activity and streak in /users/{uid}/data/activity
+ */
+export async function deleteCloudReadingActivity(uid: string): Promise<boolean> {
+  const currentDb = getFirebaseDb() || db;
+  if (!currentDb || !uid) return false;
+  try {
+    cancelAllPendingSyncTimers();
+    const actRef = doc(currentDb, "users", uid, "data", "activity");
+    const emptyActivity: ReadingStreakData = {
+      daily: {},
+      currentStreak: 0,
+      longestStreak: 0,
+      lastQualifiedDate: null,
+    };
+    await setDoc(actRef, emptyActivity);
+
+    const pubRef = doc(currentDb, "public_profiles", uid);
+    await updateDoc(pubRef, {
+      "stats.currentStreak": 0,
+      "stats.longestStreak": 0,
+      "stats.totalReadingSeconds": 0,
+    }).catch(() => {});
+    return true;
+  } catch (err) {
+    console.error("[Firestore] Failed to delete cloud reading activity:", err);
+    throw err;
+  }
+}
+
+/**
+ * Permanently reset annotations in /users/{uid}/data/annotations
+ */
+export async function deleteCloudAnnotations(uid: string): Promise<boolean> {
+  const currentDb = getFirebaseDb() || db;
+  if (!currentDb || !uid) return false;
+  try {
+    cancelAllPendingSyncTimers();
+    const annRef = doc(currentDb, "users", uid, "data", "annotations");
+    await setDoc(annRef, { annotations: {} });
+    return true;
+  } catch (err) {
+    console.error("[Firestore] Failed to delete cloud annotations:", err);
+    throw err;
+  }
+}
+
+/**
+ * Permanently delete all favorite documents from /users/{uid}/favorites
+ */
+export async function deleteCloudFavorites(uid: string): Promise<boolean> {
+  const currentDb = getFirebaseDb() || db;
+  if (!currentDb || !uid) return false;
+  try {
+    cancelAllPendingSyncTimers();
+    const favsRef = collection(currentDb, "users", uid, "favorites");
+    const snap = await getDocs(favsRef);
+    if (!snap.empty) {
+      const batch = writeBatch(currentDb);
+      snap.forEach((d) => batch.delete(d.ref));
+      await batch.commit();
+    }
+    return true;
+  } catch (err) {
+    console.error("[Firestore] Failed to delete cloud favorites:", err);
+    throw err;
+  }
+}
+
+/**
+ * Permanently reset all user reading data from Firestore (/users/{uid}/*)
+ * Strictly preserves identity profile (email, createdAt, username) and username registration.
+ */
+export async function permanentFactoryResetCloudData(uid: string): Promise<boolean> {
+  const currentDb = getFirebaseDb() || db;
+  if (!currentDb || !uid) return false;
+  try {
+    cancelAllPendingSyncTimers();
+
+    // 1. Delete all favorites
+    const favsRef = collection(currentDb, "users", uid, "favorites");
+    const favsSnap = await getDocs(favsRef);
+
+    // 2. Delete all reading progress
+    const progRef = collection(currentDb, "users", uid, "reading_progress");
+    const progSnap = await getDocs(progRef);
+
+    const batch = writeBatch(currentDb);
+    favsSnap.forEach((d) => batch.delete(d.ref));
+    progSnap.forEach((d) => batch.delete(d.ref));
+
+    // 3. Reset all user data subdocuments in users/{uid}/data/*
+    const actRef = doc(currentDb, "users", uid, "data", "activity");
+    const atRef = doc(currentDb, "users", uid, "data", "active_time");
+    const memRef = doc(currentDb, "users", uid, "data", "reading_memory");
+    const annRef = doc(currentDb, "users", uid, "data", "annotations");
+    const colRef = doc(currentDb, "users", uid, "data", "collections");
+    const refRef = doc(currentDb, "users", uid, "data", "reflections");
+    const dismRef = doc(currentDb, "users", uid, "data", "shelf_dismissals");
+
+    batch.set(actRef, { daily: {}, currentStreak: 0, longestStreak: 0, lastQualifiedDate: null });
+    batch.set(atRef, { totalActiveSeconds: 0, daily: {}, explorationDaily: {}, totalExplorationSeconds: 0, lastUpdated: Date.now() });
+    batch.set(memRef, { memories: {} });
+    batch.set(annRef, { annotations: {} });
+    batch.set(colRef, { collections: [] });
+    batch.set(refRef, { reflections: {} });
+    batch.set(dismRef, { shelfDismissals: {} });
+
+    await batch.commit();
+
+    // 4. Update Public Profile Stats
+    const pubRef = doc(currentDb, "public_profiles", uid);
+    await updateDoc(pubRef, {
+      "stats.booksCompleted": 0,
+      "stats.currentlyReading": 0,
+      "stats.currentStreak": 0,
+      "stats.longestStreak": 0,
+      "stats.totalReadingSeconds": 0,
+      "stats.totalActiveSeconds": 0,
+      "stats.booksStarted": 0,
+    }).catch(() => {});
+
+    return true;
+  } catch (err) {
+    console.error("[Firestore] Permanent factory reset failed:", err);
+    throw err;
   }
 }
 

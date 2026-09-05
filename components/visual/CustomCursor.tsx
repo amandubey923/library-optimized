@@ -48,6 +48,15 @@ export default function CustomCursor() {
 
     const prefersReducedMotion = reducedMotionQuery.matches;
 
+    let isLoopRunning = false;
+
+    const startLoop = () => {
+      if (!isLoopRunning) {
+        isLoopRunning = true;
+        animFrameId = requestAnimationFrame(renderLoop);
+      }
+    };
+
     const handleMouseMove = (e: MouseEvent) => {
       targetX = e.clientX;
       targetY = e.clientY;
@@ -87,6 +96,8 @@ export default function CustomCursor() {
           isHovered = false;
         }
       }
+
+      startLoop();
     };
 
     const handleMouseDown = () => {
@@ -100,10 +111,12 @@ export default function CustomCursor() {
         clickRippleRef.current.style.transform = "translate(-5.5px, 0px) scale(1.3)";
         clickRippleRef.current.style.opacity = "0";
       }
+      startLoop();
     };
 
     const handleMouseUp = () => {
       isMouseDown = false;
+      startLoop();
     };
 
     const handleMouseLeave = () => {
@@ -118,14 +131,17 @@ export default function CustomCursor() {
       if (cursorRef.current && !isHiddenForStudy) {
         cursorRef.current.style.opacity = "1";
       }
+      startLoop();
     };
 
-    // Fast, zero-lag 60-120 FPS render loop
+    // Fast, zero-lag 60-120 FPS render loop with idle pause
     const renderLoop = () => {
       if (isVisible) {
         const ease = 0.75;
-        currentX += (targetX - currentX) * ease;
-        currentY += (targetY - currentY) * ease;
+        const dx = targetX - currentX;
+        const dy = targetY - currentY;
+        currentX += dx * ease;
+        currentY += dy * ease;
 
         if (cursorRef.current) {
           cursorRef.current.style.opacity = isHiddenForStudy ? "0" : "1";
@@ -142,6 +158,17 @@ export default function CustomCursor() {
           }
           handPointerRef.current.style.transform = `translate(-5.5px, 0px) scale(${scale})`;
         }
+
+        // Idle dampening: when cursor has settled, pause animation loop to save CPU & battery
+        if (Math.abs(dx) < 0.1 && Math.abs(dy) < 0.1) {
+          currentX = targetX;
+          currentY = targetY;
+          if (cursorRef.current) {
+            cursorRef.current.style.transform = `translate3d(${currentX}px, ${currentY}px, 0)`;
+          }
+          isLoopRunning = false;
+          return;
+        }
       }
 
       animFrameId = requestAnimationFrame(renderLoop);
@@ -153,7 +180,7 @@ export default function CustomCursor() {
     document.addEventListener("mouseleave", handleMouseLeave);
     document.addEventListener("mouseenter", handleMouseEnter);
 
-    animFrameId = requestAnimationFrame(renderLoop);
+    startLoop();
 
     return () => {
       window.removeEventListener("mousemove", handleMouseMove);

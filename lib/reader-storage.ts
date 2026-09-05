@@ -1798,19 +1798,61 @@ export function importUserData(jsonString: string): { success: boolean; message:
 // Granular Local Data Reset & Recovery Utilities
 // -------------------------------------------------------------
 
-export function clearReadingHistory(): void {
+export function clearStoredReadingHistory(uid?: string | null): void {
   if (typeof window === "undefined") return;
   try {
-    localStorage.removeItem(HISTORY_KEY);
+    const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+    localStorage.removeItem(getHistoryStorageKey(targetUid));
+    if (!targetUid) {
+      localStorage.removeItem(HISTORY_KEY);
+    }
     progressCache.clear();
     for (let i = localStorage.length - 1; i >= 0; i--) {
       const key = localStorage.key(i);
-      if (key && key.startsWith(PROGRESS_KEY_PREFIX)) {
+      if (key && (key.startsWith(PROGRESS_KEY_PREFIX) || (targetUid && key.includes(targetUid)))) {
         localStorage.removeItem(key);
       }
     }
   } catch (e) {
     console.warn("[ReaderStorage] Failed to clear reading history:", e);
+  }
+}
+export const clearReadingHistory = clearStoredReadingHistory;
+
+export function clearStoredFavorites(uid?: string | null): void {
+  if (typeof window === "undefined") return;
+  try {
+    const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+    localStorage.removeItem(getFavoritesStorageKey(targetUid));
+    if (!targetUid) {
+      localStorage.removeItem(FAVORITES_KEY);
+    }
+  } catch (e) {
+    console.warn("[ReaderStorage] Failed to clear favorites:", e);
+  }
+}
+
+export function clearAllUserDataForUid(uid: string): void {
+  if (typeof window === "undefined" || !uid) return;
+  try {
+    const targetUid = uid.trim();
+    localStorage.removeItem(getFavoritesStorageKey(targetUid));
+    localStorage.removeItem(getHistoryStorageKey(targetUid));
+    localStorage.removeItem(getActivityStorageKey(targetUid));
+    localStorage.removeItem(getActiveTimeStorageKey(targetUid));
+    localStorage.removeItem(getCollectionsStorageKey(targetUid));
+    localStorage.removeItem(getReflectionsStorageKey(targetUid));
+    localStorage.removeItem(getShelfDismissalsStorageKey(targetUid));
+
+    for (let i = localStorage.length - 1; i >= 0; i--) {
+      const key = localStorage.key(i);
+      if (key && key.includes(targetUid)) {
+        localStorage.removeItem(key);
+      }
+    }
+    invalidateAllCaches();
+  } catch (e) {
+    console.warn("[ReaderStorage] Failed to clear user data for UID:", e);
   }
 }
 

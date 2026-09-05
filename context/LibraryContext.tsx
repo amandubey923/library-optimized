@@ -63,6 +63,9 @@ import {
   saveStoredFavorites,
   getStoredReadingHistory,
   saveStoredReadingHistory,
+  clearStoredReadingHistory,
+  clearStoredFavorites,
+  clearAllUserDataForUid,
 } from "@/lib/reader-storage";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -78,6 +81,11 @@ import {
   syncShelfDismissalsToCloud,
   cancelAllPendingSyncTimers,
   flushPendingActivitySyncs,
+  deleteCloudReadingProgress,
+  deleteCloudReadingActivity,
+  deleteCloudAnnotations,
+  deleteCloudFavorites,
+  permanentFactoryResetCloudData,
 } from "@/lib/firestore-sync";
 import { recordPublicActivity, sanitizeUsername } from "@/lib/social";
 import { touchUserLastActive } from "@/lib/active-tracker";
@@ -177,11 +185,12 @@ interface LibraryContextType {
   removeBookOffline: (bookId: string, pdfUrl: string) => Promise<boolean>;
 
   // Granular Reset & Recovery
-  clearAllProgress: () => void;
-  clearAnnotations: () => void;
-  clearStreak: () => void;
+  clearAllProgress: () => Promise<void>;
+  clearAnnotations: () => Promise<void>;
+  clearStreak: () => Promise<void>;
   clearOfflineStorage: () => Promise<void>;
-  factoryReset: () => Promise<void>;
+  clearLocalDeviceCache: () => Promise<void>;
+  factoryReset: (mode?: "local_cache" | "permanent_cloud") => Promise<void>;
 }
 
 const LibraryContext = createContext<LibraryContextType | undefined>(undefined);
@@ -893,29 +902,58 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   }, [refreshStats, showToast, user]);
 
   // Granular Reset Actions
-  const clearAllProgress = useCallback(() => {
-    purgeReadingHistory();
+  const clearAllProgress = useCallback(async () => {
+    cancelAllPendingSyncTimers();
+    if (user?.uid) {
+      try {
+        await deleteCloudReadingProgress(user.uid);
+      } catch (err) {
+        showToast("Failed to reset cloud reading progress. Please try again.");
+        return;
+      }
+    }
+    clearStoredReadingHistory(user?.uid);
     setReadingHistory([]);
-    refreshStats();
-    showToast("Reading history and progress cleared 🧹");
-  }, [refreshStats, showToast]);
+    refreshStats([]);
+    showToast(user ? "Cloud & local reading progress permanently cleared 🧹" : "Reading progress cleared 🧹");
+  }, [user, refreshStats, showToast]);
 
-  const clearAnnotations = useCallback(() => {
+  const clearAnnotations = useCallback(async () => {
+    cancelAllPendingSyncTimers();
+    if (user?.uid) {
+      try {
+        await deleteCloudAnnotations(user.uid);
+      } catch (err) {
+        showToast("Failed to reset cloud annotations. Please try again.");
+        return;
+      }
+    }
     purgeAllAnnotations();
+    setAnnotationsState({});
     refreshStats();
-    showToast("All annotations and bookmarks cleared 🧹");
-  }, [refreshStats, showToast]);
+    showToast(user ? "Cloud & local annotations permanently cleared 🧹" : "All annotations cleared 🧹");
+  }, [user, refreshStats, showToast]);
 
-  const clearStreak = useCallback(() => {
+  const clearStreak = useCallback(async () => {
+    cancelAllPendingSyncTimers();
+    if (user?.uid) {
+      try {
+        await deleteCloudReadingActivity(user.uid);
+      } catch (err) {
+        showToast("Failed to reset cloud reading streak. Please try again.");
+        return;
+      }
+    }
     purgeStreakData(user?.uid);
-    setStreakData({
+    const emptyStreak: ReadingStreakData = {
       daily: {},
       currentStreak: 0,
       longestStreak: 0,
       lastQualifiedDate: null,
-    });
-    refreshStats();
-    showToast("Daily reading streak reset 🪔");
+    };
+    setStreakData(emptyStreak);
+    refreshStats(undefined, undefined, emptyStreak);
+    showToast(user ? "Cloud & local reading streak reset 🪔" : "Reading streak reset 🪔");
   }, [user, refreshStats, showToast]);
 
   const clearOfflineStorage = useCallback(async () => {
@@ -923,25 +961,69 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     showToast("Offline book cache cleared 📦");
   }, [showToast]);
 
-  const factoryReset = useCallback(async () => {
+  const clearLocalDeviceCache = useCallback(async () => {
     await purgeFactoryResetAll();
-    clearShelfDismissals();
-    clearAllCollections();
-    clearAllReflections();
-    setCollections([]);
-    setReflections({});
-    setShelfDismissals({});
-    setFavorites([]);
-    setReadingHistory([]);
-    setStreakData({
-      daily: {},
-      currentStreak: 0,
-      longestStreak: 0,
-      lastQualifiedDate: null,
-    });
-    refreshStats();
-    showToast("All local data reset to defaults ✨");
-  }, [refreshStats, showToast]);
+    showToast("Local device cache cleared. Cloud data will restore on reload 📱");
+  }, [showToast]);
+
+  const factoryReset = useCallback(
+    async (mode: "local_cache" | "permanent_cloud" = "permanent_cloud") => {
+      if (mode === "local_cache") {
+        await purgeFactoryResetAll();
+        showToast("Local device cache cleared. Cloud data will restore on reload 📱");
+        return;
+      }
+
+      cancelAllPendingSyncTimers();
+
+      if (user?.uid) {
+        try {
+          await permanentFactoryResetCloudData(user.uid);
+        } catch (err) {
+          showToast("Failed to reset cloud account data. Please check your connection.");
+          return;
+        }
+        clearAllUserDataForUid(user.uid);
+      } else {
+        await purgeFactoryResetAll();
+      }
+
+      clearShelfDismissals(user?.uid);
+      clearAllCollections(user?.uid);
+      clearAllReflections(user?.uid);
+      clearStoredReadingHistory(user?.uid);
+      clearStoredFavorites(user?.uid);
+      purgeStreakData(user?.uid);
+
+      setCollections([]);
+      setReflections({});
+      setShelfDismissals({});
+      setFavorites([]);
+      setReadingHistory([]);
+      setReadingMemories({});
+      setAnnotationsState({});
+      const emptyStreak: ReadingStreakData = {
+        daily: {},
+        currentStreak: 0,
+        longestStreak: 0,
+        lastQualifiedDate: null,
+      };
+      setStreakData(emptyStreak);
+      setActiveTimeState({ totalActiveSeconds: 0, todayActiveSeconds: 0 });
+      setActiveTimeData({
+        totalActiveSeconds: 0,
+        daily: {},
+        explorationDaily: {},
+        totalExplorationSeconds: 0,
+        lastUpdated: Date.now(),
+      });
+      refreshStats([], [], emptyStreak, { totalActiveSeconds: 0, daily: {}, lastUpdated: Date.now() });
+      showToast(
+        user ? "All cloud & local reading data permanently reset ✨" : "All local data reset to defaults ✨"
+      );
+    },
+    [user, refreshStats, showToast]
+  );
 
   const recordWebsiteActiveTime = useCallback((seconds: number) => {
     const targetUid = user?.uid;
@@ -1050,6 +1132,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       clearAnnotations,
       clearStreak,
       clearOfflineStorage,
+      clearLocalDeviceCache,
       factoryReset,
       collections,
       createCollection,
@@ -1114,6 +1197,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       clearAnnotations,
       clearStreak,
       clearOfflineStorage,
+      clearLocalDeviceCache,
       factoryReset,
       collections,
       createCollection,

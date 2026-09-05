@@ -7,20 +7,77 @@ import { Book } from "@/data/books";
 import { useLibrary } from "@/context/LibraryContext";
 import CardTilt from "./visual/CardTilt";
 
-interface BookCardProps {
+interface BookCardFavoriteButtonProps {
+  bookId: string;
+  bookTitle: string;
+  isFavorited?: boolean;
+  onToggleFavorite?: (bookId: string) => void;
+}
+
+const BookCardFavoriteButton = memo(function BookCardFavoriteButton({
+  bookId,
+  bookTitle,
+  isFavorited,
+  onToggleFavorite,
+}: BookCardFavoriteButtonProps) {
+  const library = useLibrary();
+  const favorited = isFavorited !== undefined ? isFavorited : library.isFavorite(bookId);
+  const toggle = onToggleFavorite || library.toggleFavorite;
+
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        toggle(bookId);
+      }}
+      className={`p-1 sm:p-1.5 rounded-full border transition-all cursor-pointer shrink-0 ${
+        favorited
+          ? "bg-rose-500/20 text-rose-400 border-rose-500/40 shadow-[0_0_10px_rgba(244,63,94,0.3)]"
+          : "bg-[var(--card)] text-[var(--text-secondary)] border-[var(--border)] hover:text-[var(--foreground)] hover:border-[var(--accent)]/50"
+      }`}
+      aria-label={favorited ? `Remove ${bookTitle} from favorites` : `Add ${bookTitle} to favorites`}
+    >
+      <svg
+        className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current transition-transform active:scale-125"
+        viewBox="0 0 24 24"
+      >
+        {favorited ? (
+          <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
+        ) : (
+          <path
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
+          />
+        )}
+      </svg>
+    </button>
+  );
+});
+
+export interface BookCardProps {
   book: Book;
   compact?: boolean;
   onDismiss?: () => void;
   dismissAriaLabel?: string;
+  isFavorited?: boolean;
+  onToggleFavorite?: (bookId: string) => void;
 }
 
-function BookCardComponent({ book, compact = false, onDismiss, dismissAriaLabel }: BookCardProps) {
-  const { isFavorite, toggleFavorite, recordReading } = useLibrary();
-  const favorited = isFavorite(book.id);
-
+function BookCardComponent({
+  book,
+  compact = false,
+  onDismiss,
+  dismissAriaLabel,
+  isFavorited,
+  onToggleFavorite,
+}: BookCardProps) {
   return (
     <CardTilt className="h-full">
-      <article className="group relative flex flex-col h-full glass-card rounded-xl sm:rounded-2xl p-2.5 sm:p-4 glass-card-hover overflow-hidden transition-all duration-300 border border-[var(--border)] hover:border-[var(--accent)]/50 hover:shadow-2xl">
+      <article className="group relative flex flex-col h-full glass-card rounded-xl sm:rounded-2xl p-2.5 sm:p-4 glass-card-hover overflow-hidden transition-all duration-300 border border-[var(--border)] hover:border-[var(--accent)]/50 hover:shadow-2xl [content-visibility:auto] [contain-intrinsic-size:280px_420px]">
         {/* Subtle Light Sweep Gradient on Hover */}
         <div
           className="absolute -inset-full bg-gradient-to-r from-transparent via-[var(--accent)]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none group-hover:translate-x-full ease-in-out"
@@ -62,42 +119,18 @@ function BookCardComponent({ book, compact = false, onDismiss, dismissAriaLabel 
                 ×
               </button>
             )}
-            <button
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                toggleFavorite(book.id);
-              }}
-              className={`p-1 sm:p-1.5 rounded-full border transition-all cursor-pointer shrink-0 ${
-                favorited
-                  ? "bg-rose-500/20 text-rose-400 border-rose-500/40 shadow-[0_0_10px_rgba(244,63,94,0.3)]"
-                  : "bg-[var(--card)] text-[var(--text-secondary)] border-[var(--border)] hover:text-[var(--foreground)] hover:border-[var(--accent)]/50"
-              }`}
-              aria-label={favorited ? `Remove ${book.title} from favorites` : `Add ${book.title} to favorites`}
-            >
-            <svg
-              className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current transition-transform active:scale-125"
-              viewBox="0 0 24 24"
-            >
-              {favorited ? (
-                <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z" />
-              ) : (
-                  <path
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"
-                  />
-                )}
-              </svg>
-            </button>
+            <BookCardFavoriteButton
+              bookId={book.id}
+              bookTitle={book.title}
+              isFavorited={isFavorited}
+              onToggleFavorite={onToggleFavorite}
+            />
           </div>
         </div>
 
         {/* Book Cover Container */}
         <Link
           href={`/book/${book.id}`}
-          onClick={() => recordReading(book.id)}
           className="relative w-full aspect-[2/3] rounded-lg sm:rounded-xl overflow-hidden mb-2.5 sm:mb-3.5 book-shadow bg-[var(--background)] block group/cover"
         >
           <Image
@@ -123,7 +156,6 @@ function BookCardComponent({ book, compact = false, onDismiss, dismissAriaLabel 
           <div>
             <Link
               href={`/book/${book.id}`}
-              onClick={() => recordReading(book.id)}
               className="block group/title"
             >
               <h3 className="font-serif font-black text-[13px] sm:text-[16px] text-[var(--foreground)] group-hover/title:text-[var(--accent)] transition-colors line-clamp-1 leading-snug">
@@ -151,7 +183,6 @@ function BookCardComponent({ book, compact = false, onDismiss, dismissAriaLabel 
 
             <Link
               href={`/book/${book.id}`}
-              onClick={() => recordReading(book.id)}
               className="px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-lg sm:rounded-xl bg-gradient-to-r from-[var(--primary)] to-[var(--accent)] hover:opacity-95 text-[var(--primary-foreground)] font-bold text-[11px] sm:text-xs transition-all shadow-sm hover:shadow-md hover:scale-105 shrink-0 flex items-center gap-1"
             >
               <span>Read</span>

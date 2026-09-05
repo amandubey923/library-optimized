@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, Suspense } from "react";
+import React, { useState, useMemo, useDeferredValue, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import {
   BOOKS,
@@ -11,6 +11,17 @@ import {
   ResourceType,
 } from "@/data/books";
 import BookCard from "@/components/BookCard";
+
+// Precomputed static resource counts for zero-overhead filter rendering
+const TECHNICAL_BOOKS_CACHE = BOOKS.filter((b) => isTechnicalBook(b));
+const RESOURCE_TYPE_COUNTS: Record<string, number> = {
+  All: TECHNICAL_BOOKS_CACHE.length,
+  Book: TECHNICAL_BOOKS_CACHE.filter((b) => b.resourceType === "Book").length,
+  Notes: TECHNICAL_BOOKS_CACHE.filter((b) => b.resourceType === "Notes").length,
+  HandwrittenNotes: TECHNICAL_BOOKS_CACHE.filter((b) => b.resourceType === "HandwrittenNotes").length,
+  CheatSheet: TECHNICAL_BOOKS_CACHE.filter((b) => b.resourceType === "CheatSheet").length,
+  InterviewPrep: TECHNICAL_BOOKS_CACHE.filter((b) => b.resourceType === "InterviewPrep").length,
+};
 
 function LibraryContent() {
   const searchParams = useSearchParams();
@@ -25,6 +36,7 @@ function LibraryContent() {
   const [selectedSubcategory, setSelectedSubcategory] = useState<string>("All Technical");
   const [selectedResourceType, setSelectedResourceType] = useState<string>("All");
   const [searchQuery, setSearchQuery] = useState("");
+  const deferredSearchQuery = useDeferredValue(searchQuery);
   const [selectedLanguage, setSelectedLanguage] = useState<string>("All");
   const [sortBy, setSortBy] = useState<"popular" | "newest" | "title" | "rating" | "pages">(
     (initialSortParam as any) || "popular"
@@ -66,9 +78,9 @@ function LibraryContent() {
       result = result.filter((b) => b.language === selectedLanguage);
     }
 
-    // Filter by Search
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
+    // Filter by Search (using deferred query for 120 FPS fluid typing)
+    if (deferredSearchQuery.trim()) {
+      const q = deferredSearchQuery.toLowerCase().trim();
       result = result.filter(
         (b) =>
           b.title.toLowerCase().includes(q) ||
@@ -95,7 +107,7 @@ function LibraryContent() {
     });
 
     return result;
-  }, [selectedCategory, selectedSubcategory, selectedResourceType, selectedLanguage, searchQuery, sortBy]);
+  }, [selectedCategory, selectedSubcategory, selectedResourceType, selectedLanguage, deferredSearchQuery, sortBy]);
 
   const visibleBooks = useMemo(() => {
     return filteredBooks.slice(0, displayLimit);
@@ -254,10 +266,7 @@ function LibraryContent() {
               <div className="flex flex-wrap gap-1.5">
                 {resourceTypes.map((rt) => {
                   const isRtActive = selectedResourceType === rt.value;
-                  const rtCount =
-                    rt.value === "All"
-                      ? BOOKS.filter((b) => isTechnicalBook(b)).length
-                      : BOOKS.filter((b) => isTechnicalBook(b) && b.resourceType === rt.value).length;
+                  const rtCount = RESOURCE_TYPE_COUNTS[rt.value] ?? 0;
                   return (
                     <button
                       key={rt.value}

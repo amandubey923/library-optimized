@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useRef } from "react";
+import React, { useState, useMemo, useDeferredValue, useRef } from "react";
 import Link from "next/link";
 import { BOOKS, Category, getBooksByCategory, searchBooks, isTechnicalBook } from "@/data/books";
 import HeroVideo from "@/components/HeroVideo";
@@ -15,6 +15,7 @@ export default function HomePage() {
   const [selectedCategory, setSelectedCategory] = useState<Category>("All");
   const [selectedSubcategory, setSelectedSubcategory] = useState<string>("All Technical");
   const [searchQuery, setSearchQuery] = useState("");
+  const deferredSearchQuery = useDeferredValue(searchQuery);
   const [displayLimit, setDisplayLimit] = useState(20);
   const librarySectionRef = useRef<HTMLDivElement>(null);
 
@@ -23,8 +24,8 @@ export default function HomePage() {
       selectedCategory,
       selectedCategory === "Technical Knowledge" ? selectedSubcategory : undefined
     );
-    if (searchQuery.trim()) {
-      result = searchBooks(searchQuery).filter((b) => {
+    if (deferredSearchQuery.trim()) {
+      result = searchBooks(deferredSearchQuery).filter((b) => {
         if (selectedCategory === "All") return true;
         if (selectedCategory === "Technical Knowledge") {
           if (selectedSubcategory !== "All Technical") {
@@ -36,7 +37,7 @@ export default function HomePage() {
       });
     }
     return result;
-  }, [selectedCategory, selectedSubcategory, searchQuery]);
+  }, [selectedCategory, selectedSubcategory, deferredSearchQuery]);
 
   const handleCategoryChange = (cat: Category) => {
     setSelectedCategory(cat);

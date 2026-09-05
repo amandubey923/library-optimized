@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import Image from "next/image";
 import { useLibrary } from "@/context/LibraryContext";
+import { useAuth } from "@/context/AuthContext";
 import dynamic from "next/dynamic";
 import { Book, BOOKS } from "@/data/books";
 import BookCard from "@/components/BookCard";
@@ -22,6 +23,7 @@ const BookReadingMemory = dynamic(() => import("@/components/memory/BookReadingM
 type ShelfTab = "favorites" | "reading" | "completed" | "collections" | "paths" | "insights" | "offline" | "memory" | "stats";
 
 export default function FavoritesPage() {
+  const { user } = useAuth();
   const {
     favoriteBooks,
     readingHistory,
@@ -40,6 +42,7 @@ export default function FavoritesPage() {
     clearAnnotations,
     clearStreak,
     clearOfflineStorage,
+    clearLocalDeviceCache,
     factoryReset,
     collections,
   } = useLibrary();
@@ -1162,29 +1165,118 @@ export default function FavoritesPage() {
             )}
           </div>
 
-          {/* Granular Reset & Recovery Zone */}
-          <div className="w-full glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-8 border border-rose-500/25 bg-[var(--card)] shadow-xl space-y-4 sm:space-y-5 text-left min-w-0">
-            <div className="border-b border-[var(--border)] pb-3">
-              <div className="flex items-center gap-2">
-                <span className="text-lg sm:text-xl">⚠️</span>
-                <h4 className="font-serif font-bold text-xs sm:text-sm text-[var(--foreground)]">
-                  Data Reset &amp; Granular Recovery
-                </h4>
+          {/* =========================================================
+           * SECTION 1: Local Device Cache & Offline Storage (Cloud Safe)
+           * ========================================================= */}
+          <div className="w-full glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-7 border border-emerald-500/25 bg-[var(--card)] shadow-xl space-y-4 sm:space-y-5 text-left min-w-0">
+            <div className="border-b border-[var(--border)] pb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-lg sm:text-xl">📱</span>
+                  <h4 className="font-serif font-bold text-xs sm:text-sm text-[var(--foreground)]">
+                    Device Cache &amp; Offline Storage
+                  </h4>
+                  <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                    Local Only • Cloud Safe
+                  </span>
+                </div>
+                <p className="text-[11px] sm:text-xs text-[var(--text-secondary)] mt-1">
+                  Manage local browser storage and downloaded offline books without affecting your cloud account.
+                </p>
               </div>
-              <p className="text-[11px] sm:text-xs text-[var(--text-secondary)] mt-0.5">
-                Manage specific subsets of locally cached reading data without affecting the rest of your library.
-              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
+              <button
+                type="button"
+                onClick={() =>
+                  setConfirmModal({
+                    isOpen: true,
+                    title: "Clear Offline PDF Storage?",
+                    description: "This will delete all offline PDF book files cached on this device to free up disk space. Your cloud reading history and streak will remain completely unaffected.",
+                    action: async () => {
+                      await clearOfflineStorage();
+                      await refreshOfflineBooks();
+                    },
+                    buttonText: "Purge Offline PDFs",
+                    dangerLevel: "warning",
+                  })
+                }
+                className="p-3.5 rounded-2xl bg-[var(--secondary)]/60 hover:bg-emerald-500/10 hover:border-emerald-500/30 text-[var(--foreground)] border border-[var(--border)] text-left transition-all cursor-pointer space-y-1"
+              >
+                <div className="flex items-center gap-2 text-xs font-bold">
+                  <span>📦</span>
+                  <span>Purge Offline Book Storage</span>
+                </div>
+                <p className="text-[10px] text-[var(--text-secondary)]">
+                  Deletes downloaded PDF files cached on this device to free up disk space.
+                </p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setConfirmModal({
+                    isOpen: true,
+                    title: "Clear Device Cache (Local Only)?",
+                    description: "This will clear local browser cache on this device. Your reading history, streaks, and favorites remain safely saved in the cloud and will automatically restore upon reload.",
+                    action: async () => {
+                      await clearLocalDeviceCache();
+                    },
+                    buttonText: "Clear Device Cache",
+                    dangerLevel: "warning",
+                  })
+                }
+                className="p-3.5 rounded-2xl bg-[var(--secondary)]/60 hover:bg-emerald-500/10 hover:border-emerald-500/30 text-[var(--foreground)] border border-[var(--border)] text-left transition-all cursor-pointer space-y-1"
+              >
+                <div className="flex items-center gap-2 text-xs font-bold">
+                  <span>🧹</span>
+                  <span>Clear Device Cache (Local Only)</span>
+                </div>
+                <p className="text-[10px] text-[var(--text-secondary)]">
+                  Clears local browser cache. Cloud account data is safe and restores on reload.
+                </p>
+              </button>
+            </div>
+          </div>
+
+          {/* =========================================================
+           * SECTION 2: Permanent Account Data Reset (Cloud + Local)
+           * ========================================================= */}
+          <div className="w-full glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-7 border border-rose-500/30 bg-[var(--card)] shadow-xl space-y-4 sm:space-y-5 text-left min-w-0">
+            <div className="border-b border-[var(--border)] pb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-lg sm:text-xl">⚠️</span>
+                  <h4 className="font-serif font-bold text-xs sm:text-sm text-[var(--foreground)]">
+                    Permanent Account Data Reset
+                  </h4>
+                  <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded-full bg-rose-500/15 text-rose-400 border border-rose-500/30">
+                    {user ? "Cloud & Local • Permanent" : "Guest Local Wipe"}
+                  </span>
+                </div>
+                <p className="text-[11px] sm:text-xs text-[var(--text-secondary)] mt-1">
+                  {user
+                    ? "Permanently deletes data from your Reader's HUB cloud servers (Firestore) and this device. This cannot be undone."
+                    : "Permanently wipes guest reading data stored on this browser."}
+                </p>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-3">
               <button
+                type="button"
                 onClick={() =>
                   setConfirmModal({
                     isOpen: true,
-                    title: "Clear Reading History?",
-                    description: "This will reset all reading progress percentages and current page positions. Your favorites and bookmarks will remain intact.",
-                    action: () => clearAllProgress(),
-                    buttonText: "Clear Reading Progress",
+                    title: "Permanently Reset Reading Progress?",
+                    description: user
+                      ? "CRITICAL: This permanently deletes all reading progress percentages, page positions, and finished book status from your cloud account (Firestore) and this device. Favorites and streak will remain intact."
+                      : "This will reset all reading progress percentages and current page positions on this device.",
+                    action: async () => {
+                      await clearAllProgress();
+                    },
+                    buttonText: "Permanently Reset Progress",
                     dangerLevel: "warning",
                   })
                 }
@@ -1192,21 +1284,53 @@ export default function FavoritesPage() {
               >
                 <div className="flex items-center gap-2 text-xs font-bold">
                   <span>📖</span>
-                  <span>Clear Reading Progress</span>
+                  <span>Reset Reading Progress</span>
                 </div>
                 <p className="text-[10px] text-[var(--text-secondary)]">
-                  Resets active page positions and progress bars.
+                  Permanently clears active page positions and progress bars in the cloud and locally.
                 </p>
               </button>
 
               <button
+                type="button"
                 onClick={() =>
                   setConfirmModal({
                     isOpen: true,
-                    title: "Clear All Annotations?",
-                    description: "This will remove all text highlights, notes, vector pen drawings, and bookmarks across all books.",
-                    action: () => clearAnnotations(),
-                    buttonText: "Clear Annotations",
+                    title: "Permanently Reset Reading Streak?",
+                    description: user
+                      ? "CRITICAL: This permanently resets your daily reading activity ledger in Firestore cloud storage, resets your current/longest streak to 0, and extinguishes today's Diwali Diya."
+                      : "This will reset your daily active reading streak and extinguish today's Diwali Diya on this device.",
+                    action: async () => {
+                      await clearStreak();
+                    },
+                    buttonText: "Permanently Reset Streak",
+                    dangerLevel: "warning",
+                  })
+                }
+                className="p-3.5 rounded-2xl bg-[var(--secondary)]/60 hover:bg-rose-500/15 hover:border-rose-500/30 text-[var(--foreground)] border border-[var(--border)] text-left transition-all cursor-pointer space-y-1"
+              >
+                <div className="flex items-center gap-2 text-xs font-bold">
+                  <span>🪔</span>
+                  <span>Reset Daily Streak &amp; Activity</span>
+                </div>
+                <p className="text-[10px] text-[var(--text-secondary)]">
+                  Permanently clears the 15-minute daily reading ledger and extinguishes the Diya flame.
+                </p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setConfirmModal({
+                    isOpen: true,
+                    title: "Permanently Clear All Annotations?",
+                    description: user
+                      ? "CRITICAL: This permanently removes all text highlights, notes, vector pen drawings, and bookmarks across all books from your cloud account (Firestore) and this device."
+                      : "This will remove all text highlights, notes, drawings, and bookmarks on this device.",
+                    action: async () => {
+                      await clearAnnotations();
+                    },
+                    buttonText: "Permanently Clear Annotations",
                     dangerLevel: "warning",
                   })
                 }
@@ -1217,79 +1341,35 @@ export default function FavoritesPage() {
                   <span>Clear Annotations &amp; Notes</span>
                 </div>
                 <p className="text-[10px] text-[var(--text-secondary)]">
-                  Deletes all highlights, handwritten sketches, and notes.
+                  Permanently deletes all highlights, sketches, and notes from cloud and device.
                 </p>
               </button>
 
               <button
+                type="button"
                 onClick={() =>
                   setConfirmModal({
                     isOpen: true,
-                    title: "Reset Reading Streak?",
-                    description: "This will reset your daily active reading streak and extinguish today's Diwali Diya.",
-                    action: () => clearStreak(),
-                    buttonText: "Reset Streak",
-                    dangerLevel: "warning",
-                  })
-                }
-                className="p-3.5 rounded-2xl bg-[var(--secondary)]/60 hover:bg-rose-500/15 hover:border-rose-500/30 text-[var(--foreground)] border border-[var(--border)] text-left transition-all cursor-pointer space-y-1"
-              >
-                <div className="flex items-center gap-2 text-xs font-bold">
-                  <span>🪔</span>
-                  <span>Reset Reading Streak</span>
-                </div>
-                <p className="text-[10px] text-[var(--text-secondary)]">
-                  Clears the 15-minute daily activity ledger.
-                </p>
-              </button>
-
-              <button
-                onClick={() =>
-                  setConfirmModal({
-                    isOpen: true,
-                    title: "Clear Offline Book Cache?",
-                    description: "This will delete all offline PDF files downloaded onto this device. You will need internet access to read them again.",
+                    title: "Permanently Factory Reset All Reading Data?",
+                    description: user
+                      ? "DANGER: This permanently deletes ALL reading progress, favorites, streak logs, reading memories, collections, reflections, and annotations from your cloud account (Firestore) and this device. Your login account and username will remain intact."
+                      : "DANGER: This permanently removes all favorites, reading history, highlights, notes, sketches, bookmarks, and streak logs from this browser.",
                     action: async () => {
-                      await clearOfflineStorage();
+                      await factoryReset("permanent_cloud");
                       await refreshOfflineBooks();
                     },
-                    buttonText: "Clear Offline Cache",
-                    dangerLevel: "warning",
-                  })
-                }
-                className="p-3.5 rounded-2xl bg-[var(--secondary)]/60 hover:bg-rose-500/15 hover:border-rose-500/30 text-[var(--foreground)] border border-[var(--border)] text-left transition-all cursor-pointer space-y-1"
-              >
-                <div className="flex items-center gap-2 text-xs font-bold">
-                  <span>📦</span>
-                  <span>Purge Offline Storage Cache</span>
-                </div>
-                <p className="text-[10px] text-[var(--text-secondary)]">
-                  Frees up cached device storage space.
-                </p>
-              </button>
-
-              <button
-                onClick={() =>
-                  setConfirmModal({
-                    isOpen: true,
-                    title: "Factory Reset All Local Data?",
-                    description: "CRITICAL: This permanently removes all favorites, reading history, highlights, notes, sketches, bookmarks, streak logs, and offline downloads.",
-                    action: async () => {
-                      await factoryReset();
-                      await refreshOfflineBooks();
-                    },
-                    buttonText: "Reset Everything to Defaults",
+                    buttonText: "Permanently Reset All Cloud Data",
                     dangerLevel: "danger",
                   })
                 }
-                className="p-3.5 rounded-2xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-left transition-all cursor-pointer space-y-1 sm:col-span-2 lg:col-span-2"
+                className="p-3.5 rounded-2xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-left transition-all cursor-pointer space-y-1 sm:col-span-2 lg:col-span-3"
               >
                 <div className="flex items-center gap-2 text-xs font-bold">
                   <span>💥</span>
-                  <span>Factory Reset (Clear Everything)</span>
+                  <span>Permanent Factory Reset (Wipe All Reading Data)</span>
                 </div>
                 <p className="text-[10px] text-rose-300/80">
-                  Full wipe of all local Reader&apos;s HUB data back to default clean slate.
+                  Irreversible complete wipe of all cloud and local reading records back to clean slate. Login identity remains safe.
                 </p>
               </button>
             </div>

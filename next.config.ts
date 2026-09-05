@@ -7,6 +7,7 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["firebase-admin"],
   experimental: {
     cpus: 2,
+    optimizePackageImports: ["lucide-react", "@google/genai", "date-fns"],
   },
   images: {
     formats: ["image/avif", "image/webp"],

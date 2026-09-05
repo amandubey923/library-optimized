@@ -10,13 +10,13 @@ import dynamic from "next/dynamic";
 import Logo from "./Logo";
 import NavbarThemeControl from "./visual/NavbarThemeControl";
 import DiwaliDiya from "./visual/DiwaliDiya";
-import AuthModal from "./auth/AuthModal";
 import InstallAppButton from "./pwa/InstallAppButton";
 import { useEntitlement } from "@/context/EntitlementContext";
 import ProBadge from "./payment/ProBadge";
 import { isAdminUser } from "@/lib/admin";
 
 const SearchModal = dynamic(() => import("./SearchModal"), { ssr: false });
+const AuthModal = dynamic(() => import("./auth/AuthModal"), { ssr: false });
 
 export default function Navbar() {
   const [mounted, setMounted] = useState(false);
@@ -37,7 +37,7 @@ export default function Navbar() {
     const handleScroll = () => {
       setScrolled(window.scrollY > 20);
     };
-    window.addEventListener("scroll", handleScroll);
+    window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
