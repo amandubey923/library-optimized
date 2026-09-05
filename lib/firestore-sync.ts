@@ -1104,3 +1104,41 @@ export async function permanentFactoryResetCloudData(uid: string): Promise<boole
   }
 }
 
+/**
+ * Synchronize user settings/preferences to Firestore (/users/{uid}/data/settings)
+ */
+export async function syncUserSettingsToCloud(
+  uid: string,
+  settings: { customGoalMinutes?: number }
+): Promise<void> {
+  const currentDb = getFirebaseDb() || db;
+  if (!currentDb || !uid || !settings) return;
+  try {
+    const docRef = doc(currentDb, "users", uid, "data", "settings");
+    await setDoc(docRef, settings, { merge: true });
+  } catch (err) {
+    console.warn("[Firestore] Failed to sync user settings to cloud:", err);
+  }
+}
+
+/**
+ * Fetch user settings/preferences from Firestore (/users/{uid}/data/settings)
+ */
+export async function fetchUserSettingsFromCloud(
+  uid: string
+): Promise<{ customGoalMinutes?: number } | null> {
+  const currentDb = getFirebaseDb() || db;
+  if (!currentDb || !uid) return null;
+  try {
+    const docRef = doc(currentDb, "users", uid, "data", "settings");
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      return snap.data() as { customGoalMinutes?: number };
+    }
+  } catch (err) {
+    console.warn("[Firestore] Failed to fetch user settings from cloud:", err);
+  }
+  return null;
+}
+
+

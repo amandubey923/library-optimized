@@ -10,6 +10,7 @@ import dynamic from "next/dynamic";
 import { Book, BOOKS } from "@/data/books";
 import BookCard from "@/components/BookCard";
 import { getLocalDateKey, getPreviousDateKey, DAILY_READING_GOAL_SECONDS, getGenuinelyCompletedBookIds } from "@/lib/reader-storage";
+import { syncUserSettingsToCloud, fetchUserSettingsFromCloud } from "@/lib/firestore-sync";
 import AuthGuard from "@/components/auth/AuthGuard";
 import CollectionsTab from "@/components/collections/CollectionsTab";
 import ReadingPathsTab from "@/components/paths/ReadingPathsTab";
@@ -121,7 +122,18 @@ export default function FavoritesPage() {
     } catch {
       // Ignore
     }
-  }, []);
+
+    if (user?.uid) {
+      fetchUserSettingsFromCloud(user.uid).then((cloudSettings) => {
+        if (cloudSettings?.customGoalMinutes && [15, 30, 45, 60].includes(cloudSettings.customGoalMinutes)) {
+          setCustomGoalMinutes(cloudSettings.customGoalMinutes);
+          try {
+            localStorage.setItem("readershub_custom_goal_minutes", String(cloudSettings.customGoalMinutes));
+          } catch {}
+        }
+      });
+    }
+  }, [user?.uid]);
 
   const handleUpdateGoal = (mins: number) => {
     setCustomGoalMinutes(mins);
@@ -131,15 +143,24 @@ export default function FavoritesPage() {
     } catch {
       // Ignore
     }
+    if (user?.uid) {
+      syncUserSettingsToCloud(user.uid, { customGoalMinutes: mins });
+    }
   };
 
-  // 1. Derive In-Progress vs Completed Books from Reading History (Dismissal Aware)
+  // 1. Authoritative Completed Books Set for strict mutual exclusivity
+  const completedSet = useMemo(() => {
+    return new Set(getGenuinelyCompletedBookIds(readingHistory));
+  }, [readingHistory]);
+
+  // Derive In-Progress Books from Reading History (Mutually exclusive with Completed)
   const currentlyReadingBooks = useMemo(() => {
     return readingHistory
       .filter(
         (item) =>
           item.progress < 95 &&
           (!item.totalPages || item.page < item.totalPages) &&
+          !completedSet.has(item.bookId) &&
           !isDismissedFromShelf("reading", item.bookId)
       )
       .map((item) => {
@@ -154,7 +175,7 @@ export default function FavoritesPage() {
         };
       })
       .filter(Boolean) as (Book & { currentPage: number; totalPages: number | string; progress: number; lastReadAt: number })[];
-  }, [readingHistory, isDismissedFromShelf]);
+  }, [readingHistory, completedSet, isDismissedFromShelf]);
 
   // Spotlight most recent reading book (Dismissal Aware)
   const spotlightBook = useMemo(() => {
@@ -168,7 +189,6 @@ export default function FavoritesPage() {
   }, [spotlightBook, getReadingMemory]);
 
   const completedBooks = useMemo(() => {
-    const completedSet = new Set(getGenuinelyCompletedBookIds(readingHistory));
     return readingHistory
       .filter(
         (item) =>
@@ -187,15 +207,16 @@ export default function FavoritesPage() {
         };
       })
       .filter((b): b is Book & { currentPage: number; totalPages: number | string; progress: number; lastReadAt: number } => b !== null);
-  }, [readingHistory, isDismissedFromShelf]);
+  }, [readingHistory, completedSet, isDismissedFromShelf]);
 
-  // 2. Derive Books with Reading Memory / In-Progress (Dismissal Aware)
+  // 2. Derive Books with Reading Memory / In-Progress (Mutually exclusive with Completed)
   const memoryBooks = useMemo(() => {
     return readingHistory
       .filter(
         (item) =>
           item.progress < 95 &&
           (!item.totalPages || item.page < item.totalPages) &&
+          !completedSet.has(item.bookId) &&
           !isDismissedFromShelf("memory", item.bookId)
       )
       .map((item) => {
@@ -211,7 +232,7 @@ export default function FavoritesPage() {
         };
       })
       .filter((b): b is Book & { memory: any; currentPage: number; totalPages: number | string; progress: number } => b !== null);
-  }, [readingHistory, getReadingMemory, isDismissedFromShelf]);
+  }, [readingHistory, completedSet, getReadingMemory, isDismissedFromShelf]);
 
   // 3. Derive Offline Books (Dismissal Aware)
   const visibleOfflineBooks = useMemo(() => {
@@ -312,7 +333,9 @@ export default function FavoritesPage() {
           My Library
         </h1>
         <p className="text-xs sm:text-sm text-[var(--text-secondary)] font-normal max-w-2xl">
-          Your private reading workspace, saved 100% locally with zero logins or server tracking.
+          {user
+            ? "Synced securely with your Reader's HUB cloud account across all your devices."
+            : "Your private reading workspace, saved locally on this device."}
         </p>
       </div>
 
