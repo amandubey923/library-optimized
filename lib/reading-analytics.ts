@@ -239,7 +239,7 @@ export function getComprehensiveAnalytics(
   const targetUid = customSource?.uid;
   const streakData: ReadingStreakData = customSource?.streakData || getReadingActivityData(targetUid);
   const activeTimeData: WebsiteActiveTimeData = customSource?.activeTimeData || getWebsiteActiveTimeData(targetUid);
-  const readingMemories: Record<string, BookReadingMemory> = customSource?.readingMemories || getAllReadingMemories();
+  const readingMemories: Record<string, BookReadingMemory> = customSource?.readingMemories || getAllReadingMemories(targetUid);
   const readingHistory: ReadingProgressItem[] = customSource?.readingHistory || [];
   const favoritesList: string[] = customSource?.favorites || [];
   const todayKey = getLocalDateKey();

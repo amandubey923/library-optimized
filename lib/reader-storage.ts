@@ -181,7 +181,6 @@ export function getActiveTimeStorageKey(uid?: string | null): string {
   const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
   return targetUid ? `readershub:active-time:v1:${targetUid}` : "readershub:active-time:v1:guest";
 }
-export const ACCOUNT_A_UID = "Xhi5hhDIsEYJtFKgY96gvdaKxWw2";
 export const FAVORITES_KEY = "readers_hub_favorites_v2";
 export const HISTORY_KEY = "readers_hub_reading_progress_v2";
 const OFFLINE_CACHE_NAME = "readershub-offline-books-v1";
@@ -207,7 +206,7 @@ export function getStoredFavorites(uid?: string | null): string[] {
       if (Array.isArray(parsed)) return parsed;
     }
     const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
-    if (!targetUid || targetUid === ACCOUNT_A_UID) {
+    if (!targetUid) {
       const legacy = localStorage.getItem(FAVORITES_KEY);
       if (legacy) {
         const parsed = JSON.parse(legacy);
@@ -226,7 +225,7 @@ export function saveStoredFavorites(favs: string[], uid?: string | null): void {
     const key = getFavoritesStorageKey(uid);
     localStorage.setItem(key, JSON.stringify(favs));
     const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
-    if (!targetUid || targetUid === ACCOUNT_A_UID) {
+    if (!targetUid) {
       localStorage.setItem(FAVORITES_KEY, JSON.stringify(favs));
     }
   } catch (e) {
@@ -244,7 +243,7 @@ export function getStoredReadingHistory(uid?: string | null): ReadingProgressIte
       if (Array.isArray(parsed)) return parsed;
     }
     const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
-    if (!targetUid || targetUid === ACCOUNT_A_UID) {
+    if (!targetUid) {
       const legacy = localStorage.getItem(HISTORY_KEY);
       if (legacy) {
         const parsed = JSON.parse(legacy);
@@ -263,7 +262,7 @@ export function saveStoredReadingHistory(history: ReadingProgressItem[], uid?: s
     const key = getHistoryStorageKey(uid);
     localStorage.setItem(key, JSON.stringify(history));
     const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
-    if (!targetUid || targetUid === ACCOUNT_A_UID) {
+    if (!targetUid) {
       localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
     }
   } catch (e) {
@@ -647,18 +646,8 @@ export function getReadingActivityData(uid?: string | null): ReadingStreakData {
   try {
     let raw = localStorage.getItem(userKey);
 
-    // One-time safe migration strictly for Account A if user-specific key is not yet set
-    if (!raw && targetUid === "Xhi5hhDIsEYJtFKgY96gvdaKxWw2") {
-      const legacy = localStorage.getItem(ACTIVITY_KEY);
-      if (legacy) {
-        try {
-          const parsedLegacy = JSON.parse(legacy);
-          if (parsedLegacy?.daily && Object.keys(parsedLegacy.daily).length > 0) {
-            raw = legacy;
-            localStorage.setItem(userKey, legacy);
-          }
-        } catch {}
-      }
+    if (!raw && !targetUid) {
+      raw = localStorage.getItem(ACTIVITY_KEY);
     }
 
     if (raw) {
@@ -765,8 +754,7 @@ export function getWebsiteActiveTimeData(uid?: string | null): WebsiteActiveTime
   try {
     let raw = localStorage.getItem(userKey);
 
-    // One-time migration strictly for Account A if user-specific key is not set
-    if (!raw && targetUid === ACCOUNT_A_UID) {
+    if (!raw && !targetUid) {
       const legacy = localStorage.getItem(ACTIVE_TIME_KEY);
       if (legacy) {
         try {
@@ -840,7 +828,7 @@ export function saveWebsiteActiveTimeData(data: WebsiteActiveTimeData, uid?: str
     const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
     const userKey = getActiveTimeStorageKey(targetUid);
     localStorage.setItem(userKey, JSON.stringify(data));
-    if (!targetUid || targetUid === ACCOUNT_A_UID) {
+    if (!targetUid) {
       localStorage.setItem(ACTIVE_TIME_KEY, JSON.stringify(data));
     }
   } catch (e) {
@@ -929,7 +917,7 @@ export function getBookReadingMemory(bookId: string, uid?: string | null): BookR
     const userKey = getMemoryStorageKey(bookId, targetUid);
     let raw = localStorage.getItem(userKey);
 
-    if (!raw && (!targetUid || targetUid === ACCOUNT_A_UID)) {
+    if (!raw && !targetUid) {
       const legacy = localStorage.getItem(`${MEMORY_KEY_PREFIX}:${bookId}`);
       if (legacy) {
         raw = legacy;
@@ -982,7 +970,7 @@ export function addBookReadingSeconds(
     memoryCache.set(cacheKey, mem);
     const userKey = getMemoryStorageKey(bookId, targetUid);
     localStorage.setItem(userKey, JSON.stringify(mem));
-    if (!targetUid || targetUid === ACCOUNT_A_UID) {
+    if (!targetUid) {
       localStorage.setItem(`${MEMORY_KEY_PREFIX}:${bookId}`, JSON.stringify(mem));
     }
   } catch (e) {
@@ -1022,7 +1010,7 @@ export function recordReadingMemorySession(
     memoryCache.set(cacheKey, mem);
     const userKey = getMemoryStorageKey(event.bookId, targetUid);
     localStorage.setItem(userKey, JSON.stringify(mem));
-    if (!targetUid || targetUid === ACCOUNT_A_UID) {
+    if (!targetUid) {
       localStorage.setItem(`${MEMORY_KEY_PREFIX}:${event.bookId}`, JSON.stringify(mem));
     }
   } catch (e) {
@@ -1045,7 +1033,7 @@ export function getAllReadingMemories(uid?: string | null): Record<string, BookR
       if (userPrefix && key.startsWith(userPrefix)) {
         const bookId = key.replace(userPrefix, "");
         if (bookId) result[bookId] = getBookReadingMemory(bookId, targetUid);
-      } else if ((!targetUid || targetUid === ACCOUNT_A_UID) && key.startsWith(`${MEMORY_KEY_PREFIX}:`)) {
+      } else if (!targetUid && key.startsWith(`${MEMORY_KEY_PREFIX}:`)) {
         // Only consider keys that do NOT belong to another user
         const rest = key.replace(`${MEMORY_KEY_PREFIX}:`, "");
         if (!rest.includes(":")) {
@@ -1388,24 +1376,26 @@ export function clearPageDrawings(bookId: string, page: number): void {
  */
 export function getGenuinelyCompletedBookIds(
   history?: ReadingProgressItem[],
-  memories?: Record<string, BookReadingMemory>
+  memories?: Record<string, BookReadingMemory>,
+  uid?: string | null
 ): string[] {
+  const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
   let historyList = history;
   if (!historyList && typeof window !== "undefined") {
     try {
-      const userKey = getHistoryStorageKey();
+      const userKey = getHistoryStorageKey(targetUid);
       const raw = localStorage.getItem(userKey);
       if (raw) historyList = JSON.parse(raw);
     } catch {}
   }
   if (!historyList) historyList = [];
 
-  const allMemories = memories || (typeof window !== "undefined" ? getAllReadingMemories() : {});
+  const allMemories = memories || (typeof window !== "undefined" ? getAllReadingMemories(targetUid) : {});
   const completedIds: string[] = [];
 
   for (const item of historyList) {
     if (!item?.bookId) continue;
-    const mem = allMemories[item.bookId] || (typeof window !== "undefined" ? getBookReadingMemory(item.bookId) : undefined);
+    const mem = allMemories[item.bookId] || (typeof window !== "undefined" ? getBookReadingMemory(item.bookId, targetUid) : undefined);
     const bookSecs = mem?.totalSeconds || 0;
     const isProgressCompleted = item.progress >= 95 || Boolean(item.totalPages && item.page >= item.totalPages);
 
@@ -1481,12 +1471,12 @@ export function calculateReadingStats(
     const parsed: ReadingProgressItem[] =
       explicitHistory !== undefined ? explicitHistory : getStoredReadingHistory(targetUid);
 
-    const allMemories = getAllReadingMemories();
-    const completedIds = getGenuinelyCompletedBookIds(parsed, allMemories);
+    const allMemories = getAllReadingMemories(targetUid);
+    const completedIds = getGenuinelyCompletedBookIds(parsed, allMemories, targetUid);
     booksCompleted = completedIds.length;
 
     for (const item of parsed) {
-      const mem = allMemories[item.bookId] || getBookReadingMemory(item.bookId);
+      const mem = allMemories[item.bookId] || getBookReadingMemory(item.bookId, targetUid);
       const bookSecs = mem?.totalSeconds || 0;
       const hasGenuineReading = bookSecs >= 30 || item.progress > 0 || (item.page && item.page > 1);
 
@@ -1556,8 +1546,10 @@ export function calculateReadingStats(
 // Backup / Data Export & Import (100% Client-Side JSON)
 // -------------------------------------------------------------
 
-export function exportAllUserData(): string {
+export function exportAllUserData(uid?: string | null): string {
   if (typeof window === "undefined") return "{}";
+
+  const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
 
   const exportData: ReaderHubExportData = {
     version: "1.3.0",
@@ -1566,28 +1558,33 @@ export function exportAllUserData(): string {
     readingHistory: [],
     annotations: {},
     bookmarks: {},
-    readingActivity: getReadingActivityData(),
-    readingMemories: getAllReadingMemories(),
-    activeTime: getWebsiteActiveTimeData(),
+    readingActivity: getReadingActivityData(targetUid),
+    readingMemories: getAllReadingMemories(targetUid),
+    activeTime: getWebsiteActiveTimeData(targetUid),
   };
 
   try {
-    const favs = localStorage.getItem(FAVORITES_KEY);
+    const favKey = getFavoritesStorageKey(targetUid);
+    const favs = localStorage.getItem(favKey);
     if (favs) exportData.favorites = JSON.parse(favs);
 
-    const history = localStorage.getItem(HISTORY_KEY);
+    const histKey = getHistoryStorageKey(targetUid);
+    const history = localStorage.getItem(histKey);
     if (history) exportData.readingHistory = JSON.parse(history);
+
+    const annotPrefix = targetUid ? `reader_annotations_v2_${targetUid}:` : ANNOTATIONS_KEY_PREFIX;
+    const bkmkPrefix = targetUid ? `reader_bookmarks_v2_${targetUid}:` : BOOKMARKS_KEY_PREFIX;
 
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (!key) continue;
 
-      if (key.startsWith(ANNOTATIONS_KEY_PREFIX)) {
-        const bookId = key.replace(`${ANNOTATIONS_KEY_PREFIX}:`, "");
+      if (key.startsWith(annotPrefix)) {
+        const bookId = key.replace(`${annotPrefix}:`, "").replace(annotPrefix, "");
         const raw = localStorage.getItem(key);
         if (raw) exportData.annotations[bookId] = JSON.parse(raw);
-      } else if (key.startsWith(BOOKMARKS_KEY_PREFIX)) {
-        const bookId = key.replace(`${BOOKMARKS_KEY_PREFIX}:`, "");
+      } else if (key.startsWith(bkmkPrefix)) {
+        const bookId = key.replace(`${bkmkPrefix}:`, "").replace(bkmkPrefix, "");
         const raw = localStorage.getItem(key);
         if (raw) exportData.bookmarks[bookId] = JSON.parse(raw);
       }
@@ -1848,7 +1845,7 @@ export function exportAllStorageDataForSync(uid?: string | null): {
   const readingHistory = getStoredReadingHistory(targetUid);
   const readingActivity = getReadingActivityData(targetUid);
   const activeTime = getWebsiteActiveTimeData(targetUid);
-  const readingMemories = getAllReadingMemories();
+  const readingMemories = getAllReadingMemories(targetUid);
   const annotations = getAllBookAnnotations();
   const collections = getReadingCollections();
   const reflections = getBookReflections();
@@ -2008,7 +2005,7 @@ export function hydrateStorageFromCloudData(
           };
           const userKey = getMemoryStorageKey(bookId, targetUid);
           localStorage.setItem(userKey, JSON.stringify(mergedMem));
-          if (!targetUid || targetUid === ACCOUNT_A_UID) {
+          if (!targetUid) {
             localStorage.setItem(`${MEMORY_KEY_PREFIX}:${bookId}`, JSON.stringify(mergedMem));
           }
         }
