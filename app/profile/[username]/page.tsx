@@ -298,11 +298,20 @@ export default function PublicProfilePage() {
                     <span className="text-[var(--text-secondary)]">Following</span>
                   </button>
 
-                  <span className="text-[var(--border)]">•</span>
-
-                  <span className="text-[var(--text-secondary)]/80 text-[11px]">
-                    Joined {new Date(profile.createdAt).toLocaleDateString("en-US", { month: "short", year: "numeric" })}
-                  </span>
+                  {(() => {
+                    const raw = profile.createdAt;
+                    if (!raw) return null;
+                    const d = new Date(raw);
+                    if (isNaN(d.getTime())) return null;
+                    return (
+                      <>
+                        <span className="text-[var(--border)]">•</span>
+                        <span className="text-[var(--text-secondary)]/80 text-[11px]">
+                          Joined {d.toLocaleDateString("en-US", { month: "short", year: "numeric" })}
+                        </span>
+                      </>
+                    );
+                  })()}
                 </div>
               </div>
             </div>

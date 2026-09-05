@@ -411,15 +411,32 @@ export default function ProfilePage() {
                     )}
                   </div>
 
-                  {profileHeader.memberSince ? (
-                    <div className="flex items-center gap-2 flex-wrap text-[11px]">
-                      <span>📅 Reader since <strong>{profileHeader.memberSince}</strong></span>
-                      <span>•</span>
-                      <span>Active for <strong>{profileHeader.totalDaysSinceFirstActivity} days</strong></span>
-                    </div>
-                  ) : (
-                    <div className="text-[11px]">First reading session begins today!</div>
-                  )}
+                  {(() => {
+                    const authCreationTime = user?.metadata?.creationTime
+                      ? new Date(user.metadata.creationTime).getTime()
+                      : null;
+                    const isValidAuth = authCreationTime && !isNaN(authCreationTime);
+                    const memberSinceStr = isValidAuth
+                      ? new Date(authCreationTime).toLocaleDateString("en-US", {
+                          month: "short",
+                          year: "numeric",
+                        })
+                      : profileHeader.memberSince;
+
+                    const daysActive = isValidAuth
+                      ? Math.max(1, Math.ceil((Date.now() - authCreationTime) / (1000 * 60 * 60 * 24)))
+                      : profileHeader.totalDaysSinceFirstActivity;
+
+                    return memberSinceStr ? (
+                      <div className="flex items-center gap-2 flex-wrap text-[11px]">
+                        <span>📅 Reader since <strong>{memberSinceStr}</strong></span>
+                        <span>•</span>
+                        <span>Active for <strong>{daysActive} days</strong></span>
+                      </div>
+                    ) : (
+                      <div className="text-[11px]">First reading session begins today!</div>
+                    );
+                  })()}
                 </div>
 
                 {/* Clean Action Button Hierarchy */}

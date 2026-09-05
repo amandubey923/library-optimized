@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getFirebaseAdminFirestore } from "@/lib/firebase-admin";
+import { getFirebaseAdminFirestore, getFirebaseAdminAuth } from "@/lib/firebase-admin";
 
 export const dynamic = "force-dynamic";
 
@@ -171,6 +171,26 @@ export async function GET(req: NextRequest) {
 
     // Remove private sensitive fields
     delete profileData.email;
+
+    // Ensure authoritative creation timestamp from Firebase Auth
+    if (targetUid && (!profileData.createdAt || isNaN(new Date(profileData.createdAt).getTime()))) {
+      try {
+        const adminAuth = getFirebaseAdminAuth();
+        if (adminAuth) {
+          const authUser = await adminAuth.getUser(targetUid);
+          if (authUser?.metadata?.creationTime) {
+            const parsed = new Date(authUser.metadata.creationTime).getTime();
+            if (!isNaN(parsed) && parsed > 0) {
+              profileData.createdAt = parsed;
+              adminDb.collection("public_profiles").doc(targetUid).set({ createdAt: parsed }, { merge: true }).catch(() => {});
+              adminDb.collection("users").doc(targetUid).set({ createdAt: parsed }, { merge: true }).catch(() => {});
+            }
+          }
+        }
+      } catch (authErr) {
+        console.warn("[Profile API] Auth creationTime lookup notice:", authErr);
+      }
+    }
 
     // 5. Always compute authentic live followers & following counts directly from follows collection
     try {
