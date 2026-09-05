@@ -29,10 +29,54 @@ export async function GET(req: NextRequest) {
     const followersCount = followersSnap.data().count || 0;
     const followingCount = followingSnap.data().count || 0;
 
+    const includeList = searchParams.get("list") === "true";
+    let followers: any[] = [];
+    let following: any[] = [];
+
+    if (includeList) {
+      const [followersListSnap, followingListSnap] = await Promise.all([
+        adminDb.collection("follows").where("followingUid", "==", uid).limit(50).get(),
+        adminDb.collection("follows").where("followerUid", "==", uid).limit(50).get(),
+      ]);
+
+      const followerUids = followersListSnap.docs.map((d) => d.data().followerUid).filter(Boolean);
+      const followingUids = followingListSnap.docs.map((d) => d.data().followingUid).filter(Boolean);
+
+      const fetchProfiles = async (uids: string[]) => {
+        if (uids.length === 0) return [];
+        const snaps = await Promise.all(uids.map((u) => adminDb.collection("public_profiles").doc(u).get()));
+        return snaps
+          .map((snap) => {
+            if (!snap.exists) return null;
+            const data = snap.data() || {};
+            return {
+              uid: snap.id,
+              username: data.username || "reader",
+              displayName: data.displayName || "Reader",
+              photoURL: data.photoURL || undefined,
+              bio: data.bio || undefined,
+              followersCount: data.followersCount || 0,
+              followingCount: data.followingCount || 0,
+              readingStreak: data.readingStreak || 0,
+              booksCompleted: data.booksCompleted || 0,
+              totalReadingSeconds: data.totalReadingSeconds || 0,
+            };
+          })
+          .filter(Boolean);
+      };
+
+      [followers, following] = await Promise.all([
+        fetchProfiles(followerUids),
+        fetchProfiles(followingUids),
+      ]);
+    }
+
     return NextResponse.json({
       uid,
       followersCount,
       followingCount,
+      followers: includeList ? followers : undefined,
+      following: includeList ? following : undefined,
     });
   } catch (err: any) {
     console.error("[Follow API GET] Error counting follows:", err);

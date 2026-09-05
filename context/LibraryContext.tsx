@@ -150,6 +150,7 @@ interface LibraryContextType {
   globalActiveSeconds: number;
   todayActiveSeconds: number;
   globalReadingSeconds: number;
+  activeTimeData: WebsiteActiveTimeData;
   recordWebsiteActiveTime: (seconds: number) => { totalActiveSeconds: number; todayActiveSeconds: number };
   addBookReadingTime: (bookId: string, seconds: number) => BookReadingMemory;
   // Streak & Active Reading Extensions (Diwali Diya)
@@ -223,6 +224,13 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     totalActiveSeconds: number;
     todayActiveSeconds: number;
   }>({ totalActiveSeconds: 0, todayActiveSeconds: 0 });
+  const [activeTimeData, setActiveTimeData] = useState<WebsiteActiveTimeData>(() => ({
+    totalActiveSeconds: 0,
+    daily: {},
+    explorationDaily: {},
+    totalExplorationSeconds: 0,
+    lastUpdated: Date.now(),
+  }));
   const [streakData, setStreakData] = useState<ReadingStreakData>({
     daily: {},
     currentStreak: 0,
@@ -527,6 +535,13 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
           lastQualifiedDate: null,
         });
         setActiveTimeState({ totalActiveSeconds: 0, todayActiveSeconds: 0 });
+        setActiveTimeData({
+          totalActiveSeconds: 0,
+          daily: {},
+          explorationDaily: {},
+          totalExplorationSeconds: 0,
+          lastUpdated: Date.now(),
+        });
         setStats(calculateReadingStats());
         setActiveSession(null);
       }
@@ -539,6 +554,8 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     // Immediately prime local state with this user's isolated local activity before cloud sync arrives
     const localUserStreak = getReadingActivityData(user.uid);
     setStreakData(localUserStreak);
+    const localActiveTime = getWebsiteActiveTimeData(user.uid);
+    setActiveTimeData(localActiveTime);
 
     // Immediately prime local favorites and reading history before cloud sync arrives
     const localFavs = getStoredFavorites(user.uid);
@@ -569,6 +586,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       setAnnotationsState(cloudData.annotations || {});
 
       activeTimeDataRef.current = cloudData.activeTime;
+      setActiveTimeData(cloudData.activeTime);
       const todayKey = getLocalDateKey();
       setActiveTimeState({
         totalActiveSeconds: cloudData.activeTime.totalActiveSeconds || 0,
@@ -768,6 +786,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     const act = getReadingActivityData(targetUid);
     const actTime = getWebsiteActiveTimeData(targetUid);
     activeTimeDataRef.current = actTime;
+    setActiveTimeData(actTime);
     const todayKey = getLocalDateKey();
     const calculatedStats = calculateReadingStats(targetUid);
 
@@ -795,12 +814,13 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   }, [user]);
 
   // Reading Memory & Sessions
-  const getReadingMemory = useCallback((bookId: string) => getBookReadingMemory(bookId), []);
+  const getReadingMemory = useCallback((bookId: string) => getBookReadingMemory(bookId, user?.uid), [user]);
 
   const recordSessionEvent = useCallback((event: Omit<ReadingTimelineEvent, "id">) => {
-    recordReadingMemorySession(event);
+    const targetUid = user?.uid;
+    recordReadingMemorySession(event, targetUid);
     if (user) {
-      const memory = getBookReadingMemory(event.bookId);
+      const memory = getBookReadingMemory(event.bookId, targetUid);
       if (memory) {
         syncReadingMemoryToCloud(user.uid, event.bookId, memory);
       }
@@ -915,16 +935,18 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     const targetUid = user?.uid;
     const res = addWebsiteActiveSeconds(seconds, targetUid);
     setActiveTimeState(res);
+    const actTime = getWebsiteActiveTimeData(targetUid);
+    activeTimeDataRef.current = actTime;
+    setActiveTimeData(actTime);
     if (user) {
-      const actTime = getWebsiteActiveTimeData(user.uid);
-      activeTimeDataRef.current = actTime;
       syncActiveTimeToCloud(user.uid, actTime);
     }
     return res;
   }, [user]);
 
   const addBookReadingTime = useCallback((bookId: string, seconds: number) => {
-    const mem = addBookReadingSeconds(bookId, seconds);
+    const targetUid = user?.uid;
+    const mem = addBookReadingSeconds(bookId, seconds, undefined, undefined, targetUid);
     if (user && mem) {
       syncReadingMemoryToCloud(user.uid, bookId, mem);
     }
@@ -995,6 +1017,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       globalActiveSeconds: activeTimeState.totalActiveSeconds,
       todayActiveSeconds: activeTimeState.todayActiveSeconds,
       globalReadingSeconds,
+      activeTimeData,
       recordWebsiteActiveTime,
       addBookReadingTime,
       streakData,
@@ -1058,6 +1081,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       activeTimeState.totalActiveSeconds,
       activeTimeState.todayActiveSeconds,
       globalReadingSeconds,
+      activeTimeData,
       recordWebsiteActiveTime,
       addBookReadingTime,
       streakData,

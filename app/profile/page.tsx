@@ -29,7 +29,7 @@ import UserSearchModal from "@/components/social/UserSearchModal";
 import UsernameSetupModal from "@/components/social/UsernameSetupModal";
 
 export default function ProfilePage() {
-  const { favorites, readingHistory, streakData, stats, globalActiveSeconds, todayReadingSeconds, todayActiveSeconds } = useLibrary();
+  const { favorites, readingHistory, streakData, stats, activeTimeData, globalActiveSeconds, todayReadingSeconds, todayActiveSeconds } = useLibrary();
   const { user, signOutUser } = useAuth();
   const { isPro, isSupporter, openProModal, openSupportModal } = useEntitlement();
   const [timeFilter, setTimeFilter] = useState<AnalyticsTimeFilter>("all");
@@ -43,7 +43,9 @@ export default function ProfilePage() {
   const [profileError, setProfileError] = useState<string | null>(null);
   const [isUsernameSetupOpen, setIsUsernameSetupOpen] = useState(false);
   const [isFollowersModalOpen, setIsFollowersModalOpen] = useState(false);
-  const [followersModalTab, setFollowersModalTab] = useState<"followers" | "following">("followers");
+  const [followersModalTab, setFollowersModalTab] = useState<"followers" | "following">(
+    "followers"
+  );
   const [isEditProfileModalOpen, setIsEditProfileModalOpen] = useState(false);
   const [isUserSearchModalOpen, setIsUserSearchModalOpen] = useState(false);
 
@@ -57,6 +59,7 @@ export default function ProfilePage() {
       setProfileLoading(false);
       return;
     }
+
     // Check specific user cache first for instant display
     try {
       const cached = localStorage.getItem(`reader_social_profile_${user.uid}`);
@@ -170,27 +173,6 @@ export default function ProfilePage() {
 
     return () => clearTimeout(timer);
   }, [user, socialProfile?.username, readingHistory, streakData, globalActiveSeconds]);
-
-  // Build activeTimeData from context's Firestore-hydrated state so analytics
-  // never falls back to browser localStorage for authenticated account data.
-  const activeTimeData = useMemo(() => {
-    // Derive per-day active seconds from streakData.daily (reading seconds = minimum active seconds).
-    // totalActiveSeconds and todayActiveSeconds come directly from the cloud-hydrated context state.
-    const daily: Record<string, number> = {};
-    const todayKey = new Date().toLocaleDateString("en-CA"); // "YYYY-MM-DD"
-    Object.entries(streakData.daily || {}).forEach(([dateKey, entry]) => {
-      daily[dateKey] = entry.seconds || 0;
-    });
-    // Ensure today's value reflects the live context value (may include site browsing time)
-    if (todayActiveSeconds > 0) {
-      daily[todayKey] = Math.max(daily[todayKey] || 0, todayActiveSeconds);
-    }
-    return {
-      totalActiveSeconds: globalActiveSeconds,
-      daily,
-      lastUpdated: 0,
-    };
-  }, [streakData, globalActiveSeconds, todayActiveSeconds]);
 
   // Compute analytics dynamically based on authenticated storage & state
   const analytics = useMemo(() => {
@@ -834,7 +816,10 @@ export default function ProfilePage() {
             </div>
 
             {/* Books Engaged */}
-            <div className="p-4 rounded-2xl bg-[var(--card)] border border-[var(--border)] shadow-xs hover:border-[var(--accent)]/40 hover:shadow-md transition-all flex flex-col justify-between">
+            <div 
+              className="p-4 rounded-2xl bg-[var(--card)] border border-[var(--border)] shadow-xs hover:border-[var(--accent)]/40 hover:shadow-md transition-all flex flex-col justify-between"
+              title="Total unique books in your reading history, memory, and saved favorites."
+            >
               <div className="flex items-center justify-between gap-1 text-[11px] font-bold uppercase tracking-wider text-[var(--text-secondary)]">
                 <span className="flex items-center gap-1">
                   <span>📚</span> Books
@@ -847,7 +832,7 @@ export default function ProfilePage() {
                 {profileHeader.totalBooksEngaged} <span className="text-xs font-semibold text-[var(--text-secondary)]">books</span>
               </div>
               <div className="text-[11px] text-[var(--text-secondary)] font-medium mt-1">
-                Read &amp; saved
+                In History &amp; Library
               </div>
             </div>
 
@@ -1393,6 +1378,8 @@ export default function ProfilePage() {
           targetUid={user.uid}
           targetUsername={socialProfile.username}
           initialTab={followersModalTab}
+          initialFollowersCount={socialProfile.followersCount}
+          initialFollowingCount={socialProfile.followingCount}
         />
       )}
 

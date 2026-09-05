@@ -902,11 +902,16 @@ export function addWebsiteActiveSeconds(secondsToAdd: number, uid?: string | nul
 
 // -------------------------------------------------------------
 // My Reading Memory Storage & Timeline
-// -------------------------------------------------------------
+export function getMemoryStorageKey(bookId: string, uid?: string | null): string {
+  const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+  return targetUid ? `readershub:memory:v1:${targetUid}:${bookId}` : `${MEMORY_KEY_PREFIX}:${bookId}`;
+}
 
-export function getBookReadingMemory(bookId: string): BookReadingMemory {
-  if (memoryCache.has(bookId)) {
-    return memoryCache.get(bookId)!;
+export function getBookReadingMemory(bookId: string, uid?: string | null): BookReadingMemory {
+  const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+  const cacheKey = `${targetUid || "guest"}:${bookId}`;
+  if (memoryCache.has(cacheKey)) {
+    return memoryCache.get(cacheKey)!;
   }
 
   const defaultMemory: BookReadingMemory = {
@@ -921,25 +926,37 @@ export function getBookReadingMemory(bookId: string): BookReadingMemory {
   if (typeof window === "undefined" || !bookId) return defaultMemory;
 
   try {
-    const raw = localStorage.getItem(`${MEMORY_KEY_PREFIX}:${bookId}`);
+    const userKey = getMemoryStorageKey(bookId, targetUid);
+    let raw = localStorage.getItem(userKey);
+
+    if (!raw && (!targetUid || targetUid === ACCOUNT_A_UID)) {
+      const legacy = localStorage.getItem(`${MEMORY_KEY_PREFIX}:${bookId}`);
+      if (legacy) {
+        raw = legacy;
+        localStorage.setItem(userKey, legacy);
+      }
+    }
+
     if (raw) {
       const parsed = JSON.parse(raw);
-      const mem = {
+      const timeline = Array.isArray(parsed.timeline) ? parsed.timeline : [];
+      const timelineSum = timeline.reduce((acc: number, ev: any) => acc + (Number(ev.durationSeconds) || 0), 0);
+      const mem: BookReadingMemory = {
         bookId,
-        totalSeconds: parsed.totalSeconds || 0,
-        sessionsCount: parsed.sessionsCount || (parsed.timeline ? parsed.timeline.length : 0),
+        totalSeconds: Math.max(parsed.totalSeconds || 0, timelineSum),
+        sessionsCount: parsed.sessionsCount || timeline.length,
         firstReadAt: parsed.firstReadAt || Date.now(),
         lastReadAt: parsed.lastReadAt || Date.now(),
-        timeline: Array.isArray(parsed.timeline) ? parsed.timeline : [],
+        timeline,
       };
-      memoryCache.set(bookId, mem);
+      memoryCache.set(cacheKey, mem);
       return mem;
     }
   } catch (e) {
     console.warn(`[ReaderStorage] Failed to read memory for ${bookId}:`, e);
   }
 
-  memoryCache.set(bookId, defaultMemory);
+  memoryCache.set(cacheKey, defaultMemory);
   return defaultMemory;
 }
 
@@ -947,9 +964,11 @@ export function addBookReadingSeconds(
   bookId: string,
   secondsToAdd: number,
   startPage?: number,
-  endPage?: number
+  endPage?: number,
+  uid?: string | null
 ): BookReadingMemory {
-  const mem = getBookReadingMemory(bookId);
+  const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+  const mem = getBookReadingMemory(bookId, targetUid);
   if (typeof window === "undefined" || !bookId || secondsToAdd <= 0) return mem;
 
   try {
@@ -959,8 +978,13 @@ export function addBookReadingSeconds(
       mem.firstReadAt = Date.now();
     }
 
-    memoryCache.set(bookId, mem);
-    localStorage.setItem(`${MEMORY_KEY_PREFIX}:${bookId}`, JSON.stringify(mem));
+    const cacheKey = `${targetUid || "guest"}:${bookId}`;
+    memoryCache.set(cacheKey, mem);
+    const userKey = getMemoryStorageKey(bookId, targetUid);
+    localStorage.setItem(userKey, JSON.stringify(mem));
+    if (!targetUid || targetUid === ACCOUNT_A_UID) {
+      localStorage.setItem(`${MEMORY_KEY_PREFIX}:${bookId}`, JSON.stringify(mem));
+    }
   } catch (e) {
     console.warn(`[ReaderStorage] Failed to add reading seconds for ${bookId}:`, e);
   }
@@ -968,43 +992,68 @@ export function addBookReadingSeconds(
   return mem;
 }
 
-export function recordReadingMemorySession(event: Omit<ReadingTimelineEvent, "id">): void {
+export function recordReadingMemorySession(
+  event: Omit<ReadingTimelineEvent, "id">,
+  uid?: string | null
+): void {
   if (typeof window === "undefined" || !event.bookId) return;
 
   try {
-    const mem = getBookReadingMemory(event.bookId);
+    const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+    const mem = getBookReadingMemory(event.bookId, targetUid);
     const newEvent: ReadingTimelineEvent = {
       ...event,
       id: `mem_ev_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
     };
 
-    mem.totalSeconds += event.durationSeconds;
-    mem.sessionsCount += 1;
+    // Notice: While reading, addBookReadingSeconds already added seconds incrementally.
+    // Ensure totalSeconds is at least the sum of all session durations in timeline, without double-counting!
+    const updatedTimeline = [newEvent, ...(mem.timeline || [])].slice(0, 50);
+    const timelineSum = updatedTimeline.reduce((acc, ev) => acc + (Number(ev.durationSeconds) || 0), 0);
+    mem.totalSeconds = Math.max(mem.totalSeconds || 0, timelineSum);
+    mem.sessionsCount = Math.max((mem.sessionsCount || 0) + 1, updatedTimeline.length);
     mem.lastReadAt = event.timestamp;
     if (!mem.firstReadAt || mem.firstReadAt > event.timestamp) {
       mem.firstReadAt = event.timestamp;
     }
+    mem.timeline = updatedTimeline;
 
-    // Keep up to 50 recent session events per book
-    mem.timeline = [newEvent, ...mem.timeline].slice(0, 50);
-
-    memoryCache.set(event.bookId, mem);
-    localStorage.setItem(`${MEMORY_KEY_PREFIX}:${event.bookId}`, JSON.stringify(mem));
+    const cacheKey = `${targetUid || "guest"}:${event.bookId}`;
+    memoryCache.set(cacheKey, mem);
+    const userKey = getMemoryStorageKey(event.bookId, targetUid);
+    localStorage.setItem(userKey, JSON.stringify(mem));
+    if (!targetUid || targetUid === ACCOUNT_A_UID) {
+      localStorage.setItem(`${MEMORY_KEY_PREFIX}:${event.bookId}`, JSON.stringify(mem));
+    }
   } catch (e) {
     console.warn(`[ReaderStorage] Failed to record memory session:`, e);
   }
 }
 
-export function getAllReadingMemories(): Record<string, BookReadingMemory> {
+export function getAllReadingMemories(uid?: string | null): Record<string, BookReadingMemory> {
   const result: Record<string, BookReadingMemory> = {};
   if (typeof window === "undefined") return result;
+
+  const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+  const userPrefix = targetUid ? `readershub:memory:v1:${targetUid}:` : null;
 
   try {
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-      if (key && key.startsWith(MEMORY_KEY_PREFIX)) {
-        const bookId = key.replace(`${MEMORY_KEY_PREFIX}:`, "");
-        result[bookId] = getBookReadingMemory(bookId);
+      if (!key) continue;
+
+      if (userPrefix && key.startsWith(userPrefix)) {
+        const bookId = key.replace(userPrefix, "");
+        if (bookId) result[bookId] = getBookReadingMemory(bookId, targetUid);
+      } else if ((!targetUid || targetUid === ACCOUNT_A_UID) && key.startsWith(`${MEMORY_KEY_PREFIX}:`)) {
+        // Only consider keys that do NOT belong to another user
+        const rest = key.replace(`${MEMORY_KEY_PREFIX}:`, "");
+        if (!rest.includes(":")) {
+          const bookId = rest;
+          if (bookId && !result[bookId]) {
+            result[bookId] = getBookReadingMemory(bookId, targetUid);
+          }
+        }
       }
     }
   } catch (e) {
@@ -1944,18 +1993,24 @@ export function hydrateStorageFromCloudData(
     if (data.readingMemories && Object.keys(data.readingMemories).length > 0) {
       for (const [bookId, memory] of Object.entries(data.readingMemories)) {
         if (bookId && memory) {
-          const curMem = getBookReadingMemory(bookId);
+          const curMem = getBookReadingMemory(bookId, targetUid);
+          const timeline = memory.timeline && memory.timeline.length > (curMem.timeline?.length || 0)
+            ? memory.timeline
+            : curMem.timeline || [];
+          const timelineSum = timeline.reduce((acc, ev) => acc + (Number(ev.durationSeconds) || 0), 0);
           const mergedMem: BookReadingMemory = {
             bookId,
-            totalSeconds: Math.max(curMem.totalSeconds || 0, memory.totalSeconds || 0),
-            sessionsCount: Math.max(curMem.sessionsCount || 0, memory.sessionsCount || 0),
+            totalSeconds: Math.max(curMem.totalSeconds || 0, memory.totalSeconds || 0, timelineSum),
+            sessionsCount: Math.max(curMem.sessionsCount || 0, memory.sessionsCount || 0, timeline.length),
             firstReadAt: Math.min(curMem.firstReadAt || Date.now(), memory.firstReadAt || Date.now()),
             lastReadAt: Math.max(curMem.lastReadAt || 0, memory.lastReadAt || 0),
-            timeline: memory.timeline && memory.timeline.length > (curMem.timeline?.length || 0)
-              ? memory.timeline
-              : curMem.timeline || [],
+            timeline,
           };
-          localStorage.setItem(`${MEMORY_KEY_PREFIX}:${bookId}`, JSON.stringify(mergedMem));
+          const userKey = getMemoryStorageKey(bookId, targetUid);
+          localStorage.setItem(userKey, JSON.stringify(mergedMem));
+          if (!targetUid || targetUid === ACCOUNT_A_UID) {
+            localStorage.setItem(`${MEMORY_KEY_PREFIX}:${bookId}`, JSON.stringify(mergedMem));
+          }
         }
       }
     }

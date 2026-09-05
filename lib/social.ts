@@ -918,6 +918,20 @@ export async function unfollowUser(followerUid: string, targetUid: string): Prom
 export async function getFollowers(targetUid: string): Promise<PublicUserProfile[]> {
   if (!targetUid) return [];
 
+  // 1. Try Admin API first for robust, reliable server-side execution
+  if (typeof window !== "undefined") {
+    try {
+      const res = await fetch(`/api/users/follow?uid=${encodeURIComponent(targetUid)}&list=true`);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.followers)) {
+          return data.followers;
+        }
+      }
+    } catch {}
+  }
+
+  // 2. Fallback to client-side Firestore
   const currentDb = getFirebaseDb() || db;
   if (!currentDb) return [];
 
@@ -944,6 +958,20 @@ export async function getFollowers(targetUid: string): Promise<PublicUserProfile
 export async function getFollowing(targetUid: string): Promise<PublicUserProfile[]> {
   if (!targetUid) return [];
 
+  // 1. Try Admin API first for robust, reliable server-side execution
+  if (typeof window !== "undefined") {
+    try {
+      const res = await fetch(`/api/users/follow?uid=${encodeURIComponent(targetUid)}&list=true`);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data.following)) {
+          return data.following;
+        }
+      }
+    } catch {}
+  }
+
+  // 2. Fallback to client-side Firestore
   const currentDb = getFirebaseDb() || db;
   if (!currentDb) return [];
 

@@ -359,6 +359,10 @@ export function getComprehensiveAnalytics(
     }
   });
 
+  if (filter === "all" && activeTimeData?.totalActiveSeconds) {
+    totalActiveSecs = Math.max(totalActiveSecs, activeTimeData.totalActiveSeconds);
+  }
+
   // Calculate This Month's Metrics
   const thisMonthPrefix = String(currentYear) + "-" + String(currentMonth + 1).padStart(2, "0") + "-";
   let thisMonthReadingDays = 0;
@@ -620,21 +624,61 @@ export function getComprehensiveAnalytics(
     })
     .sort((a, b) => b.monthKey.localeCompare(a.monthKey)); // Newest month first
 
-  // 10. Favorite Genre & Category Breakdown
+  // 10. Normalize Individual Book Reading Times to Ensure Mathematical Consistency
+  // A user's total reading time (totalReadingSecs) is the master ceiling for authentic reading activity.
+  // The sum of individual book reading times must not exceed totalReadingSecs, and no single book can exceed totalReadingSecs.
+  const rawBookSecsMap = new Map<string, number>();
+  let totalRawBookSecs = 0;
+
+  BOOKS.forEach((book) => {
+    const mem = readingMemories[book.id];
+    let secs = mem?.totalSeconds || 0;
+    if (mem?.timeline && mem.timeline.length > 0) {
+      const timelineSum = mem.timeline.reduce((acc, ev) => acc + (Number(ev.durationSeconds) || 0), 0);
+      secs = Math.max(secs, timelineSum);
+    }
+    if (secs > 0) {
+      rawBookSecsMap.set(book.id, secs);
+      totalRawBookSecs += secs;
+    }
+  });
+
+  const normalizedBookSecsMap = new Map<string, number>();
+  if (filter === "all" && totalReadingSecs > 0 && totalRawBookSecs > totalReadingSecs) {
+    const ratio = totalReadingSecs / totalRawBookSecs;
+    let distributed = 0;
+    const sortedEntries = Array.from(rawBookSecsMap.entries()).sort((a, b) => b[1] - a[1]);
+    sortedEntries.forEach(([bId, rawSecs], index) => {
+      if (index === sortedEntries.length - 1) {
+        normalizedBookSecsMap.set(bId, Math.max(0, totalReadingSecs - distributed));
+      } else {
+        const scaled = Math.round(rawSecs * ratio);
+        normalizedBookSecsMap.set(bId, scaled);
+        distributed += scaled;
+      }
+    });
+  } else {
+    rawBookSecsMap.forEach((secs, bId) => {
+      const bounded = totalReadingSecs > 0 ? Math.min(secs, totalReadingSecs) : secs;
+      normalizedBookSecsMap.set(bId, bounded);
+    });
+  }
+
+  // 10. Favorite Genre & Category Breakdown (Derived from Normalized Book Reading Times)
   const categorySecondsMap = new Map<string, { seconds: number; booksSet: Set<string> }>();
   let totalGenreReadingSecs = 0;
 
-  Object.entries(readingMemories).forEach(([bId, mem]) => {
+  normalizedBookSecsMap.forEach((secs, bId) => {
     const book = BOOKS.find((b) => b.id === bId);
-    if (book && mem.totalSeconds > 0) {
+    if (book && secs > 0) {
       const cat = book.category || "General";
       if (!categorySecondsMap.has(cat)) {
         categorySecondsMap.set(cat, { seconds: 0, booksSet: new Set() });
       }
       const cObj = categorySecondsMap.get(cat)!;
-      cObj.seconds += mem.totalSeconds;
+      cObj.seconds += secs;
       cObj.booksSet.add(bId);
-      totalGenreReadingSecs += mem.totalSeconds;
+      totalGenreReadingSecs += secs;
     }
   });
 
@@ -662,13 +706,13 @@ export function getComprehensiveAnalytics(
 
   const favoriteGenre: FavoriteGenreItem | null = genreBreakdown.length > 0 ? genreBreakdown[0] : null;
 
-  // 11. Ranked Most Read Books
+  // 11. Ranked Most Read Books (Using Normalized Reading Times)
   const rankedBooksMap = new Map<string, RankedBookItem>();
 
   BOOKS.forEach((book) => {
     const mem = readingMemories[book.id];
     const prog = readingHistory.find((h) => h.bookId === book.id);
-    const readingSecs = mem?.totalSeconds || 0;
+    const readingSecs = normalizedBookSecsMap.get(book.id) || 0;
     const sessions = mem?.sessionsCount || 0;
     const progressPct = prog?.progress || (prog?.page && book.pages ? Math.min(100, Math.round((prog.page / Number(book.pages)) * 100)) : 0);
     const lastRead = prog?.lastReadAt || mem?.lastReadAt || 0;

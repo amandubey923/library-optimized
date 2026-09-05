@@ -12,6 +12,8 @@ interface FollowersModalProps {
   targetUid: string;
   targetUsername: string;
   initialTab?: "followers" | "following";
+  initialFollowersCount?: number;
+  initialFollowingCount?: number;
 }
 
 export default function FollowersModal({
@@ -20,6 +22,8 @@ export default function FollowersModal({
   targetUid,
   targetUsername,
   initialTab = "followers",
+  initialFollowersCount,
+  initialFollowingCount,
 }: FollowersModalProps) {
   const [activeTab, setActiveTab] = useState<"followers" | "following">(initialTab);
   const [followers, setFollowers] = useState<PublicUserProfile[]>([]);
@@ -90,7 +94,7 @@ export default function FollowersModal({
                 : "text-[var(--text-secondary)] hover:bg-[var(--secondary)] hover:text-[var(--foreground)]"
             }`}
           >
-            Followers ({followers.length})
+            Followers ({loading && initialFollowersCount !== undefined ? initialFollowersCount : followers.length})
           </button>
           <button
             onClick={() => setActiveTab("following")}
@@ -100,7 +104,7 @@ export default function FollowersModal({
                 : "text-[var(--text-secondary)] hover:bg-[var(--secondary)] hover:text-[var(--foreground)]"
             }`}
           >
-            Following ({following.length})
+            Following ({loading && initialFollowingCount !== undefined ? initialFollowingCount : following.length})
           </button>
         </div>
 

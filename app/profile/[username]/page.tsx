@@ -532,6 +532,8 @@ export default function PublicProfilePage() {
         targetUid={profile.uid}
         targetUsername={profile.username}
         initialTab={followersModalTab}
+        initialFollowersCount={profile.followersCount}
+        initialFollowingCount={profile.followingCount}
       />
 
       <EditProfileModal
