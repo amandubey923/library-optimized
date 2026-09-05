@@ -393,17 +393,6 @@ export default function ProfilePage() {
                         Following
                       </span>
                     </button>
-
-                    {/* View Public Profile Secondary Button */}
-                    {socialProfile?.username && (
-                      <Link
-                        href={`/profile/${socialProfile.username}`}
-                        className="px-3 py-1.5 rounded-xl bg-cyan-500/5 hover:bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 hover:border-cyan-500/50 text-xs font-semibold inline-flex items-center gap-1.5 transition-all shadow-xs"
-                      >
-                        <span>View Public Profile</span>
-                        <span className="text-xs">↗</span>
-                      </Link>
-                    )}
                   </div>
                 )}
 
