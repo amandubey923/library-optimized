@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useAuth } from "@/context/AuthContext";
 import { PublicUserProfile, getFollowers, getFollowing } from "@/lib/social";
 import FollowButton from "./FollowButton";
 
@@ -25,6 +26,7 @@ export default function FollowersModal({
   initialFollowersCount,
   initialFollowingCount,
 }: FollowersModalProps) {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<"followers" | "following">(initialTab);
   const [followers, setFollowers] = useState<PublicUserProfile[]>([]);
   const [following, setFollowing] = useState<PublicUserProfile[]>([]);
@@ -191,7 +193,13 @@ export default function FollowersModal({
                 </Link>
 
                 <div className="flex-shrink-0">
-                  <FollowButton targetUid={reader.uid} size="sm" />
+                  <FollowButton
+                    targetUid={reader.uid}
+                    size="sm"
+                    initialIsFollowing={
+                      user && user.uid === targetUid && activeTab === "following" ? true : undefined
+                    }
+                  />
                 </div>
               </div>
             ))

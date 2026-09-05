@@ -182,11 +182,38 @@ export async function GET(req: NextRequest) {
       profileData.followersCount = liveFollowers;
       profileData.followingCount = liveFollowing;
 
-      // Keep public_profiles in sync if counts differ
+      // Also enrich live streak & active time from source documents if needed
+      const [actDoc, timeDoc, progDocs] = await Promise.all([
+        adminDb.collection("users").doc(targetUid).collection("data").doc("activity").get().catch(() => ({ exists: false, data: () => null })),
+        adminDb.collection("users").doc(targetUid).collection("data").doc("active_time").get().catch(() => ({ exists: false, data: () => null })),
+        adminDb.collection("users").doc(targetUid).collection("reading_progress").get().catch(() => ({ docs: [] })),
+      ]);
+
+      const actData = actDoc.exists && typeof (actDoc as any).data === "function" ? (actDoc as any).data() : null;
+      const timeData = timeDoc.exists && typeof (timeDoc as any).data === "function" ? (timeDoc as any).data() : null;
+      const completedBooksCount = (progDocs.docs || []).filter((d: any) => {
+        const p = d.data();
+        return p.progress >= 95 || (p.totalPages > 0 && p.page >= p.totalPages);
+      }).length;
+
+      const currentStreak = actData?.currentStreak ?? profileData.stats?.currentStreak ?? 0;
+      const longestStreak = actData?.longestStreak ?? profileData.stats?.longestStreak ?? 0;
+      const totalActiveSeconds = timeData?.totalActiveSeconds ?? profileData.stats?.totalActiveSeconds ?? 0;
+
+      profileData.stats = {
+        ...(profileData.stats || {}),
+        currentStreak,
+        longestStreak,
+        totalActiveSeconds,
+        booksCompleted: Math.max(profileData.stats?.booksCompleted || 0, completedBooksCount),
+      };
+
+      // Keep public_profiles in sync if counts or stats differ
       adminDb.collection("public_profiles").doc(targetUid).set(
         {
           followersCount: liveFollowers,
           followingCount: liveFollowing,
+          stats: profileData.stats,
         },
         { merge: true }
       ).catch(() => {});

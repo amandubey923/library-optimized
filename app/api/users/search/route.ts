@@ -32,10 +32,11 @@ export async function GET(req: NextRequest) {
     usernameSnap.forEach((doc: any) => {
       const data = doc.data();
       delete data.email;
-      seenUids.add(doc.id);
-      results.push({ ...data, uid: doc.id });
-      const cleanDisplayName = (data.displayName || data.username || "Reader").replace(/^@+/, "").trim();
-      results.push({ ...data, displayName: cleanDisplayName, uid: doc.id });
+      if (!seenUids.has(doc.id)) {
+        seenUids.add(doc.id);
+        const cleanDisplayName = (data.displayName || data.username || "Reader").replace(/^@+/, "").trim();
+        results.push({ ...data, displayName: cleanDisplayName, uid: doc.id });
+      }
     });
 
     // 2. Substring & Display Name matching across public_profiles
@@ -48,7 +49,6 @@ export async function GET(req: NextRequest) {
         if (u.includes(clean) || d.includes(clean)) {
           delete data.email;
           seenUids.add(doc.id);
-          results.push({ ...data, uid: doc.id });
           const cleanDisplayName = (data.displayName || data.username || "Reader").replace(/^@+/, "").trim();
           results.push({ ...data, displayName: cleanDisplayName, uid: doc.id });
         }

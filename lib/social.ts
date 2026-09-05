@@ -676,6 +676,24 @@ export async function updateUserProfile(
 export async function checkIsFollowing(followerUid: string, targetUid: string): Promise<boolean> {
   if (!followerUid || !targetUid || followerUid === targetUid) return false;
 
+  // 1. Try authoritative server API first (Admin SDK bypasses client latency and rule delays)
+  if (typeof window !== "undefined") {
+    try {
+      const res = await fetch(
+        `/api/users/follow?followerUid=${encodeURIComponent(followerUid)}&targetUid=${encodeURIComponent(targetUid)}`
+      );
+      if (res.ok) {
+        const data = await res.json();
+        if (typeof data.isFollowing === "boolean") {
+          return data.isFollowing;
+        }
+      }
+    } catch (apiErr) {
+      console.warn("[Social] checkIsFollowing API notice:", apiErr);
+    }
+  }
+
+  // 2. Fallback to client Firestore check
   const currentDb = getFirebaseDb() || db;
   if (!currentDb) return false;
 

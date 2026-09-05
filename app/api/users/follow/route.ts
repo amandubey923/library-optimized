@@ -10,14 +10,32 @@ export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const uid = searchParams.get("uid");
-
-  if (!uid) {
-    return NextResponse.json({ error: "Missing uid parameter." }, { status: 400 });
-  }
+  const followerUid = searchParams.get("followerUid");
+  const targetUid = searchParams.get("targetUid");
 
   const adminDb = getFirebaseAdminFirestore();
   if (!adminDb) {
     return NextResponse.json({ error: "Database unavailable." }, { status: 503 });
+  }
+
+  // 1. Direct follow relationship check (100% authoritative server confirmation)
+  if (followerUid && targetUid) {
+    try {
+      const followId = `${followerUid}_${targetUid}`;
+      const followDoc = await adminDb.collection("follows").doc(followId).get();
+      return NextResponse.json({
+        followerUid,
+        targetUid,
+        isFollowing: followDoc.exists,
+      });
+    } catch (err: any) {
+      console.error("[Follow API GET] Error checking relationship:", err);
+      return NextResponse.json({ error: "Failed to check follow status." }, { status: 500 });
+    }
+  }
+
+  if (!uid) {
+    return NextResponse.json({ error: "Missing uid parameter." }, { status: 400 });
   }
 
   try {

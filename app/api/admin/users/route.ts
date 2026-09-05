@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyFirebaseIdToken } from "@/lib/entitlements";
 import { getFirebaseAdminAuth, getFirebaseAdminFirestore } from "@/lib/firebase-admin";
+import { isAdminUser } from "@/lib/admin";
 
 export const dynamic = "force-dynamic";
-
-const ADMIN_EMAIL = process.env.ADMIN_API || "kumaraman19137@gmail.com";
 
 export async function GET(req: NextRequest) {
   try {
@@ -19,7 +18,7 @@ export async function GET(req: NextRequest) {
     const idToken = authHeader.replace("Bearer ", "").trim();
     const verified = await verifyFirebaseIdToken(idToken);
 
-    if (!verified || verified.email !== ADMIN_EMAIL) {
+    if (!verified || !isAdminUser(verified.email)) {
       return NextResponse.json(
         { error: "Forbidden. Authorized administrator access required." },
         { status: 403 }

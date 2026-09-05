@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useAuth } from "@/context/AuthContext";
 import { PublicUserProfile, searchUsers } from "@/lib/social";
 import FollowButton from "./FollowButton";
 
@@ -12,6 +13,7 @@ interface UserSearchModalProps {
 }
 
 export default function UserSearchModal({ isOpen, onClose }: UserSearchModalProps) {
+  const { user } = useAuth();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<PublicUserProfile[]>([]);
   const [loading, setLoading] = useState(false);
@@ -197,7 +199,13 @@ export default function UserSearchModal({ isOpen, onClose }: UserSearchModalProp
                 </Link>
 
                 <div className="flex-shrink-0">
-                  <FollowButton targetUid={reader.uid} size="sm" />
+                  {user && user.uid === reader.uid ? (
+                    <span className="px-3 py-1 rounded-xl text-xs font-semibold bg-[var(--secondary)] text-[var(--text-secondary)] border border-[var(--border)]">
+                      You
+                    </span>
+                  ) : (
+                    <FollowButton targetUid={reader.uid} size="sm" />
+                  )}
                 </div>
               </div>
             ))

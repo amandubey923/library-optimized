@@ -216,7 +216,9 @@ export async function fetchUserDeepInspection(
         try {
           const token = await currentUser.getIdToken();
           if (token) headers["Authorization"] = `Bearer ${token}`;
-        } catch {}
+        } catch (tokErr) {
+          console.warn("[AdminUsers] Could not get user token:", tokErr);
+        }
       }
 
       const res = await fetch(`/api/admin/users/${encodeURIComponent(uid)}`, { headers });
@@ -225,6 +227,9 @@ export async function fetchUserDeepInspection(
         if (json?.user) {
           return json.user as UserDeepInspectionData;
         }
+      } else {
+        const errJson = await res.json().catch(() => null);
+        console.warn(`[AdminUsers] /api/admin/users/${uid} returned status ${res.status}:`, errJson);
       }
     } catch (apiErr) {
       console.warn("[AdminUsers] /api/admin/users/[uid] fetch notice, falling back to client:", apiErr);
