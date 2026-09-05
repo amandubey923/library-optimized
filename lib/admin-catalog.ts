@@ -1,4 +1,4 @@
-import { getFirebaseDb, db } from "@/lib/firebase";
+import { getFirebaseDb, db, getFirebaseAuth } from "@/lib/firebase";
 import {
   collection,
   doc,
@@ -103,6 +103,30 @@ export async function logAdminAuditAction(
 }
 
 /**
+ * Helper to execute admin catalog mutations securely via server-side Admin SDK.
+ */
+async function callAdminCatalogApi(body: any): Promise<boolean> {
+  if (typeof window === "undefined") return false;
+  try {
+    const auth = getFirebaseAuth();
+    if (!auth?.currentUser) return false;
+    const token = await auth.currentUser.getIdToken();
+    const res = await fetch("/api/admin/catalog", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(body),
+    });
+    return res.ok;
+  } catch (err) {
+    console.warn("[AdminCatalog] API call notice:", err);
+    return false;
+  }
+}
+
+/**
  * Soft deletes a catalog book and creates an audit log.
  */
 export async function softDeleteBook(
@@ -111,6 +135,16 @@ export async function softDeleteBook(
   adminUser: { email: string; uid: string },
   reason?: string
 ): Promise<boolean> {
+  // 1. First attempt secure server-side Admin SDK route
+  const apiOk = await callAdminCatalogApi({
+    action: "delete_book",
+    bookId,
+    bookTitle,
+    reason,
+  });
+  if (apiOk) return true;
+
+  // 2. Fallback to client Firestore if API is unreachable
   const currentDb = getFirebaseDb() || db;
   if (!currentDb || !bookId) return false;
 
@@ -140,7 +174,7 @@ export async function softDeleteBook(
 
     return true;
   } catch (err) {
-    console.error("[AdminCatalog] softDeleteBook failed:", err);
+    console.error("[AdminCatalog] softDeleteBook fallback failed:", err);
     return false;
   }
 }
@@ -153,6 +187,15 @@ export async function restoreBook(
   bookTitle: string,
   adminUser: { email: string; uid: string }
 ): Promise<boolean> {
+  // 1. First attempt secure server-side Admin SDK route
+  const apiOk = await callAdminCatalogApi({
+    action: "restore_book",
+    bookId,
+    bookTitle,
+  });
+  if (apiOk) return true;
+
+  // 2. Fallback to client Firestore
   const currentDb = getFirebaseDb() || db;
   if (!currentDb || !bookId) return false;
 
@@ -182,7 +225,7 @@ export async function restoreBook(
 
     return true;
   } catch (err) {
-    console.error("[AdminCatalog] restoreBook failed:", err);
+    console.error("[AdminCatalog] restoreBook fallback failed:", err);
     return false;
   }
 }
@@ -201,6 +244,16 @@ export async function updateBookMetadata(
   },
   adminUser: { email: string; uid: string }
 ): Promise<boolean> {
+  // 1. First attempt secure server-side Admin SDK route
+  const apiOk = await callAdminCatalogApi({
+    action: "update_book_metadata",
+    bookId,
+    bookTitle,
+    updates,
+  });
+  if (apiOk) return true;
+
+  // 2. Fallback to client Firestore
   const currentDb = getFirebaseDb() || db;
   if (!currentDb || !bookId) return false;
 
@@ -234,7 +287,7 @@ export async function updateBookMetadata(
 
     return true;
   } catch (err) {
-    console.error("[AdminCatalog] updateBookMetadata failed:", err);
+    console.error("[AdminCatalog] updateBookMetadata fallback failed:", err);
     return false;
   }
 }
@@ -273,6 +326,16 @@ export async function softDeleteSeries(
   adminUser: { email: string; uid: string },
   reason?: string
 ): Promise<boolean> {
+  // 1. First attempt secure server-side Admin SDK route
+  const apiOk = await callAdminCatalogApi({
+    action: "delete_series",
+    seriesId,
+    seriesTitle,
+    reason,
+  });
+  if (apiOk) return true;
+
+  // 2. Fallback to client Firestore if API is unreachable
   const currentDb = getFirebaseDb() || db;
   if (!currentDb || !seriesId) return false;
 
@@ -304,7 +367,7 @@ export async function softDeleteSeries(
 
     return true;
   } catch (err) {
-    console.error("[AdminCatalog] softDeleteSeries failed:", err);
+    console.error("[AdminCatalog] softDeleteSeries fallback failed:", err);
     return false;
   }
 }
@@ -317,6 +380,15 @@ export async function restoreSeries(
   seriesTitle: string,
   adminUser: { email: string; uid: string }
 ): Promise<boolean> {
+  // 1. First attempt secure server-side Admin SDK route
+  const apiOk = await callAdminCatalogApi({
+    action: "restore_series",
+    seriesId,
+    seriesTitle,
+  });
+  if (apiOk) return true;
+
+  // 2. Fallback to client Firestore
   const currentDb = getFirebaseDb() || db;
   if (!currentDb || !seriesId) return false;
 
@@ -346,7 +418,7 @@ export async function restoreSeries(
 
     return true;
   } catch (err) {
-    console.error("[AdminCatalog] restoreSeries failed:", err);
+    console.error("[AdminCatalog] restoreSeries fallback failed:", err);
     return false;
   }
 }
@@ -363,6 +435,16 @@ export async function updateSeriesMetadata(
   },
   adminUser: { email: string; uid: string }
 ): Promise<boolean> {
+  // 1. First attempt secure server-side Admin SDK route
+  const apiOk = await callAdminCatalogApi({
+    action: "update_series_metadata",
+    seriesId,
+    seriesTitle,
+    updates,
+  });
+  if (apiOk) return true;
+
+  // 2. Fallback to client Firestore
   const currentDb = getFirebaseDb() || db;
   if (!currentDb || !seriesId) return false;
 
@@ -392,7 +474,7 @@ export async function updateSeriesMetadata(
 
     return true;
   } catch (err) {
-    console.error("[AdminCatalog] updateSeriesMetadata failed:", err);
+    console.error("[AdminCatalog] updateSeriesMetadata fallback failed:", err);
     return false;
   }
 }
@@ -401,6 +483,26 @@ export async function updateSeriesMetadata(
  * Fetches recent administrative audit logs.
  */
 export async function getAdminAuditLogs(limitCount = 50): Promise<AdminAuditLog[]> {
+  // 1. First attempt server-side API with admin Bearer token
+  if (typeof window !== "undefined") {
+    try {
+      const auth = getFirebaseAuth();
+      if (auth?.currentUser) {
+        const token = await auth.currentUser.getIdToken();
+        const res = await fetch(`/api/admin/catalog?limit=${limitCount}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.logs)) return data.logs;
+        }
+      }
+    } catch (err) {
+      console.warn("[AdminCatalog] getAdminAuditLogs API notice:", err);
+    }
+  }
+
+  // 2. Fallback to client Firestore query
   const currentDb = getFirebaseDb() || db;
   if (!currentDb) return [];
 

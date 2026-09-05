@@ -145,6 +145,13 @@ export async function syncUserProfile(user: User): Promise<void> {
       },
       { merge: true }
     );
+
+    // Asynchronously ensure new users have an auto-generated unique username across all 3 collections
+    import("@/lib/social").then(({ ensureUserProfile }) => {
+      ensureUserProfile(user).catch((err) => {
+        console.warn("[FirestoreSync] ensureUserProfile background error:", err);
+      });
+    });
   } catch (err) {
     console.warn("[Firestore] Failed to sync user profile:", err);
   }

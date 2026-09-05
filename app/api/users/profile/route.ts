@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getFirebaseAdminFirestore, getFirebaseAdminAuth } from "@/lib/firebase-admin";
+import { verifyFirebaseIdToken } from "@/lib/entitlements";
 
 export const dynamic = "force-dynamic";
 
@@ -33,10 +34,49 @@ export async function GET(req: NextRequest) {
       const uData = uSnap.exists ? uSnap.data() || {} : {};
 
       if (pSnap.exists || uSnap.exists) {
+        let resolvedUsername = pData.username || uData.username;
+        if (!resolvedUsername) {
+          // Auto-generate unique username from displayName or email
+          const rawName = uData.displayName || pData.displayName || uData.email?.split("@")[0] || "reader";
+          let base = rawName
+            .toLowerCase()
+            .replace(/^@+/, "")
+            .replace(/[^a-z0-9_]/g, "_")
+            .replace(/_+/g, "_")
+            .slice(0, 14);
+          if (base.length < 3) base = "reader";
+
+          let candidate = base;
+          const uDoc = await adminDb.collection("usernames").doc(candidate).get();
+          if (uDoc.exists && uDoc.data()?.uid !== targetUid) {
+            for (let i = 0; i < 15; i++) {
+              const test = `${base}_${Math.floor(1000 + Math.random() * 9000)}`.slice(0, 20);
+              const testDoc = await adminDb.collection("usernames").doc(test).get();
+              if (!testDoc.exists || testDoc.data()?.uid === targetUid) {
+                candidate = test;
+                break;
+              }
+            }
+          }
+          resolvedUsername = candidate;
+
+          // Store consistently in usernames, users, and public_profiles
+          adminDb.collection("usernames").doc(resolvedUsername).set({ uid: targetUid, createdAt: Date.now() }).catch(() => {});
+          adminDb.collection("users").doc(targetUid).set({ username: resolvedUsername }, { merge: true }).catch(() => {});
+          adminDb.collection("public_profiles").doc(targetUid).set({ username: resolvedUsername }, { merge: true }).catch(() => {});
+        } else {
+          // If username exists, guarantee it is claimed in usernames registry
+          adminDb.collection("usernames").doc(resolvedUsername).get().then((uSnapDoc: any) => {
+            if (!uSnapDoc.exists) {
+              adminDb.collection("usernames").doc(resolvedUsername).set({ uid: targetUid, createdAt: Date.now() }).catch(() => {});
+            }
+          }).catch(() => {});
+        }
+
         profileData = {
           uid: targetUid,
-          username: pData.username || uData.username || `reader_${targetUid.slice(0, 6)}`,
-          displayName: (pData.displayName || uData.displayName || uData.username || "Reader").replace(/^@+/, "").trim(),
+          username: resolvedUsername,
+          displayName: (pData.displayName || uData.displayName || resolvedUsername || "Reader").replace(/^@+/, "").trim(),
           bio: pData.bio || uData.bio || "Passionate reader exploring literature, philosophy & technology on Reader's HUB.",
           photoURL: pData.photoURL || uData.photoURL || "",
           createdAt: pData.createdAt || uData.createdAt || Date.now(),
@@ -279,5 +319,113 @@ export async function GET(req: NextRequest) {
   } catch (err: any) {
     console.warn("[Profile API] Lookup error:", err);
     return NextResponse.json({ error: "Lookup failed" }, { status: 500 });
+  }
+}
+
+export async function PUT(req: NextRequest) {
+  try {
+    const authHeader = req.headers.get("authorization");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return NextResponse.json({ error: "Unauthorized. Missing Bearer token." }, { status: 401 });
+    }
+
+    const idToken = authHeader.replace("Bearer ", "").trim();
+    const verified = await verifyFirebaseIdToken(idToken);
+    if (!verified || !verified.uid) {
+      return NextResponse.json({ error: "Invalid or expired token." }, { status: 401 });
+    }
+
+    const uid = verified.uid;
+    const body = await req.json();
+    const { username, displayName, bio, photoURL, isPublic } = body;
+
+    const adminDb = getFirebaseAdminFirestore();
+    if (!adminDb) {
+      return NextResponse.json({ error: "Database unavailable." }, { status: 503 });
+    }
+
+    const now = Date.now();
+
+    // If changing/claiming username:
+    if (username) {
+      const cleanNew = username
+        .toLowerCase()
+        .replace(/^@+/, "")
+        .replace(/[^a-z0-9_]/g, "_")
+        .replace(/_+/g, "_")
+        .slice(0, 20);
+
+      if (cleanNew.length < 3) {
+        return NextResponse.json({ error: "Username must be at least 3 characters." }, { status: 400 });
+      }
+
+      // Check current username
+      const userDoc = await adminDb.collection("users").doc(uid).get();
+      const currentUsername = userDoc.data()?.username;
+
+      if (currentUsername !== cleanNew) {
+        const checkDoc = await adminDb.collection("usernames").doc(cleanNew).get();
+        if (checkDoc.exists && checkDoc.data()?.uid !== uid) {
+          return NextResponse.json({ error: `@${cleanNew} is already taken.` }, { status: 409 });
+        }
+
+        // Release old username from registry if it belonged to this user
+        if (currentUsername) {
+          await adminDb.collection("usernames").doc(currentUsername).delete().catch(() => {});
+        }
+
+        // Claim new username
+        await adminDb.collection("usernames").doc(cleanNew).set({
+          uid,
+          createdAt: now,
+        });
+
+        const userUpdates: Record<string, any> = {
+          username: cleanNew,
+          updatedAt: now,
+        };
+        if (displayName !== undefined) userUpdates.displayName = displayName.replace(/^@+/, "").trim();
+        if (bio !== undefined) userUpdates.bio = bio.trim();
+        if (photoURL !== undefined) userUpdates.photoURL = photoURL;
+
+        const profileUpdates: Record<string, any> = {
+          username: cleanNew,
+          updatedAt: now,
+        };
+        if (displayName !== undefined) profileUpdates.displayName = displayName.replace(/^@+/, "").trim();
+        if (bio !== undefined) profileUpdates.bio = bio.trim();
+        if (photoURL !== undefined) profileUpdates.photoURL = photoURL;
+        if (isPublic !== undefined) profileUpdates.isPublic = isPublic;
+
+        await Promise.all([
+          adminDb.collection("users").doc(uid).set(userUpdates, { merge: true }),
+          adminDb.collection("public_profiles").doc(uid).set(profileUpdates, { merge: true }),
+        ]);
+
+        return NextResponse.json({ success: true, username: cleanNew });
+      }
+    }
+
+    // Profile updates without username change
+    const userUpdates: Record<string, any> = { updatedAt: now };
+    if (displayName !== undefined) userUpdates.displayName = displayName.replace(/^@+/, "").trim();
+    if (bio !== undefined) userUpdates.bio = bio.trim();
+    if (photoURL !== undefined) userUpdates.photoURL = photoURL;
+
+    const profileUpdates: Record<string, any> = { updatedAt: now };
+    if (displayName !== undefined) profileUpdates.displayName = displayName.replace(/^@+/, "").trim();
+    if (bio !== undefined) profileUpdates.bio = bio.trim();
+    if (photoURL !== undefined) profileUpdates.photoURL = photoURL;
+    if (isPublic !== undefined) profileUpdates.isPublic = isPublic;
+
+    await Promise.all([
+      adminDb.collection("users").doc(uid).set(userUpdates, { merge: true }),
+      adminDb.collection("public_profiles").doc(uid).set(profileUpdates, { merge: true }),
+    ]);
+
+    return NextResponse.json({ success: true });
+  } catch (err: any) {
+    console.error("[Profile API] PUT error:", err);
+    return NextResponse.json({ error: err?.message || "Update failed." }, { status: 500 });
   }
 }

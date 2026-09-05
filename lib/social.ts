@@ -14,7 +14,7 @@ import {
   serverTimestamp,
   getCountFromServer,
 } from "firebase/firestore";
-import { getFirebaseDb, db } from "./firebase";
+import { getFirebaseDb, db, getFirebaseAuth } from "./firebase";
 import { Book, BOOKS } from "@/data/books";
 import { getGenuinelyCompletedBookIds } from "@/lib/reader-storage";
 
@@ -561,8 +561,131 @@ export async function claimUsernameAndCreateProfile(
 }
 
 /**
+ * Automatically generates a unique username for a new user and claims it consistently
+ * across users/{uid}.username, public_profiles/{uid}.username, and usernames/{username}.
+ */
+export async function autoGenerateAndClaimUsername(user: User): Promise<PublicUserProfile> {
+  const currentDb = getFirebaseDb() || db;
+  if (!currentDb || !user) throw new Error("Firebase unavailable or user unauthenticated");
+
+  // 1. Derive candidate base username from displayName or email
+  let base = "reader";
+  if (user.displayName) {
+    const cleaned = sanitizeUsername(user.displayName.replace(/\s+/g, "_"));
+    if (cleaned.length >= 3) base = cleaned;
+  } else if (user.email) {
+    const cleaned = sanitizeUsername(user.email.split("@")[0]);
+    if (cleaned.length >= 3) base = cleaned;
+  }
+
+  // Ensure base is within max length to allow suffixes (3-14 chars)
+  base = base.slice(0, 14);
+  if (base.length < 3) base = "reader";
+
+  // 2. Find an available candidate
+  let chosenUsername = "";
+  if (await isUsernameAvailable(base, user.uid)) {
+    chosenUsername = base;
+  } else {
+    for (let i = 0; i < 20; i++) {
+      const suffix = Math.floor(1000 + Math.random() * 9000).toString();
+      const candidate = `${base.slice(0, 15)}_${suffix}`.slice(0, 20);
+      if (await isUsernameAvailable(candidate, user.uid)) {
+        chosenUsername = candidate;
+        break;
+      }
+    }
+    if (!chosenUsername) {
+      chosenUsername = `${base.slice(0, 14)}_${Date.now().toString().slice(-5)}`.slice(0, 20);
+    }
+  }
+
+  // 3. Claim username and initialize profile
+  const rawDisp = user.displayName || chosenUsername;
+  const cleanDisplayName = typeof rawDisp === "string" ? rawDisp.replace(/^@+/, "").trim() : chosenUsername;
+  const creationTime = user.metadata?.creationTime
+    ? new Date(user.metadata.creationTime).getTime()
+    : Date.now();
+
+  const newProfile: PublicUserProfile = {
+    uid: user.uid,
+    username: chosenUsername,
+    displayName: cleanDisplayName || chosenUsername,
+    bio: "Passionate reader exploring literature, philosophy & technology on Reader's HUB.",
+    photoURL: user.photoURL || "",
+    createdAt: !isNaN(creationTime) ? creationTime : Date.now(),
+    followersCount: 0,
+    followingCount: 0,
+    isPublic: true,
+    stats: {
+      booksCompleted: 0,
+      currentlyReading: 0,
+      currentStreak: 0,
+      longestStreak: 0,
+      totalReadingSeconds: 0,
+      totalActiveSeconds: 0,
+    },
+    achievements: [],
+    updatedAt: Date.now(),
+  };
+
+  // 4. Store consistently across all 3 locations:
+  // a) users/{uid}.username
+  try {
+    const userRef = doc(currentDb, "users", user.uid);
+    await setDoc(
+      userRef,
+      {
+        uid: user.uid,
+        username: chosenUsername,
+        displayName: newProfile.displayName,
+        photoURL: newProfile.photoURL,
+        email: user.email || null,
+        updatedAt: Date.now(),
+      },
+      { merge: true }
+    );
+  } catch (err) {
+    console.warn("[Social] auto-username writing to users/{uid} notice:", err);
+  }
+
+  // b) Cache in localStorage
+  if (typeof window !== "undefined") {
+    try {
+      localStorage.setItem(`reader_social_profile_${user.uid}`, JSON.stringify(newProfile));
+    } catch {}
+  }
+
+  // c) Atomically register in usernames/{username} -> { uid } and public_profiles/{uid}
+  try {
+    await runTransaction(currentDb, async (transaction) => {
+      const usernameRef = doc(currentDb, "usernames", chosenUsername);
+      const usernameSnap = await transaction.get(usernameRef);
+      if (usernameSnap.exists()) {
+        const data = usernameSnap.data();
+        if (data && data.uid !== user.uid) {
+          throw new Error(`@${chosenUsername} is already taken.`);
+        }
+      }
+
+      transaction.set(usernameRef, {
+        uid: user.uid,
+        createdAt: Date.now(),
+      });
+
+      const profileRef = doc(currentDb, "public_profiles", user.uid);
+      transaction.set(profileRef, newProfile, { merge: true });
+    });
+  } catch (txErr) {
+    console.warn("[Social] auto-username transaction notice:", txErr);
+  }
+
+  return newProfile;
+}
+
+/**
  * Checks if authenticated user has an existing public profile.
- * Returns the profile if present, or null if username setup is needed.
+ * If user has no username, automatically generates a unique username and claims it.
  */
 export async function ensureUserProfile(user: User): Promise<PublicUserProfile | null> {
   const currentDb = getFirebaseDb() || db;
@@ -573,7 +696,8 @@ export async function ensureUserProfile(user: User): Promise<PublicUserProfile |
     if (existing && existing.username) {
       return existing;
     }
-    return null;
+    // If no existing profile or missing username, automatically generate & claim one
+    return await autoGenerateAndClaimUsername(user);
   } catch (err) {
     console.warn("[Social] ensureUserProfile notice:", err);
     return null;
@@ -582,8 +706,8 @@ export async function ensureUserProfile(user: User): Promise<PublicUserProfile |
 
 /**
  * Updates a user's public profile fields (display name, username, bio, isPublic).
- * Handles migrating the registered username if changed.
- * Handles migrating the registered username atomically if changed.
+ * Handles migrating the registered username atomically if changed:
+ * releases old username, claims new username, and updates users/{uid} & public_profiles/{uid}.
  */
 export async function updateUserProfile(
   uid: string,
@@ -600,9 +724,9 @@ export async function updateUserProfile(
   if (!currentDb || !uid) throw new Error("Firestore not initialized");
 
   const cleanNewUsername = updates.username ? sanitizeUsername(updates.username) : undefined;
-  const usernameChanged = cleanNewUsername && currentUsername && cleanNewUsername !== currentUsername;
+  const usernameChanged = cleanNewUsername && (!currentUsername || cleanNewUsername !== currentUsername);
 
-  if (usernameChanged) {
+  if (usernameChanged && cleanNewUsername) {
     if (!isValidUsername(cleanNewUsername)) {
       throw new Error("Invalid username. Use 3-20 lowercase letters, numbers, or underscores.");
     }
@@ -613,6 +737,7 @@ export async function updateUserProfile(
   }
 
   const profileRef = doc(currentDb, "public_profiles", uid);
+  const userDocRef = doc(currentDb, "users", uid);
   const existing = await getProfileByUid(uid);
 
   const mergedData: PublicUserProfile = {
@@ -636,7 +761,6 @@ export async function updateUserProfile(
       achievements: [],
       updatedAt: Date.now(),
     }),
-    ...(updates.displayName !== undefined ? { displayName: updates.displayName.trim() } : {}),
     ...(updates.displayName !== undefined ? { displayName: updates.displayName.replace(/^@+/, "").trim() } : {}),
     ...(updates.bio !== undefined ? { bio: updates.bio.trim() } : {}),
     ...(updates.photoURL !== undefined ? { photoURL: updates.photoURL } : {}),
@@ -645,30 +769,90 @@ export async function updateUserProfile(
     updatedAt: Date.now(),
   };
 
-  if (usernameChanged && currentUsername) {
-    // Migrate username record in registry
-    const oldRef = doc(currentDb, "usernames", currentUsername);
-    const newRef = doc(currentDb, "usernames", cleanNewUsername);
-    await setDoc(newRef, { uid, createdAt: Date.now() });
-    await deleteDoc(oldRef);
-    // Atomically migrate registry entry and profile
-    await runTransaction(currentDb, async (transaction) => {
-      const newRef = doc(currentDb, "usernames", cleanNewUsername);
-      const newSnap = await transaction.get(newRef);
-      if (newSnap.exists() && newSnap.data().uid !== uid) {
-        throw new Error(`@${cleanNewUsername} is already taken.`);
+  // Try server API first if user is authenticated (bypasses potential client rule latency)
+  let apiSucceeded = false;
+  if (typeof window !== "undefined") {
+    try {
+      const auth = getFirebaseAuth();
+      if (auth?.currentUser) {
+        const token = await auth.currentUser.getIdToken();
+        const res = await fetch("/api/users/profile", {
+          method: "PUT",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            username: cleanNewUsername,
+            displayName: mergedData.displayName,
+            bio: mergedData.bio,
+            photoURL: mergedData.photoURL,
+            isPublic: mergedData.isPublic,
+          }),
+        });
+        if (res.ok) {
+          apiSucceeded = true;
+        }
       }
-
-      const oldRef = doc(currentDb, "usernames", currentUsername);
-      transaction.delete(oldRef);
-      transaction.set(newRef, { uid, createdAt: Date.now() });
-      transaction.set(profileRef, mergedData, { merge: true });
-    });
-  } else {
-    await setDoc(profileRef, mergedData, { merge: true });
+    } catch (apiErr) {
+      console.warn("[Social] updateUserProfile server API notice:", apiErr);
+    }
   }
 
-  await setDoc(profileRef, mergedData, { merge: true });
+  if (!apiSucceeded) {
+    if (usernameChanged && cleanNewUsername) {
+      // Atomically migrate username record in registry and update user & profile
+      await runTransaction(currentDb, async (transaction) => {
+        const newRef = doc(currentDb, "usernames", cleanNewUsername);
+        const newSnap = await transaction.get(newRef);
+        if (newSnap.exists()) {
+          const data = newSnap.data();
+          if (data && data.uid !== uid) {
+            throw new Error(`@${cleanNewUsername} is already taken.`);
+          }
+        }
+
+        if (currentUsername && currentUsername !== cleanNewUsername) {
+          const oldRef = doc(currentDb, "usernames", currentUsername);
+          transaction.delete(oldRef);
+        }
+
+        transaction.set(newRef, { uid, createdAt: Date.now() });
+        transaction.set(profileRef, mergedData, { merge: true });
+        transaction.set(
+          userDocRef,
+          {
+            username: cleanNewUsername,
+            displayName: mergedData.displayName,
+            bio: mergedData.bio,
+            updatedAt: Date.now(),
+          },
+          { merge: true }
+        );
+      });
+    } else {
+      await Promise.all([
+        setDoc(profileRef, mergedData, { merge: true }),
+        setDoc(
+          userDocRef,
+          {
+            displayName: mergedData.displayName,
+            bio: mergedData.bio,
+            updatedAt: Date.now(),
+          },
+          { merge: true }
+        ),
+      ]);
+    }
+  }
+
+  // Update local cache
+  if (typeof window !== "undefined") {
+    try {
+      localStorage.setItem(`reader_social_profile_${uid}`, JSON.stringify(mergedData));
+    } catch {}
+  }
+
   return mergedData;
 }
 
