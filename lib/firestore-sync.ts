@@ -546,6 +546,30 @@ export async function deleteCloudBookProgress(uid: string, bookId: string): Prom
     }
     const progDocRef = doc(currentDb, "users", uid, "reading_progress", bookId);
     await deleteDoc(progDocRef);
+
+    // Keep public_profiles stats in immediate sync
+    try {
+      const progRef = collection(currentDb, "users", uid, "reading_progress");
+      const snap = await getDocs(progRef);
+      const remainingDocs = snap.docs.filter((d) => d.id !== bookId);
+      const curReading = remainingDocs.filter((d) => {
+        const p = d.data();
+        const isComp = Number(p.progress) >= 95 || (p.totalPages > 0 && Number(p.page) >= Number(p.totalPages));
+        const hasStart = Number(p.progress) > 0 || Number(p.page) > 1;
+        return !isComp && hasStart;
+      }).length;
+      const compBooks = remainingDocs.filter((d) => {
+        const p = d.data();
+        return Number(p.progress) >= 95 || (p.totalPages > 0 && Number(p.page) >= Number(p.totalPages));
+      }).length;
+
+      const pubRef = doc(currentDb, "public_profiles", uid);
+      await updateDoc(pubRef, {
+        "stats.currentlyReading": curReading,
+        "stats.booksCompleted": compBooks,
+      }).catch(() => {});
+    } catch {}
+
     return true;
   } catch (err) {
     console.error(`[Firestore] Failed to delete cloud book progress for ${bookId}:`, err);
@@ -1033,17 +1057,38 @@ export async function permanentFactoryResetCloudData(uid: string): Promise<boole
 
     await batch.commit();
 
-    // 4. Update Public Profile Stats
+    // 3.5 Delete all public activity events for this user
+    try {
+      const actFeedRef = collection(currentDb, "users", uid, "public_activity");
+      const actFeedSnap = await getDocs(actFeedRef);
+      if (!actFeedSnap.empty) {
+        const actBatch = writeBatch(currentDb);
+        actFeedSnap.forEach((d) => actBatch.delete(d.ref));
+        await actBatch.commit();
+      }
+    } catch (actErr) {
+      console.warn("[Firestore] Notice deleting public_activity on reset:", actErr);
+    }
+
+    // 4. Update Public Profile Stats & reset achievements
     const pubRef = doc(currentDb, "public_profiles", uid);
-    await updateDoc(pubRef, {
-      "stats.booksCompleted": 0,
-      "stats.currentlyReading": 0,
-      "stats.currentStreak": 0,
-      "stats.longestStreak": 0,
-      "stats.totalReadingSeconds": 0,
-      "stats.totalActiveSeconds": 0,
-      "stats.booksStarted": 0,
-    }).catch(() => {});
+    await setDoc(
+      pubRef,
+      {
+        stats: {
+          booksCompleted: 0,
+          currentlyReading: 0,
+          currentStreak: 0,
+          longestStreak: 0,
+          totalReadingSeconds: 0,
+          totalActiveSeconds: 0,
+          booksStarted: 0,
+        },
+        achievements: [],
+        updatedAt: Date.now(),
+      },
+      { merge: true }
+    ).catch(() => {});
 
     return true;
   } catch (err) {

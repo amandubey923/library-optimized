@@ -194,9 +194,17 @@ export async function GET(req: NextRequest) {
 
       const actData = actDoc.exists && typeof (actDoc as any).data === "function" ? (actDoc as any).data() : null;
       const timeData = timeDoc.exists && typeof (timeDoc as any).data === "function" ? (timeDoc as any).data() : null;
-      const completedBooksCount = (progDocs.docs || []).filter((d: any) => {
+      const allProgDocs = progDocs.docs || [];
+      const completedBooksCount = allProgDocs.filter((d: any) => {
         const p = d.data();
-        return p.progress >= 95 || (p.totalPages > 0 && p.page >= p.totalPages);
+        return (Number(p.progress) >= 95) || (p.totalPages > 0 && Number(p.page) >= Number(p.totalPages));
+      }).length;
+
+      const currentlyReadingCount = allProgDocs.filter((d: any) => {
+        const p = d.data();
+        const isCompleted = (Number(p.progress) >= 95) || (p.totalPages > 0 && Number(p.page) >= Number(p.totalPages));
+        const hasStarted = (Number(p.progress) > 0) || (Number(p.page) > 1);
+        return !isCompleted && hasStarted;
       }).length;
 
       let liveReadingSecs = 0;
@@ -214,6 +222,7 @@ export async function GET(req: NextRequest) {
         timeDoc.exists ? (Number(timeData?.totalActiveSeconds) || 0) : (profileData.stats?.totalActiveSeconds ?? 0)
       );
       const booksCompleted = progDocs.docs !== undefined ? completedBooksCount : (profileData.stats?.booksCompleted || 0);
+      const currentlyReading = progDocs.docs !== undefined ? currentlyReadingCount : (profileData.stats?.currentlyReading || 0);
 
       profileData.stats = {
         ...(profileData.stats || {}),
@@ -222,6 +231,7 @@ export async function GET(req: NextRequest) {
         totalReadingSeconds,
         totalActiveSeconds,
         booksCompleted,
+        currentlyReading,
       };
 
       // Keep public_profiles in sync if counts or stats differ

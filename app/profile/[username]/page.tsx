@@ -313,7 +313,7 @@ export default function PublicProfilePage() {
                 <>
                   <button
                     onClick={() => setIsEditModalOpen(true)}
-                    className="py-2 px-4 rounded-xl bg-[var(--secondary)] hover:bg-[var(--secondary)]/80 text-[var(--foreground)] border border-[var(--border)] hover:border-[var(--accent)]/40 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
+                    className="py-2 px-4 rounded-xl bg-[var(--card)] hover:bg-[var(--secondary)] text-[var(--foreground)] border border-[var(--border)] hover:border-[var(--accent)] text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shadow-sm"
                   >
                     <span>✏️</span>
                     <span>Edit Profile</span>
@@ -321,7 +321,7 @@ export default function PublicProfilePage() {
 
                   <Link
                     href="/profile"
-                    className="py-2 px-3.5 rounded-xl bg-[var(--card)] hover:bg-[var(--secondary)] text-[var(--foreground)] border border-[var(--border)] text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs"
+                    className="py-2 px-4 rounded-xl bg-[var(--primary)] hover:opacity-90 text-[var(--primary-foreground)] text-xs font-bold flex items-center gap-2 transition-all shadow-sm"
                   >
                     <span>📊</span>
                     <span>My Dashboard</span>
@@ -345,7 +345,7 @@ export default function PublicProfilePage() {
 
               <button
                 onClick={() => setIsSearchModalOpen(true)}
-                className="p-2 rounded-xl bg-[var(--card)] hover:bg-[var(--secondary)] text-[var(--foreground)] border border-[var(--border)] transition-all cursor-pointer shadow-xs"
+                className="p-2.5 rounded-xl bg-[var(--card)] hover:bg-[var(--secondary)] text-[var(--foreground)] border border-[var(--border)] hover:border-[var(--accent)] transition-all cursor-pointer shadow-sm"
                 title="Search other readers"
                 aria-label="Search readers"
               >
@@ -399,9 +399,10 @@ export default function PublicProfilePage() {
            ========================================================================= */}
             {activeTab === "shelf" && (
               <div className="space-y-8 animate-in fade-in duration-300">
-                {/* LeetCode-style Stats Banner */}
+                {/* Modern Stats Banner */}
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 sm:gap-4">
-                  <div className="glass-card rounded-2xl p-4 sm:p-5 border border-[var(--border)] bg-[var(--card)] flex flex-col justify-between">
+                  {/* Books Completed */}
+                  <div className="glass-card rounded-2xl p-4 sm:p-5 border border-[var(--border)] bg-[var(--card)]/90 flex flex-col justify-between hover:border-emerald-500/30 transition-colors shadow-xs">
                     <div>
                       <span className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider block mb-1">
                         Books Completed
@@ -410,12 +411,22 @@ export default function PublicProfilePage() {
                         {profile.stats?.booksCompleted || 0}
                       </span>
                     </div>
-                    <span className="text-[11px] text-emerald-400 font-medium block mt-1">
-                      Verified read
-                    </span>
+                    <div className="mt-3">
+                      <span className="text-[10px] font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                        <span>✓</span>
+                        <span>
+                          {profile.stats?.booksCompleted === 1
+                            ? "1 book finished"
+                            : profile.stats?.booksCompleted
+                            ? `${profile.stats.booksCompleted} books finished`
+                            : "No books finished yet"}
+                        </span>
+                      </span>
+                    </div>
                   </div>
 
-                  <div className="glass-card rounded-2xl p-4 sm:p-5 border border-[var(--border)] bg-[var(--card)] flex flex-col justify-between">
+                  {/* Currently Reading */}
+                  <div className="glass-card rounded-2xl p-4 sm:p-5 border border-[var(--border)] bg-[var(--card)]/90 flex flex-col justify-between hover:border-sky-500/30 transition-colors shadow-xs">
                     <div>
                       <span className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider block mb-1">
                         Currently Reading
@@ -424,12 +435,26 @@ export default function PublicProfilePage() {
                         {profile.stats?.currentlyReading || 0}
                       </span>
                     </div>
-                    <span className="text-[11px] text-[var(--accent)] font-medium block mt-1">
-                      In progress
-                    </span>
+                    <div className="mt-3">
+                      <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full inline-flex items-center gap-1 ${
+                        (profile.stats?.currentlyReading || 0) > 0
+                          ? "text-sky-400 bg-sky-500/10 border border-sky-500/20"
+                          : "text-[var(--text-secondary)] bg-[var(--secondary)]/60 border border-[var(--border)]"
+                      }`}>
+                        <span>📖</span>
+                        <span>
+                          {profile.stats?.currentlyReading === 1
+                            ? "1 book in progress"
+                            : (profile.stats?.currentlyReading || 0) > 1
+                            ? `${profile.stats?.currentlyReading} books in progress`
+                            : "None in progress"}
+                        </span>
+                      </span>
+                    </div>
                   </div>
 
-                  <div className="glass-card rounded-2xl p-4 sm:p-5 border border-[var(--border)] bg-[var(--card)] flex flex-col justify-between">
+                  {/* Daily Streak */}
+                  <div className="glass-card rounded-2xl p-4 sm:p-5 border border-[var(--border)] bg-[var(--card)]/90 flex flex-col justify-between hover:border-amber-500/30 transition-colors shadow-xs">
                     <div>
                       <span className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider block mb-1">
                         Daily Streak
@@ -440,12 +465,15 @@ export default function PublicProfilePage() {
                         <span className="text-xs text-[var(--text-secondary)] font-normal font-sans">days</span>
                       </span>
                     </div>
-                    <span className="text-[11px] text-[var(--text-secondary)] font-mono block mt-1">
-                      Best: {profile.stats?.longestStreak || 0} days
-                    </span>
+                    <div className="mt-3">
+                      <span className="text-[10px] font-mono text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                        Best: {profile.stats?.longestStreak || 0}d
+                      </span>
+                    </div>
                   </div>
 
-                  <div className="glass-card rounded-2xl p-4 sm:p-5 border border-[var(--border)] bg-[var(--card)] flex flex-col justify-between">
+                  {/* Reading Time */}
+                  <div className="glass-card rounded-2xl p-4 sm:p-5 border border-[var(--border)] bg-[var(--card)]/90 flex flex-col justify-between hover:border-violet-500/30 transition-colors shadow-xs">
                     <div>
                       <span className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider block mb-1">
                         Reading Time
@@ -454,12 +482,16 @@ export default function PublicProfilePage() {
                         {formatDuration(profile.stats?.totalReadingSeconds || 0)}
                       </span>
                     </div>
-                    <span className="text-[11px] text-[var(--accent)] font-medium block mt-1">
-                      Genuine book reading
-                    </span>
+                    <div className="mt-3">
+                      <span className="text-[10px] font-medium text-violet-400 bg-violet-500/10 border border-violet-500/20 px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                        <span>⏱️</span>
+                        <span>Book reading duration</span>
+                      </span>
+                    </div>
                   </div>
 
-                  <div className="glass-card rounded-2xl p-4 sm:p-5 border border-[var(--border)] bg-[var(--card)] flex flex-col justify-between col-span-2 sm:col-span-1">
+                  {/* Active Time */}
+                  <div className="glass-card rounded-2xl p-4 sm:p-5 border border-[var(--border)] bg-[var(--card)]/90 flex flex-col justify-between col-span-2 sm:col-span-1 hover:border-emerald-500/20 transition-colors shadow-xs">
                     <div>
                       <span className="text-[10px] font-bold text-[var(--text-secondary)] uppercase tracking-wider block mb-1">
                         Active Time
@@ -468,9 +500,12 @@ export default function PublicProfilePage() {
                         {formatDuration(profile.stats?.totalActiveSeconds || 0)}
                       </span>
                     </div>
-                    <span className="text-[11px] text-[var(--text-secondary)] block mt-1">
-                      Website engagement
-                    </span>
+                    <div className="mt-3">
+                      <span className="text-[10px] font-medium text-[var(--text-secondary)] bg-[var(--secondary)]/60 border border-[var(--border)] px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                        <span>🌐</span>
+                        <span>Site engagement</span>
+                      </span>
+                    </div>
                   </div>
                 </div>
 

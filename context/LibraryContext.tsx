@@ -1011,6 +1011,9 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
           return;
         }
         clearAllUserDataForUid(user.uid);
+        try {
+          localStorage.removeItem(`reader_social_profile_${user.uid}`);
+        } catch {}
       } else {
         await purgeFactoryResetAll();
       }
