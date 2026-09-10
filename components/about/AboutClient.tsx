@@ -496,7 +496,7 @@ export default function AboutClient({ totalBooks, totalCategories }: AboutClient
                   </a>
 
                   <a
-                    href="https://aman-portfolio-next.netlify.app/dossier"
+                    href="https://aman923-portfolio.vercel.app/dossier"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-[var(--primary)] to-[var(--accent-secondary)] text-[var(--primary-foreground)] text-[11px] font-bold shadow-md hover:opacity-95 transition-all flex items-center gap-1 hover:scale-105 hover:shadow-[0_0_16px_var(--theme-glow)]"
