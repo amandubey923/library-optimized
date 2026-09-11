@@ -65,13 +65,14 @@ export interface Achievement {
   title: string;
   description: string;
   icon: string;
-  category: "reading" | "streak" | "exploration" | "reflection";
+  category: "reading" | "streak" | "exploration" | "reflection" | "focus" | "curation";
   unlocked: boolean;
   progress: number; // 0 - 100
   unlockedAt?: number;
 }
 
 export const ACHIEVEMENTS_CATALOG: Omit<Achievement, "unlocked" | "progress" | "unlockedAt">[] = [
+  // 1. Volume & Books Completed (All 4 original preserved + expanded)
   {
     id: "first_book",
     title: "First Steps",
@@ -101,6 +102,50 @@ export const ACHIEVEMENTS_CATALOG: Omit<Achievement, "unlocked" | "progress" | "
     category: "reading",
   },
   {
+    id: "fifty_books",
+    title: "Master of Lore",
+    description: "Complete 50 volumes from the grand library",
+    icon: "🏛️",
+    category: "reading",
+  },
+  {
+    id: "hundred_books",
+    title: "Centurion Reader",
+    description: "Complete 100 volumes in your reading journey",
+    icon: "👑",
+    category: "reading",
+  },
+  {
+    id: "page_turner_50",
+    title: "Eager Reader",
+    description: "Read your first 50 verified book pages",
+    icon: "📄",
+    category: "reading",
+  },
+  {
+    id: "page_turner_250",
+    title: "Chapter Devotee",
+    description: "Read 250 verified book pages",
+    icon: "📑",
+    category: "reading",
+  },
+  {
+    id: "page_turner_1000",
+    title: "Millennium Reader",
+    description: "Read over 1,000 verified book pages",
+    icon: "📜",
+    category: "reading",
+  },
+  {
+    id: "page_turner_5000",
+    title: "Grand Archivist",
+    description: "Read over 5,000 verified book pages",
+    icon: "🗝️",
+    category: "reading",
+  },
+
+  // 2. Streaks & Diya Habits (All 3 original preserved + expanded)
+  {
     id: "streak_3",
     title: "Kindled Spark",
     description: "Maintain a 3-day daily reading streak",
@@ -115,12 +160,116 @@ export const ACHIEVEMENTS_CATALOG: Omit<Achievement, "unlocked" | "progress" | "
     category: "streak",
   },
   {
+    id: "streak_14",
+    title: "Fortnight Flame",
+    description: "Maintain a 14-day unbroken daily reading habit",
+    icon: "🌟",
+    category: "streak",
+  },
+  {
+    id: "streak_21",
+    title: "Habit Master",
+    description: "Achieve 21 consecutive days of dedicated reading",
+    icon: "🛡️",
+    category: "streak",
+  },
+  {
     id: "streak_30",
     title: "Eternal Diya",
     description: "Complete a 30-day unbroken reading streak",
     icon: "🪔",
     category: "streak",
   },
+  {
+    id: "streak_60",
+    title: "Guiding Beacon",
+    description: "Reach an incredible 60-day reading streak",
+    icon: "🏮",
+    category: "streak",
+  },
+  {
+    id: "streak_100",
+    title: "Century of Light",
+    description: "Achieve a legendary 100-day daily reading streak",
+    icon: "☀️",
+    category: "streak",
+  },
+  {
+    id: "streak_365",
+    title: "Timeless Devotion",
+    description: "Complete an unbroken 365-day year of daily reading",
+    icon: "🌌",
+    category: "streak",
+  },
+
+  // 3. Genuine Study Focus Time
+  {
+    id: "reading_time_1h",
+    title: "First Hour",
+    description: "Accumulate 1 hour of active focus reading",
+    icon: "⏱️",
+    category: "focus",
+  },
+  {
+    id: "reading_time_5h",
+    title: "Deep Focus",
+    description: "Accumulate 5 hours of verified PDF focus study",
+    icon: "⏳",
+    category: "focus",
+  },
+  {
+    id: "reading_time_20h",
+    title: "Deep Thinker",
+    description: "Accumulate 20 hours of genuine focus study",
+    icon: "🧠",
+    category: "focus",
+  },
+  {
+    id: "reading_time_50h",
+    title: "Master Scholar",
+    description: "Accumulate 50 hours of verified focus study",
+    icon: "⚡",
+    category: "focus",
+  },
+  {
+    id: "reading_time_100h",
+    title: "Grand Philosopher",
+    description: "Accumulate 100 hours of deep reading study",
+    icon: "💎",
+    category: "focus",
+  },
+
+  // 4. Literary Realms & Categories (Original preserved + expanded)
+  {
+    id: "three_realms",
+    title: "Realm Explorer",
+    description: "Read books across 3 different realms",
+    icon: "🧭",
+    category: "exploration",
+  },
+  {
+    id: "five_realms",
+    title: "Wayfarer",
+    description: "Read books across 5 distinct literary genres",
+    icon: "🗺️",
+    category: "exploration",
+  },
+  {
+    id: "eight_realms",
+    title: "Cosmopolitan Mind",
+    description: "Read books across 8 distinct catalog realms",
+    icon: "🌐",
+    category: "exploration",
+  },
+  {
+    id: "all_realms",
+    title: "Universal Sage",
+    description: "Explore books from across all catalog categories",
+    icon: "🪐",
+    category: "exploration",
+  },
+
+  // 5. Reflection, Notes & Annotations (Original preserved + expanded)
   {
     id: "first_reflection",
     title: "Philosopher",
@@ -129,11 +278,62 @@ export const ACHIEVEMENTS_CATALOG: Omit<Achievement, "unlocked" | "progress" | "
     category: "reflection",
   },
   {
-    id: "three_realms",
-    title: "Realm Explorer",
-    description: "Read books across 3 different realms",
-    icon: "🧭",
-    category: "exploration",
+    id: "five_reflections",
+    title: "Modern Socrates",
+    description: "Pen 5 thoughtful book reflections",
+    icon: "📝",
+    category: "reflection",
+  },
+  {
+    id: "ten_reflections",
+    title: "Sage of Solitude",
+    description: "Pen 10 in-depth book reflections",
+    icon: "📖",
+    category: "reflection",
+  },
+  {
+    id: "annotator_1",
+    title: "Keen Eye",
+    description: "Create your first highlight or study note",
+    icon: "🔍",
+    category: "reflection",
+  },
+  {
+    id: "annotator_25",
+    title: "Active Annotator",
+    description: "Create 25 study notes, highlights, or markings",
+    icon: "✏️",
+    category: "reflection",
+  },
+  {
+    id: "annotator_100",
+    title: "Master Illuminator",
+    description: "Create 100 study notes, highlights, or markings",
+    icon: "✒️",
+    category: "reflection",
+  },
+
+  // 6. Curation & Shelf Mastery
+  {
+    id: "first_favorite",
+    title: "Curator",
+    description: "Save your first cherished book to Favorites",
+    icon: "❤️",
+    category: "curation",
+  },
+  {
+    id: "first_collection",
+    title: "Anthologist",
+    description: "Curate your first custom personal book collection",
+    icon: "📂",
+    category: "curation",
+  },
+  {
+    id: "offline_scholar",
+    title: "Nomad Reader",
+    description: "Save a volume for offline study and access",
+    icon: "📦",
+    category: "curation",
   },
 ];
 
@@ -1349,15 +1549,39 @@ export async function getUserPublicActivities(uid: string, limitCount = 20): Pro
  * Calculates user achievements dynamically based on genuine Reader Hub data.
  */
 export function calculateUserAchievements(
-  readingHistory: { bookId: string; progress: number; page: number; totalPages: number }[],
-  streakData: { currentStreak?: number; longestStreak?: number },
+  readingHistory: { bookId: string; progress: number; page: number; totalPages: number }[] = [],
+  streakData: { currentStreak?: number; longestStreak?: number } = {},
   reflections: Record<string, any> = {},
-  booksCatalog: Book[] = BOOKS
+  booksCatalog: Book[] = BOOKS,
+  extraActivity?: {
+    totalPagesRead?: number;
+    totalReadingSeconds?: number;
+    totalActiveSeconds?: number;
+    totalAnnotations?: number;
+    favoritesCount?: number;
+    collectionsCount?: number;
+    offlineCount?: number;
+    memories?: Record<string, any>;
+    uid?: string | null;
+  }
 ): Achievement[] {
-  const completedBooks = readingHistory.filter(
-    (h) => h.progress >= 95 || (h.totalPages > 0 && h.page >= h.totalPages)
-  );
-  const completedCount = completedBooks.length;
+  let completedCount = 0;
+  try {
+    const genuinelyCompleted = getGenuinelyCompletedBookIds(
+      readingHistory as any,
+      extraActivity?.memories,
+      extraActivity?.uid
+    );
+    const completedSet = new Set(genuinelyCompleted);
+    const completedBooks = readingHistory.filter(
+      (h) => completedSet.has(h.bookId) || h.progress >= 95 || (h.totalPages > 0 && h.page >= h.totalPages)
+    );
+    completedCount = completedBooks.length;
+  } catch {
+    completedCount = readingHistory.filter(
+      (h) => h.progress >= 95 || (h.totalPages > 0 && h.page >= h.totalPages)
+    ).length;
+  }
 
   const currentStreak = streakData.currentStreak || 0;
   const longestStreak = Math.max(currentStreak, streakData.longestStreak || 0);
@@ -1372,11 +1596,24 @@ export function calculateUserAchievements(
   });
   const realmsCount = distinctCategories.size;
 
+  // Pages read
+  let totalPagesRead = extraActivity?.totalPagesRead || 0;
+  if (!totalPagesRead && readingHistory.length > 0) {
+    totalPagesRead = readingHistory.reduce((acc, cur) => acc + (cur.page || 0), 0);
+  }
+
+  const readingMinutes = Math.floor((extraActivity?.totalReadingSeconds || 0) / 60);
+  const totalAnnotations = extraActivity?.totalAnnotations || 0;
+  const favoritesCount = extraActivity?.favoritesCount || 0;
+  const collectionsCount = extraActivity?.collectionsCount || 0;
+  const offlineCount = extraActivity?.offlineCount || 0;
+
   return ACHIEVEMENTS_CATALOG.map((cat) => {
     let unlocked = false;
     let progress = 0;
 
     switch (cat.id) {
+      // 1. Volume & Books Completed
       case "first_book":
         unlocked = completedCount >= 1;
         progress = Math.min(100, (completedCount / 1) * 100);
@@ -1393,6 +1630,32 @@ export function calculateUserAchievements(
         unlocked = completedCount >= 25;
         progress = Math.min(100, (completedCount / 25) * 100);
         break;
+      case "fifty_books":
+        unlocked = completedCount >= 50;
+        progress = Math.min(100, (completedCount / 50) * 100);
+        break;
+      case "hundred_books":
+        unlocked = completedCount >= 100;
+        progress = Math.min(100, (completedCount / 100) * 100);
+        break;
+      case "page_turner_50":
+        unlocked = totalPagesRead >= 50;
+        progress = Math.min(100, (totalPagesRead / 50) * 100);
+        break;
+      case "page_turner_250":
+        unlocked = totalPagesRead >= 250;
+        progress = Math.min(100, (totalPagesRead / 250) * 100);
+        break;
+      case "page_turner_1000":
+        unlocked = totalPagesRead >= 1000;
+        progress = Math.min(100, (totalPagesRead / 1000) * 100);
+        break;
+      case "page_turner_5000":
+        unlocked = totalPagesRead >= 5000;
+        progress = Math.min(100, (totalPagesRead / 5000) * 100);
+        break;
+
+      // 2. Streaks & Diya Habits
       case "streak_3":
         unlocked = longestStreak >= 3;
         progress = Math.min(100, (longestStreak / 3) * 100);
@@ -1401,18 +1664,111 @@ export function calculateUserAchievements(
         unlocked = longestStreak >= 7;
         progress = Math.min(100, (longestStreak / 7) * 100);
         break;
+      case "streak_14":
+        unlocked = longestStreak >= 14;
+        progress = Math.min(100, (longestStreak / 14) * 100);
+        break;
+      case "streak_21":
+        unlocked = longestStreak >= 21;
+        progress = Math.min(100, (longestStreak / 21) * 100);
+        break;
       case "streak_30":
         unlocked = longestStreak >= 30;
         progress = Math.min(100, (longestStreak / 30) * 100);
         break;
-      case "first_reflection":
-        unlocked = reflectionCount >= 1;
-        progress = Math.min(100, (reflectionCount / 1) * 100);
+      case "streak_60":
+        unlocked = longestStreak >= 60;
+        progress = Math.min(100, (longestStreak / 60) * 100);
         break;
+      case "streak_100":
+        unlocked = longestStreak >= 100;
+        progress = Math.min(100, (longestStreak / 100) * 100);
+        break;
+      case "streak_365":
+        unlocked = longestStreak >= 365;
+        progress = Math.min(100, (longestStreak / 365) * 100);
+        break;
+
+      // 3. Genuine Study Focus Time
+      case "reading_time_1h":
+        unlocked = readingMinutes >= 60;
+        progress = Math.min(100, (readingMinutes / 60) * 100);
+        break;
+      case "reading_time_5h":
+        unlocked = readingMinutes >= 300;
+        progress = Math.min(100, (readingMinutes / 300) * 100);
+        break;
+      case "reading_time_20h":
+        unlocked = readingMinutes >= 1200;
+        progress = Math.min(100, (readingMinutes / 1200) * 100);
+        break;
+      case "reading_time_50h":
+        unlocked = readingMinutes >= 3000;
+        progress = Math.min(100, (readingMinutes / 3000) * 100);
+        break;
+      case "reading_time_100h":
+        unlocked = readingMinutes >= 6000;
+        progress = Math.min(100, (readingMinutes / 6000) * 100);
+        break;
+
+      // 4. Literary Realms & Categories
       case "three_realms":
         unlocked = realmsCount >= 3;
         progress = Math.min(100, (realmsCount / 3) * 100);
         break;
+      case "five_realms":
+        unlocked = realmsCount >= 5;
+        progress = Math.min(100, (realmsCount / 5) * 100);
+        break;
+      case "eight_realms":
+        unlocked = realmsCount >= 8;
+        progress = Math.min(100, (realmsCount / 8) * 100);
+        break;
+      case "all_realms":
+        unlocked = realmsCount >= 10;
+        progress = Math.min(100, (realmsCount / 10) * 100);
+        break;
+
+      // 5. Reflection, Notes & Annotations
+      case "first_reflection":
+        unlocked = reflectionCount >= 1;
+        progress = Math.min(100, (reflectionCount / 1) * 100);
+        break;
+      case "five_reflections":
+        unlocked = reflectionCount >= 5;
+        progress = Math.min(100, (reflectionCount / 5) * 100);
+        break;
+      case "ten_reflections":
+        unlocked = reflectionCount >= 10;
+        progress = Math.min(100, (reflectionCount / 10) * 100);
+        break;
+      case "annotator_1":
+        unlocked = totalAnnotations >= 1;
+        progress = Math.min(100, (totalAnnotations / 1) * 100);
+        break;
+      case "annotator_25":
+        unlocked = totalAnnotations >= 25;
+        progress = Math.min(100, (totalAnnotations / 25) * 100);
+        break;
+      case "annotator_100":
+        unlocked = totalAnnotations >= 100;
+        progress = Math.min(100, (totalAnnotations / 100) * 100);
+        break;
+
+      // 6. Curation & Shelf Mastery
+      case "first_favorite":
+        unlocked = favoritesCount >= 1;
+        progress = Math.min(100, (favoritesCount / 1) * 100);
+        break;
+      case "first_collection":
+        unlocked = collectionsCount >= 1;
+        progress = Math.min(100, (collectionsCount / 1) * 100);
+        break;
+      case "offline_scholar":
+        unlocked = offlineCount >= 1;
+        progress = Math.min(100, (offlineCount / 1) * 100);
+        break;
+
       default:
         unlocked = false;
         progress = 0;
@@ -1428,6 +1784,7 @@ export function calculateUserAchievements(
 
 /**
  * Synchronizes real reading statistics and earned achievements into the user's public profile.
+ * Merges existing earned achievements additively to ensure no badge is ever lost.
  */
 export async function syncPublicProfileMetrics(
   uid: string,
@@ -1436,7 +1793,14 @@ export async function syncPublicProfileMetrics(
   totalActiveSeconds: number,
   reflections: Record<string, any> = {},
   totalReadingSeconds: number = 0,
-  memories: Record<string, any> = {}
+  memories: Record<string, any> = {},
+  extraActivity?: {
+    totalPagesRead?: number;
+    totalAnnotations?: number;
+    favoritesCount?: number;
+    collectionsCount?: number;
+    offlineCount?: number;
+  }
 ): Promise<void> {
   if (!uid) return;
 
@@ -1449,11 +1813,37 @@ export async function syncPublicProfileMetrics(
     (h) => !genuinelyCompletedIds.has(h.bookId) && h.progress > 0 && (h.totalPages <= 0 || h.page < h.totalPages)
   );
 
-  const achievements = calculateUserAchievements(readingHistory, streakData, reflections, BOOKS);
+  const achievements = calculateUserAchievements(
+    readingHistory,
+    streakData,
+    reflections,
+    BOOKS,
+    {
+      ...extraActivity,
+      totalReadingSeconds,
+      totalActiveSeconds,
+      memories,
+      uid,
+    }
+  );
   const earnedAchievementIds = achievements.filter((a) => a.unlocked).map((a) => a.id);
 
   try {
     const profRef = doc(currentDb, "public_profiles", uid);
+    
+    // Safely retrieve existing profile to preserve all previously earned achievements
+    let existingEarnedIds: string[] = [];
+    try {
+      const profSnap = await getDoc(profRef);
+      if (profSnap.exists() && Array.isArray(profSnap.data()?.achievements)) {
+        existingEarnedIds = profSnap.data()?.achievements || [];
+      }
+    } catch {
+      // Non-fatal if read is skipped
+    }
+
+    const mergedAchievements = Array.from(new Set([...existingEarnedIds, ...earnedAchievementIds]));
+
     const currentStreak = Math.max(0, streakData.currentStreak || 0);
     const longestStreak = Math.max(0, streakData.longestStreak || 0);
     const safeReadingSeconds = Math.max(0, totalReadingSeconds || 0);
@@ -1470,7 +1860,7 @@ export async function syncPublicProfileMetrics(
           totalReadingSeconds: safeReadingSeconds,
           totalActiveSeconds: safeActiveSeconds,
         },
-        achievements: earnedAchievementIds,
+        achievements: mergedAchievements,
         updatedAt: Date.now(),
       },
       { merge: true }
@@ -1479,4 +1869,5 @@ export async function syncPublicProfileMetrics(
     console.warn("[Social] syncPublicProfileMetrics note:", err);
   }
 }
+
 

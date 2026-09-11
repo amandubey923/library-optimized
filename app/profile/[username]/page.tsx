@@ -145,11 +145,20 @@ export default function PublicProfilePage() {
       [], // Public viewer doesn't need raw reading history; we use stats
       { currentStreak: profile.stats?.currentStreak || 0, longestStreak: profile.stats?.longestStreak || 0 },
       {},
-      BOOKS
-    ).map((a) => ({
-      ...a,
-      unlocked: profile.achievements?.includes(a.id) || a.unlocked,
-    }));
+      BOOKS,
+      {
+        totalReadingSeconds: profile.stats?.totalReadingSeconds || 0,
+        totalActiveSeconds: profile.stats?.totalActiveSeconds || 0,
+        totalPagesRead: (profile.stats?.booksCompleted || 0) * 150,
+      }
+    ).map((a) => {
+      const isUnlocked = Boolean(profile.achievements?.includes(a.id) || a.unlocked);
+      return {
+        ...a,
+        unlocked: isUnlocked,
+        progress: isUnlocked ? 100 : a.progress,
+      };
+    });
   }, [profile]);
 
   // Format reading active duration

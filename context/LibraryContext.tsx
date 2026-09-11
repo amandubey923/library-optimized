@@ -91,8 +91,23 @@ import {
   deleteCloudAnnotations,
   deleteCloudFavorites,
   permanentFactoryResetCloudData,
+  syncCertificateToCloud,
+  fetchCertificatesFromCloud,
 } from "@/lib/firestore-sync";
-import { recordPublicActivity, sanitizeUsername } from "@/lib/social";
+import {
+  recordPublicActivity,
+  sanitizeUsername,
+  calculateUserAchievements,
+  syncPublicProfileMetrics,
+  Achievement,
+} from "@/lib/social";
+import {
+  BookCompletionCertificate,
+  createCertificateData,
+  saveCertificate,
+  getCertificateForBook as getStoredBookCertificate,
+} from "@/lib/certificate";
+import CompletionCertificateModal from "@/components/certificate/CompletionCertificateModal";
 import { touchUserLastActive } from "@/lib/active-tracker";
 
 export interface ReadingProgressItem {
@@ -197,6 +212,12 @@ interface LibraryContextType {
   clearOfflineStorage: () => Promise<void>;
   clearLocalDeviceCache: () => Promise<void>;
   factoryReset: (mode?: "local_cache" | "permanent_cloud") => Promise<void>;
+
+  // Certificate & Immediate Recognition
+  activeCertificate: BookCompletionCertificate | null;
+  openCertificateModal: (certificate: BookCompletionCertificate) => void;
+  closeCertificateModal: () => void;
+  getCertificateForBook: (bookId: string) => BookCompletionCertificate | null;
 }
 
 const LibraryContext = createContext<LibraryContextType | undefined>(undefined);
@@ -235,6 +256,8 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   const [readingMemories, setReadingMemories] = useState<Record<string, BookReadingMemory>>({});
   const [annotations, setAnnotationsState] = useState<Record<string, BookAnnotations>>({});
   const [activeSession, setActiveSession] = useState<ActiveReadingSession | null>(null);
+  const [activeCertificate, setActiveCertificate] = useState<BookCompletionCertificate | null>(null);
+  const [isNewCertificate, setIsNewCertificate] = useState<boolean>(false);
   const [activeTimeState, setActiveTimeState] = useState<{
     totalActiveSeconds: number;
     todayActiveSeconds: number;
@@ -627,6 +650,15 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
         cloudData.activeTime
       );
       setStats(calculated);
+
+      // Sync cloud certificates into local storage for offline and instant display
+      fetchCertificatesFromCloud(user.uid).then((cloudCerts) => {
+        if (cloudCerts && typeof cloudCerts === "object") {
+          Object.values(cloudCerts).forEach((c: any) => {
+            if (c && c.bookId) saveCertificate(c, user.uid);
+          });
+        }
+      }).catch(() => {});
     };
 
     performSync();
@@ -701,14 +733,24 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     let hasChanged = false;
     let finalPage = page;
     let finalTotal = totalPages;
+    let isNewCompletion = false;
+    let updatedHistoryList: ReadingProgressItem[] = [];
 
     setReadingHistory((prev) => {
       const existing = prev.find((item) => item.bookId === bookId);
+      const wasCompleted = existing
+        ? existing.progress >= 95 || (existing.totalPages > 0 && existing.page >= existing.totalPages)
+        : false;
       const curPage = page > 1 ? page : (existing ? existing.page : 1);
       const curTotal = totalPages || (existing ? existing.totalPages : 100);
       finalPage = curPage;
       finalTotal = curTotal;
       const progress = curTotal > 0 ? Math.min(100, Math.round((curPage / curTotal) * 100)) : 0;
+      const isNowCompleted = progress >= 95 || (curTotal > 0 && curPage >= curTotal);
+
+      if (!wasCompleted && isNowCompleted) {
+        isNewCompletion = true;
+      }
 
       // Avoid unnecessary state update if progress, page, and totalPages are identical
       if (
@@ -731,6 +773,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       };
 
       const updated = [newItem, ...filtered];
+      updatedHistoryList = updated;
       saveStoredReadingHistory(updated, user?.uid);
       return updated;
     });
@@ -761,10 +804,87 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       }
     }
 
+    // Verified Book Completion: Concur Certificate & Recalculate Achievements Immediately
+    if (isNewCompletion && bookId) {
+      const targetBook = BOOKS.find((b) => b.id === bookId);
+      const mem = getBookReadingMemory(bookId, user?.uid);
+      const cert = createCertificateData({
+        bookId,
+        bookTitle: targetBook?.title || "Literary Masterwork",
+        bookAuthor: targetBook?.author || "Honored Author",
+        bookCover: targetBook?.cover || "",
+        bookCategory: targetBook?.category,
+        totalPages: finalTotal,
+        readingSeconds: mem?.totalSeconds || 0,
+        recipientName: user?.displayName || "Distinguished Scholar",
+        recipientUsername: user?.displayName ? sanitizeUsername(user.displayName) : undefined,
+        recipientPhoto: user?.photoURL || undefined,
+        uid: user?.uid,
+      });
+
+      saveCertificate(cert, user?.uid);
+      if (user?.uid) {
+        syncCertificateToCloud(user.uid, cert);
+      }
+      setIsNewCertificate(true);
+      setActiveCertificate(cert);
+      showToast("🎓 Book Completed! Official Certificate of Completion conferred! ✨");
+
+      // Instantly evaluate & unlock eligible achievements
+      try {
+        const streak = getReadingActivityData(user?.uid);
+        const refl = getBookReflections(user?.uid);
+        const historyForAch = updatedHistoryList.length > 0 ? updatedHistoryList : readingHistoryRef.current;
+        const statsData = calculateReadingStats(user?.uid, historyForAch);
+
+        const curUnlockedIds = new Set(
+          calculateUserAchievements(readingHistoryRef.current, streak, refl, BOOKS).filter((a) => a.unlocked).map((a) => a.id)
+        );
+
+        const newAchievements = calculateUserAchievements(historyForAch, streak, refl, BOOKS, {
+          totalPagesRead: statsData.pagesRead,
+          totalReadingSeconds: statsData.totalReadingSeconds,
+          totalAnnotations: statsData.totalHighlights + statsData.totalNotes + statsData.totalDrawings,
+          favoritesCount: favoritesRef.current.length,
+          collectionsCount: collections.length,
+          offlineCount: 0,
+          uid: user?.uid,
+        });
+
+        const newlyUnlocked = newAchievements.filter((a) => a.unlocked && !curUnlockedIds.has(a.id));
+        if (newlyUnlocked.length > 0) {
+          setTimeout(() => {
+            showToast(`🏆 Milestone Unlocked: ${newlyUnlocked[0].title}! ✨`);
+          }, 1800);
+        }
+
+        if (user?.uid) {
+          syncPublicProfileMetrics(
+            user.uid,
+            historyForAch,
+            streak,
+            activeTimeDataRef.current.totalActiveSeconds,
+            refl,
+            statsData.totalReadingSeconds,
+            undefined,
+            {
+              totalPagesRead: statsData.pagesRead,
+              totalAnnotations: statsData.totalHighlights + statsData.totalNotes + statsData.totalDrawings,
+              favoritesCount: favoritesRef.current.length,
+              collectionsCount: collections.length,
+              offlineCount: 0,
+            }
+          );
+        }
+      } catch (achErr) {
+        console.warn("[LibraryContext] Immediate achievement calculation note:", achErr);
+      }
+    }
+
     if (hasChanged) {
       refreshStats();
     }
-  }, [refreshStats, user]);
+  }, [collections.length, refreshStats, user]);
 
   const updateReadingProgress = useCallback((bookId: string, page: number, totalPages?: number) => {
     recordReading(bookId, page, totalPages);
@@ -1110,6 +1230,19 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     return total;
   }, [streakData]);
 
+  const openCertificateModal = useCallback((cert: BookCompletionCertificate) => {
+    setIsNewCertificate(false);
+    setActiveCertificate(cert);
+  }, []);
+
+  const closeCertificateModal = useCallback(() => {
+    setActiveCertificate(null);
+  }, []);
+
+  const getCertificateForBookHandler = useCallback((bookId: string) => {
+    return getStoredBookCertificate(bookId, user?.uid);
+  }, [user?.uid]);
+
   const contextValue = useMemo<LibraryContextType>(
     () => ({
       user,
@@ -1131,6 +1264,17 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       dismissFromShelf,
       restoreToShelf,
       isDismissedFromShelf,
+      collections,
+      createCollection,
+      updateCollection,
+      deleteCollection,
+      addBookToCollection,
+      removeBookFromCollection,
+      getCollectionsForBook: getCollectionsForBookHandler,
+      reflections,
+      getReflection,
+      saveReflection,
+      removeReflection,
       getBookmarks,
       addBookmark,
       removeBookmark,
@@ -1165,17 +1309,10 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       clearOfflineStorage,
       clearLocalDeviceCache,
       factoryReset,
-      collections,
-      createCollection,
-      updateCollection,
-      deleteCollection,
-      addBookToCollection,
-      removeBookFromCollection,
-      getCollectionsForBook: getCollectionsForBookHandler,
-      reflections,
-      getReflection,
-      saveReflection,
-      removeReflection,
+      activeCertificate,
+      openCertificateModal,
+      closeCertificateModal,
+      getCertificateForBook: getCertificateForBookHandler,
     }),
     [
       user,
@@ -1197,6 +1334,17 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       dismissFromShelf,
       restoreToShelf,
       isDismissedFromShelf,
+      collections,
+      createCollection,
+      updateCollection,
+      deleteCollection,
+      addBookToCollection,
+      removeBookFromCollection,
+      getCollectionsForBookHandler,
+      reflections,
+      getReflection,
+      saveReflection,
+      removeReflection,
       getBookmarks,
       addBookmark,
       removeBookmark,
@@ -1231,23 +1379,22 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       clearOfflineStorage,
       clearLocalDeviceCache,
       factoryReset,
-      collections,
-      createCollection,
-      updateCollection,
-      deleteCollection,
-      addBookToCollection,
-      removeBookFromCollection,
-      getCollectionsForBookHandler,
-      reflections,
-      getReflection,
-      saveReflection,
-      removeReflection,
+      activeCertificate,
+      openCertificateModal,
+      closeCertificateModal,
+      getCertificateForBookHandler,
     ]
   );
 
   return (
     <LibraryContext.Provider value={contextValue}>
       {children}
+      <CompletionCertificateModal
+        certificate={activeCertificate}
+        isOpen={Boolean(activeCertificate)}
+        onClose={closeCertificateModal}
+        isNewUnlock={isNewCertificate}
+      />
     </LibraryContext.Provider>
   );
 }

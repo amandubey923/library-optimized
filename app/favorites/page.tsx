@@ -16,12 +16,15 @@ import CollectionsTab from "@/components/collections/CollectionsTab";
 import ReadingPathsTab from "@/components/paths/ReadingPathsTab";
 import KnowledgeInsightsTab from "@/components/insights/KnowledgeInsightsTab";
 import SmartRecommendations from "@/components/recommendations/SmartRecommendations";
+import AchievementsGrid from "@/components/social/AchievementsGrid";
+import { calculateUserAchievements, sanitizeUsername } from "@/lib/social";
+import { createCertificateData } from "@/lib/certificate";
 
 const BookReadingMemory = dynamic(() => import("@/components/memory/BookReadingMemory"), {
   ssr: false,
 });
 
-type ShelfTab = "favorites" | "reading" | "completed" | "collections" | "paths" | "insights" | "offline" | "memory" | "stats";
+type ShelfTab = "favorites" | "reading" | "completed" | "collections" | "paths" | "insights" | "offline" | "memory" | "stats" | "achievements";
 
 export default function FavoritesPage() {
   const { user } = useAuth();
@@ -46,6 +49,9 @@ export default function FavoritesPage() {
     clearLocalDeviceCache,
     factoryReset,
     collections,
+    openCertificateModal,
+    getCertificateForBook,
+    reflections,
   } = useLibrary();
 
   const [activeTab, setActiveTab] = useState<ShelfTab>("favorites");
@@ -253,6 +259,40 @@ export default function FavoritesPage() {
     if (selectedCategory === "All") return nonDismissedFavorites;
     return nonDismissedFavorites.filter((b) => b.category === selectedCategory);
   }, [nonDismissedFavorites, selectedCategory]);
+
+  // 4.5. Compute User Achievements dynamically for My Shelf
+  const achievements = useMemo(() => {
+    return calculateUserAchievements(
+      readingHistory,
+      streakData,
+      reflections,
+      BOOKS,
+      {
+        totalPagesRead: stats.pagesRead,
+        totalReadingSeconds: stats.totalReadingSeconds,
+        totalActiveSeconds: stats.totalActiveSeconds,
+        totalAnnotations: stats.totalHighlights + stats.totalNotes + stats.totalDrawings,
+        favoritesCount: nonDismissedFavorites.length,
+        collectionsCount: collections.length,
+        offlineCount: visibleOfflineBooks.length,
+        uid: user?.uid,
+      }
+    );
+  }, [
+    readingHistory,
+    streakData,
+    reflections,
+    stats,
+    nonDismissedFavorites.length,
+    collections.length,
+    visibleOfflineBooks.length,
+    user?.uid,
+  ]);
+
+  const unlockedAchievementsCount = useMemo(
+    () => achievements.filter((a) => a.unlocked).length,
+    [achievements]
+  );
 
   // 4. Generate 12-Week Reading Activity Heatmap Grid
   const heatmapWeeks = useMemo(() => {
@@ -512,6 +552,20 @@ export default function FavoritesPage() {
           >
             <span>📊 Stats &amp; Goals</span>
           </button>
+
+          <button
+            onClick={() => setActiveTab("achievements")}
+            className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 sm:gap-2 whitespace-nowrap flex-shrink-0 ${
+              activeTab === "achievements"
+                ? "bg-[var(--primary)] text-[var(--primary-foreground)] shadow-md"
+                : "bg-[var(--card)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)]"
+            }`}
+          >
+            <span>🏆 Achievements</span>
+            <span className="px-1.5 py-0.2 rounded-full bg-black/20 text-[10px]">
+              {unlockedAchievementsCount} / {achievements.length}
+            </span>
+          </button>
         </div>
       </div>
 
@@ -642,12 +696,37 @@ export default function FavoritesPage() {
                     </div>
                   </div>
 
-                  <Link
-                    href={`/book/${book.id}`}
-                    className="w-full py-2 sm:py-2.5 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] text-xs font-bold text-center block border border-[var(--border)]"
-                  >
-                    Re-read Book →
-                  </Link>
+                  <div className="grid grid-cols-2 gap-2 pt-1">
+                    <Link
+                      href={`/book/${book.id}`}
+                      className="w-full py-2 sm:py-2.5 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] text-xs font-bold text-center block border border-[var(--border)] truncate"
+                    >
+                      Re-read →
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const existingCert = getCertificateForBook(book.id) || createCertificateData({
+                          bookId: book.id,
+                          bookTitle: book.title,
+                          bookAuthor: book.author,
+                          bookCover: book.cover,
+                          bookCategory: book.category,
+                          totalPages: Number(book.totalPages) || 1,
+                          readingSeconds: getReadingMemory(book.id)?.totalSeconds || 0,
+                          recipientName: user?.displayName || "Distinguished Scholar",
+                          recipientUsername: user?.displayName ? sanitizeUsername(user.displayName) : undefined,
+                          recipientPhoto: user?.photoURL || undefined,
+                          uid: user?.uid,
+                        });
+                        openCertificateModal(existingCert);
+                      }}
+                      className="w-full py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-amber-500/15 to-amber-600/25 hover:from-amber-500/25 hover:to-amber-600/35 text-amber-300 font-bold text-xs flex items-center justify-center gap-1.5 border border-amber-500/30 hover:border-amber-400 transition-all cursor-pointer shadow-xs truncate"
+                      title="View official graduation certificate"
+                    >
+                      <span>📜 Certificate</span>
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -1397,6 +1476,19 @@ export default function FavoritesPage() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* -------------------------------------------------------------
+       * Tab 7: Achievements & Scholarly Milestones (36 Badges)
+       * ------------------------------------------------------------- */}
+      {activeTab === "achievements" && (
+        <div className="w-full space-y-6 animate-fade-in min-w-0">
+          <AchievementsGrid
+            achievements={achievements}
+            title="My Reading Achievements & Milestones"
+            subtitle="Personal verified milestones earned on Reader's HUB across your volumes read, unbroken streaks, study notes, and catalog exploration"
+          />
         </div>
       )}
 

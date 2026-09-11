@@ -1141,4 +1141,42 @@ export async function fetchUserSettingsFromCloud(
   return null;
 }
 
+/**
+ * Synchronize a book completion certificate to Firestore (/users/{uid}/data/certificates)
+ */
+export async function syncCertificateToCloud(
+  uid: string,
+  certificate: any
+): Promise<void> {
+  const currentDb = getFirebaseDb() || db;
+  if (!currentDb || !uid || !certificate?.bookId) return;
+  try {
+    const docRef = doc(currentDb, "users", uid, "data", "certificates");
+    await setDoc(docRef, { [certificate.bookId]: certificate }, { merge: true });
+  } catch (err) {
+    console.warn("[Firestore] Failed to sync certificate to cloud:", err);
+  }
+}
+
+/**
+ * Fetch all certificates for a user from Firestore (/users/{uid}/data/certificates)
+ */
+export async function fetchCertificatesFromCloud(
+  uid: string
+): Promise<Record<string, any>> {
+  const currentDb = getFirebaseDb() || db;
+  if (!currentDb || !uid) return {};
+  try {
+    const docRef = doc(currentDb, "users", uid, "data", "certificates");
+    const snap = await getDoc(docRef);
+    if (snap.exists()) {
+      return snap.data() || {};
+    }
+  } catch (err) {
+    console.warn("[Firestore] Failed to fetch certificates from cloud:", err);
+  }
+  return {};
+}
+
+
 
