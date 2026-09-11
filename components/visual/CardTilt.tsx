@@ -36,14 +36,11 @@ export default function CardTilt({
 }: CardTiltProps) {
   const cardRef = useRef<HTMLDivElement>(null);
   const glareRef = useRef<HTMLDivElement>(null);
-  const [enabled, setEnabled] = useState(() => (typeof window !== "undefined" ? checkTiltEnabled() : false));
+  const [enabled, setEnabled] = useState(false);
 
   useEffect(() => {
-    const isNow = checkTiltEnabled();
-    if (isNow !== enabled) {
-      setEnabled(isNow);
-    }
-  }, [enabled]);
+    setEnabled(checkTiltEnabled());
+  }, []);
 
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
     if (!enabled || !cardRef.current) return;
@@ -74,10 +71,6 @@ export default function CardTilt({
     }
   };
 
-  if (!enabled) {
-    return <div className={className}>{children}</div>;
-  }
-
   return (
     <div
       ref={cardRef}
@@ -92,13 +85,15 @@ export default function CardTilt({
       {children}
 
       {/* Dynamic Glare Overlay */}
-      <div
-        ref={glareRef}
-        className="pointer-events-none absolute inset-0 rounded-2xl transition-opacity duration-300 z-20 opacity-0"
-        style={{
-          background: "radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.15), transparent 60%)",
-        }}
-      />
+      {enabled && (
+        <div
+          ref={glareRef}
+          className="pointer-events-none absolute inset-0 rounded-2xl transition-opacity duration-300 z-20 opacity-0"
+          style={{
+            background: "radial-gradient(circle at 50% 50%, rgba(255, 255, 255, 0.15), transparent 60%)",
+          }}
+        />
+      )}
     </div>
   );
 }

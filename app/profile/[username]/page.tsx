@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { useAuth } from "@/context/AuthContext";
+import { useLibrary } from "@/context/LibraryContext";
 import {
   PublicUserProfile,
   PublicActivity,
@@ -13,6 +14,7 @@ import {
   getFollowCounts,
   getUserPublicActivities,
   calculateUserAchievements,
+  syncPublicProfileMetrics,
 } from "@/lib/social";
 import { BOOKS, Book } from "@/data/books";
 import FollowButton from "@/components/social/FollowButton";
@@ -29,6 +31,14 @@ export default function PublicProfilePage() {
   const username = rawUsername ? decodeURIComponent(rawUsername).replace(/^@/, "").toLowerCase() : "";
 
   const { user } = useAuth();
+  const {
+    readingHistory: myReadingHistory,
+    streakData: myStreakData,
+    reflections: myReflections,
+    stats: myStats,
+    favorites: myFavorites,
+    collections: myCollections,
+  } = useLibrary();
 
   const [profile, setProfile] = useState<PublicUserProfile | null>(null);
   const [activities, setActivities] = useState<PublicActivity[]>([]);
@@ -141,6 +151,33 @@ export default function PublicProfilePage() {
   // Compute Achievements dynamically from stats or stored badges
   const achievements = useMemo(() => {
     if (!profile) return [];
+
+    if (isOwnProfile) {
+      return calculateUserAchievements(
+        myReadingHistory,
+        myStreakData,
+        myReflections,
+        BOOKS,
+        {
+          totalPagesRead: myStats.pagesRead,
+          totalReadingSeconds: myStats.totalReadingSeconds,
+          totalActiveSeconds: myStats.totalActiveSeconds,
+          totalAnnotations: myStats.totalHighlights + myStats.totalNotes + myStats.totalDrawings,
+          favoritesCount: myFavorites.length,
+          collectionsCount: myCollections.length,
+          offlineCount: 0,
+          uid: profile.uid,
+        }
+      ).map((a) => {
+        const isUnlocked = Boolean(profile.achievements?.includes(a.id) || a.unlocked);
+        return {
+          ...a,
+          unlocked: isUnlocked,
+          progress: isUnlocked ? 100 : a.progress,
+        };
+      });
+    }
+
     return calculateUserAchievements(
       [], // Public viewer doesn't need raw reading history; we use stats
       { currentStreak: profile.stats?.currentStreak || 0, longestStreak: profile.stats?.longestStreak || 0 },
@@ -159,7 +196,47 @@ export default function PublicProfilePage() {
         progress: isUnlocked ? 100 : a.progress,
       };
     });
-  }, [profile]);
+  }, [
+    profile,
+    isOwnProfile,
+    myReadingHistory,
+    myStreakData,
+    myReflections,
+    myStats,
+    myFavorites.length,
+    myCollections.length,
+  ]);
+
+  // Keep Firestore public profile metrics and achievements in sync when viewing own profile
+  useEffect(() => {
+    if (!isOwnProfile || !profile?.uid) return;
+    syncPublicProfileMetrics(
+      profile.uid,
+      myReadingHistory,
+      myStreakData,
+      myStats.totalActiveSeconds,
+      myReflections,
+      myStats.totalReadingSeconds,
+      undefined,
+      {
+        totalPagesRead: myStats.pagesRead,
+        totalAnnotations: myStats.totalHighlights + myStats.totalNotes + myStats.totalDrawings,
+        favoritesCount: myFavorites.length,
+        collectionsCount: myCollections.length,
+        offlineCount: 0,
+      }
+    ).catch(() => {});
+  }, [
+    isOwnProfile,
+    profile?.uid,
+    myReadingHistory.length,
+    myStreakData.currentStreak,
+    myStats.pagesRead,
+    myStats.totalHighlights,
+    myStats.totalNotes,
+    myFavorites.length,
+    myCollections.length,
+  ]);
 
   // Format reading active duration
   const formatDuration = (totalSeconds: number): string => {

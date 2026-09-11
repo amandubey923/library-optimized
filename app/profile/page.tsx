@@ -29,7 +29,7 @@ import UserSearchModal from "@/components/social/UserSearchModal";
 import UsernameSetupModal from "@/components/social/UsernameSetupModal";
 
 export default function ProfilePage() {
-  const { favorites, readingHistory, streakData, stats, activeTimeData, globalActiveSeconds, todayReadingSeconds, todayActiveSeconds, reflections } = useLibrary();
+  const { favorites, readingHistory, streakData, stats, activeTimeData, globalActiveSeconds, todayReadingSeconds, todayActiveSeconds, reflections, collections } = useLibrary();
   const { user, signOutUser } = useAuth();
   const { isPro, isSupporter, openProModal, openSupportModal } = useEntitlement();
   const [timeFilter, setTimeFilter] = useState<AnalyticsTimeFilter>("all");
@@ -169,7 +169,15 @@ export default function ProfilePage() {
         streakData,
         globalActiveSeconds,
         reflections,
-        stats.totalReadingSeconds
+        stats.totalReadingSeconds,
+        undefined,
+        {
+          totalPagesRead: stats.pagesRead,
+          totalAnnotations: stats.totalHighlights + stats.totalNotes + stats.totalDrawings,
+          favoritesCount: favorites.length,
+          collectionsCount: collections.length,
+          offlineCount: 0,
+        }
       );
     }, 1200);
 

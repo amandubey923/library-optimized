@@ -17,7 +17,7 @@ import ReadingPathsTab from "@/components/paths/ReadingPathsTab";
 import KnowledgeInsightsTab from "@/components/insights/KnowledgeInsightsTab";
 import SmartRecommendations from "@/components/recommendations/SmartRecommendations";
 import AchievementsGrid from "@/components/social/AchievementsGrid";
-import { calculateUserAchievements, sanitizeUsername } from "@/lib/social";
+import { calculateUserAchievements, sanitizeUsername, syncPublicProfileMetrics } from "@/lib/social";
 import { createCertificateData } from "@/lib/certificate";
 
 const BookReadingMemory = dynamic(() => import("@/components/memory/BookReadingMemory"), {
@@ -294,6 +294,38 @@ export default function FavoritesPage() {
     () => achievements.filter((a) => a.unlocked).length,
     [achievements]
   );
+
+  // Synchronize dynamic shelf metrics and achievements safely & additively to the user's public profile
+  useEffect(() => {
+    if (!user?.uid) return;
+    syncPublicProfileMetrics(
+      user.uid,
+      readingHistory,
+      streakData,
+      stats.totalActiveSeconds,
+      reflections,
+      stats.totalReadingSeconds,
+      undefined,
+      {
+        totalPagesRead: stats.pagesRead,
+        totalAnnotations: stats.totalHighlights + stats.totalNotes + stats.totalDrawings,
+        favoritesCount: nonDismissedFavorites.length,
+        collectionsCount: collections.length,
+        offlineCount: visibleOfflineBooks.length,
+      }
+    ).catch(() => {});
+  }, [
+    user?.uid,
+    readingHistory.length,
+    streakData.currentStreak,
+    stats.pagesRead,
+    stats.totalHighlights,
+    stats.totalNotes,
+    stats.totalDrawings,
+    nonDismissedFavorites.length,
+    collections.length,
+    visibleOfflineBooks.length,
+  ]);
 
   // 4. Generate 12-Week Reading Activity Heatmap Grid
   const heatmapWeeks = useMemo(() => {

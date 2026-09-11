@@ -484,41 +484,45 @@ export async function getProfileByUsername(username: string): Promise<PublicUser
       console.warn("[Social] getProfileByUsername public_profiles query notice:", err);
     }
 
-    // 4. Try querying users collection where username == clean
-    try {
-      const q = query(
-        collection(currentDb, "users"),
-        where("username", "==", clean),
-        limit(1)
-      );
-      const snap = await getDocs(q);
-      if (!snap.empty) {
-        const uData = snap.docs[0].data();
-        const rawDisp = uData.displayName || clean;
-        const fallbackProfile: PublicUserProfile = {
-          uid: snap.docs[0].id,
-          username: uData.username || clean,
-          displayName: rawDisp.replace(/^@+/, "").trim(),
-          bio: uData.bio || "Passionate reader exploring literature, philosophy & technology on Reader's HUB.",
-          photoURL: uData.photoURL || "",
-          createdAt: uData.createdAt || Date.now(),
-          followersCount: 0,
-          followingCount: 0,
-          isPublic: true,
-          stats: {
-            booksCompleted: 0,
-            currentlyReading: 0,
-            currentStreak: 0,
-            longestStreak: 0,
-            totalActiveSeconds: 0,
-          },
-          achievements: [],
-          updatedAt: Date.now(),
-        };
-        return fallbackProfile;
+    // 4. Try querying users collection where username == clean (admin privilege only in firestore.rules)
+    const auth = getFirebaseAuth();
+    const isAdmin = auth?.currentUser?.email === "kumaraman19137@gmail.com";
+    if (isAdmin) {
+      try {
+        const q = query(
+          collection(currentDb, "users"),
+          where("username", "==", clean),
+          limit(1)
+        );
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+          const uData = snap.docs[0].data();
+          const rawDisp = uData.displayName || clean;
+          const fallbackProfile: PublicUserProfile = {
+            uid: snap.docs[0].id,
+            username: uData.username || clean,
+            displayName: rawDisp.replace(/^@+/, "").trim(),
+            bio: uData.bio || "Passionate reader exploring literature, philosophy & technology on Reader's HUB.",
+            photoURL: uData.photoURL || "",
+            createdAt: uData.createdAt || Date.now(),
+            followersCount: 0,
+            followingCount: 0,
+            isPublic: true,
+            stats: {
+              booksCompleted: 0,
+              currentlyReading: 0,
+              currentStreak: 0,
+              longestStreak: 0,
+              totalActiveSeconds: 0,
+            },
+            achievements: [],
+            updatedAt: Date.now(),
+          };
+          return fallbackProfile;
+        }
+      } catch (err) {
+        // Non-fatal if list access is omitted
       }
-    } catch (err) {
-      console.warn("[Social] getProfileByUsername users query notice:", err);
     }
   }
 
@@ -611,39 +615,44 @@ export async function getProfileByUid(uid: string): Promise<PublicUserProfile | 
     } catch {}
   }
 
-  // 4. Fallback to /users/{uid} document (which is readable by the account owner or admin)
-  try {
-    const userRef = doc(currentDb, "users", uid);
-    const userSnap = await getDoc(userRef);
-    if (userSnap.exists()) {
-      const data = userSnap.data();
-      if (data?.username) {
-        const rawName = data.displayName || data.username || "Reader";
-        const fallbackProfile: PublicUserProfile = {
-          uid,
-          username: data.username,
-          displayName: typeof rawName === "string" ? rawName.replace(/^@+/, "").trim() : "Reader",
-          bio: data.bio || "Passionate reader exploring literature, philosophy & technology on Reader's HUB.",
-          photoURL: data.photoURL || "",
-          createdAt: data.createdAt || Date.now(),
-          followersCount: 0,
-          followingCount: 0,
-          isPublic: true,
-          stats: {
-            booksCompleted: 0,
-            currentlyReading: 0,
-            currentStreak: 0,
-            longestStreak: 0,
-            totalActiveSeconds: 0,
-          },
-          achievements: [],
-          updatedAt: Date.now(),
-        };
-        return fallbackProfile;
+  // 4. Fallback to /users/{uid} document ONLY if the current authenticated user owns this document or is admin
+  // Private /users/{uid} is strictly restricted in firestore.rules to (request.auth.uid == userId || isAdmin())
+  const auth = getFirebaseAuth();
+  const isOwnerOrAdmin = auth?.currentUser?.uid === uid || auth?.currentUser?.email === "kumaraman19137@gmail.com";
+  if (isOwnerOrAdmin) {
+    try {
+      const userRef = doc(currentDb, "users", uid);
+      const userSnap = await getDoc(userRef);
+      if (userSnap.exists()) {
+        const data = userSnap.data();
+        if (data?.username) {
+          const rawName = data.displayName || data.username || "Reader";
+          const fallbackProfile: PublicUserProfile = {
+            uid,
+            username: data.username,
+            displayName: typeof rawName === "string" ? rawName.replace(/^@+/, "").trim() : "Reader",
+            bio: data.bio || "Passionate reader exploring literature, philosophy & technology on Reader's HUB.",
+            photoURL: data.photoURL || "",
+            createdAt: data.createdAt || Date.now(),
+            followersCount: 0,
+            followingCount: 0,
+            isPublic: true,
+            stats: {
+              booksCompleted: 0,
+              currentlyReading: 0,
+              currentStreak: 0,
+              longestStreak: 0,
+              totalActiveSeconds: 0,
+            },
+            achievements: [],
+            updatedAt: Date.now(),
+          };
+          return fallbackProfile;
+        }
       }
+    } catch (err) {
+      // Non-fatal if private document cannot be read
     }
-  } catch (err) {
-    console.warn("[Social] userDoc fallback notice:", err);
   }
 
   return null;
@@ -1925,6 +1934,15 @@ export async function syncPublicProfileMetrics(
   }
 ): Promise<void> {
   if (!uid) return;
+
+  // IMPORTANT: Verify that client is authenticated as this UID or admin before attempting client Firestore write.
+  // firestore.rules strictly requires: (request.auth.uid == userId || isAdmin())
+  const auth = getFirebaseAuth();
+  const currentUser = auth?.currentUser;
+  const isAuthorized = currentUser && (currentUser.uid === uid || currentUser.email === "kumaraman19137@gmail.com");
+  if (!isAuthorized) {
+    return;
+  }
 
   const currentDb = getFirebaseDb() || db;
   if (!currentDb) return;

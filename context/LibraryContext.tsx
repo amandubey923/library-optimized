@@ -651,6 +651,24 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       );
       setStats(calculated);
 
+      // Synchronize public profile metrics and achievements safely & additively to Firestore
+      syncPublicProfileMetrics(
+        user.uid,
+        cloudData.readingHistory,
+        cloudData.readingActivity,
+        cloudData.activeTime.totalActiveSeconds || 0,
+        cloudData.reflections || {},
+        calculated.totalReadingSeconds,
+        cloudData.readingMemories || {},
+        {
+          totalPagesRead: calculated.pagesRead,
+          totalAnnotations: calculated.totalHighlights + calculated.totalNotes + calculated.totalDrawings,
+          favoritesCount: cloudData.favorites.length,
+          collectionsCount: (cloudData.collections || []).length,
+          offlineCount: 0,
+        }
+      ).catch(() => {});
+
       // Sync cloud certificates into local storage for offline and instant display
       fetchCertificatesFromCloud(user.uid).then((cloudCerts) => {
         if (cloudCerts && typeof cloudCerts === "object") {
