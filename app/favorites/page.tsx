@@ -164,9 +164,8 @@ export default function FavoritesPage() {
     return readingHistory
       .filter(
         (item) =>
-          item.progress < 95 &&
-          (!item.totalPages || item.page < item.totalPages) &&
           !completedSet.has(item.bookId) &&
+          (!item.totalPages || item.page < item.totalPages) &&
           !isDismissedFromShelf("reading", item.bookId)
       )
       .map((item) => {
@@ -198,7 +197,7 @@ export default function FavoritesPage() {
     return readingHistory
       .filter(
         (item) =>
-          (item.progress >= 95 || (item.totalPages && item.page >= item.totalPages) || completedSet.has(item.bookId)) &&
+          (completedSet.has(item.bookId) || (item.totalPages > 0 && item.page >= item.totalPages)) &&
           !isDismissedFromShelf("completed", item.bookId)
       )
       .map((item) => {
@@ -218,13 +217,15 @@ export default function FavoritesPage() {
   // 2. Derive Books with Reading Memory / In-Progress (Mutually exclusive with Completed)
   const memoryBooks = useMemo(() => {
     return readingHistory
-      .filter(
-        (item) =>
-          item.progress < 95 &&
-          (!item.totalPages || item.page < item.totalPages) &&
+      .filter((item) => {
+        const book = BOOKS.find((b) => b.id === item.bookId);
+        const totalPages = Number(item.totalPages || book?.pages || 0);
+        return (
           !completedSet.has(item.bookId) &&
+          (totalPages <= 0 || item.page < totalPages) &&
           !isDismissedFromShelf("memory", item.bookId)
-      )
+        );
+      })
       .map((item) => {
         const book = BOOKS.find((b) => b.id === item.bookId);
         if (!book) return null;

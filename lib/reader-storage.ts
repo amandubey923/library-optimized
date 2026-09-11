@@ -3,6 +3,8 @@
  * Namespaced browser-local persistence for Reading Progress, Bookmarks, Highlights, Notes, Study Annotations, Daily Reading Streak (Diwali Diya), Reading Memory, and Offline Cache.
  */
 
+import { BOOKS } from "@/data/books";
+
 export interface BookmarkItem {
   id: string;
   bookId: string;
@@ -1591,9 +1593,16 @@ export function getGenuinelyCompletedBookIds(
     if (!item?.bookId) continue;
     const mem = allMemories[item.bookId] || (typeof window !== "undefined" ? getBookReadingMemory(item.bookId, targetUid) : undefined);
     const bookSecs = mem?.totalSeconds || 0;
-    const isProgressCompleted = item.progress >= 95 || Boolean(item.totalPages && item.page >= item.totalPages);
 
-    if (isProgressCompleted && (bookSecs >= 180 || item.progress >= 95 || (item.totalPages > 0 && item.page >= item.totalPages))) {
+    // Resolve authoritative total pages from item or catalog metadata
+    const catalogBook = BOOKS.find((b) => b.id === item.bookId);
+    const catalogPages = Number(catalogBook?.pages) || 0;
+    const actualTotalPages = Number(item.totalPages) > 0 ? Number(item.totalPages) : catalogPages;
+
+    // A book is complete ONLY when the user has genuinely read through the end of all actual pages of that book
+    const isFinished = actualTotalPages > 0 && item.page >= actualTotalPages;
+
+    if (isFinished && (bookSecs >= 180 || !mem || item.progress === 100)) {
       completedIds.push(item.bookId);
     }
   }

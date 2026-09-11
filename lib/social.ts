@@ -69,6 +69,10 @@ export interface Achievement {
   unlocked: boolean;
   progress: number; // 0 - 100
   unlockedAt?: number;
+  currentValue?: number;
+  targetValue?: number;
+  unit?: string;
+  progressLabel?: string;
 }
 
 export const ACHIEVEMENTS_CATALOG: Omit<Achievement, "unlocked" | "progress" | "unlockedAt">[] = [
@@ -1574,12 +1578,12 @@ export function calculateUserAchievements(
     );
     const completedSet = new Set(genuinelyCompleted);
     const completedBooks = readingHistory.filter(
-      (h) => completedSet.has(h.bookId) || h.progress >= 95 || (h.totalPages > 0 && h.page >= h.totalPages)
+      (h) => completedSet.has(h.bookId) || (h.totalPages > 0 && h.page >= h.totalPages)
     );
     completedCount = completedBooks.length;
   } catch {
     completedCount = readingHistory.filter(
-      (h) => h.progress >= 95 || (h.totalPages > 0 && h.page >= h.totalPages)
+      (h) => h.totalPages > 0 && h.page >= h.totalPages
     ).length;
   }
 
@@ -1611,160 +1615,271 @@ export function calculateUserAchievements(
   return ACHIEVEMENTS_CATALOG.map((cat) => {
     let unlocked = false;
     let progress = 0;
+    let currentValue = 0;
+    let targetValue = 0;
+    let unit = "";
 
     switch (cat.id) {
       // 1. Volume & Books Completed
       case "first_book":
+        targetValue = 1;
+        currentValue = completedCount;
+        unit = "books";
         unlocked = completedCount >= 1;
         progress = Math.min(100, (completedCount / 1) * 100);
         break;
       case "five_books":
+        targetValue = 5;
+        currentValue = completedCount;
+        unit = "books";
         unlocked = completedCount >= 5;
         progress = Math.min(100, (completedCount / 5) * 100);
         break;
       case "ten_books":
+        targetValue = 10;
+        currentValue = completedCount;
+        unit = "books";
         unlocked = completedCount >= 10;
         progress = Math.min(100, (completedCount / 10) * 100);
         break;
       case "twenty_five_books":
+        targetValue = 25;
+        currentValue = completedCount;
+        unit = "books";
         unlocked = completedCount >= 25;
         progress = Math.min(100, (completedCount / 25) * 100);
         break;
       case "fifty_books":
+        targetValue = 50;
+        currentValue = completedCount;
+        unit = "books";
         unlocked = completedCount >= 50;
         progress = Math.min(100, (completedCount / 50) * 100);
         break;
       case "hundred_books":
+        targetValue = 100;
+        currentValue = completedCount;
+        unit = "books";
         unlocked = completedCount >= 100;
         progress = Math.min(100, (completedCount / 100) * 100);
         break;
       case "page_turner_50":
+        targetValue = 50;
+        currentValue = totalPagesRead;
+        unit = "pages";
         unlocked = totalPagesRead >= 50;
         progress = Math.min(100, (totalPagesRead / 50) * 100);
         break;
       case "page_turner_250":
+        targetValue = 250;
+        currentValue = totalPagesRead;
+        unit = "pages";
         unlocked = totalPagesRead >= 250;
         progress = Math.min(100, (totalPagesRead / 250) * 100);
         break;
       case "page_turner_1000":
+        targetValue = 1000;
+        currentValue = totalPagesRead;
+        unit = "pages";
         unlocked = totalPagesRead >= 1000;
         progress = Math.min(100, (totalPagesRead / 1000) * 100);
         break;
       case "page_turner_5000":
+        targetValue = 5000;
+        currentValue = totalPagesRead;
+        unit = "pages";
         unlocked = totalPagesRead >= 5000;
         progress = Math.min(100, (totalPagesRead / 5000) * 100);
         break;
 
       // 2. Streaks & Diya Habits
       case "streak_3":
+        targetValue = 3;
+        currentValue = longestStreak;
+        unit = "days";
         unlocked = longestStreak >= 3;
         progress = Math.min(100, (longestStreak / 3) * 100);
         break;
       case "streak_7":
+        targetValue = 7;
+        currentValue = longestStreak;
+        unit = "days";
         unlocked = longestStreak >= 7;
         progress = Math.min(100, (longestStreak / 7) * 100);
         break;
       case "streak_14":
+        targetValue = 14;
+        currentValue = longestStreak;
+        unit = "days";
         unlocked = longestStreak >= 14;
         progress = Math.min(100, (longestStreak / 14) * 100);
         break;
       case "streak_21":
+        targetValue = 21;
+        currentValue = longestStreak;
+        unit = "days";
         unlocked = longestStreak >= 21;
         progress = Math.min(100, (longestStreak / 21) * 100);
         break;
       case "streak_30":
+        targetValue = 30;
+        currentValue = longestStreak;
+        unit = "days";
         unlocked = longestStreak >= 30;
         progress = Math.min(100, (longestStreak / 30) * 100);
         break;
       case "streak_60":
+        targetValue = 60;
+        currentValue = longestStreak;
+        unit = "days";
         unlocked = longestStreak >= 60;
         progress = Math.min(100, (longestStreak / 60) * 100);
         break;
       case "streak_100":
+        targetValue = 100;
+        currentValue = longestStreak;
+        unit = "days";
         unlocked = longestStreak >= 100;
         progress = Math.min(100, (longestStreak / 100) * 100);
         break;
       case "streak_365":
+        targetValue = 365;
+        currentValue = longestStreak;
+        unit = "days";
         unlocked = longestStreak >= 365;
         progress = Math.min(100, (longestStreak / 365) * 100);
         break;
 
       // 3. Genuine Study Focus Time
       case "reading_time_1h":
+        targetValue = 60;
+        currentValue = readingMinutes;
+        unit = "mins";
         unlocked = readingMinutes >= 60;
         progress = Math.min(100, (readingMinutes / 60) * 100);
         break;
       case "reading_time_5h":
+        targetValue = 300;
+        currentValue = readingMinutes;
+        unit = "mins";
         unlocked = readingMinutes >= 300;
         progress = Math.min(100, (readingMinutes / 300) * 100);
         break;
       case "reading_time_20h":
+        targetValue = 1200;
+        currentValue = readingMinutes;
+        unit = "mins";
         unlocked = readingMinutes >= 1200;
         progress = Math.min(100, (readingMinutes / 1200) * 100);
         break;
       case "reading_time_50h":
+        targetValue = 3000;
+        currentValue = readingMinutes;
+        unit = "mins";
         unlocked = readingMinutes >= 3000;
         progress = Math.min(100, (readingMinutes / 3000) * 100);
         break;
       case "reading_time_100h":
+        targetValue = 6000;
+        currentValue = readingMinutes;
+        unit = "mins";
         unlocked = readingMinutes >= 6000;
         progress = Math.min(100, (readingMinutes / 6000) * 100);
         break;
 
       // 4. Literary Realms & Categories
       case "three_realms":
+        targetValue = 3;
+        currentValue = realmsCount;
+        unit = "realms";
         unlocked = realmsCount >= 3;
         progress = Math.min(100, (realmsCount / 3) * 100);
         break;
       case "five_realms":
+        targetValue = 5;
+        currentValue = realmsCount;
+        unit = "realms";
         unlocked = realmsCount >= 5;
         progress = Math.min(100, (realmsCount / 5) * 100);
         break;
       case "eight_realms":
+        targetValue = 8;
+        currentValue = realmsCount;
+        unit = "realms";
         unlocked = realmsCount >= 8;
         progress = Math.min(100, (realmsCount / 8) * 100);
         break;
       case "all_realms":
+        targetValue = 10;
+        currentValue = realmsCount;
+        unit = "realms";
         unlocked = realmsCount >= 10;
         progress = Math.min(100, (realmsCount / 10) * 100);
         break;
 
       // 5. Reflection, Notes & Annotations
       case "first_reflection":
+        targetValue = 1;
+        currentValue = reflectionCount;
+        unit = "reflections";
         unlocked = reflectionCount >= 1;
         progress = Math.min(100, (reflectionCount / 1) * 100);
         break;
       case "five_reflections":
+        targetValue = 5;
+        currentValue = reflectionCount;
+        unit = "reflections";
         unlocked = reflectionCount >= 5;
         progress = Math.min(100, (reflectionCount / 5) * 100);
         break;
       case "ten_reflections":
+        targetValue = 10;
+        currentValue = reflectionCount;
+        unit = "reflections";
         unlocked = reflectionCount >= 10;
         progress = Math.min(100, (reflectionCount / 10) * 100);
         break;
       case "annotator_1":
+        targetValue = 1;
+        currentValue = totalAnnotations;
+        unit = "annotations";
         unlocked = totalAnnotations >= 1;
         progress = Math.min(100, (totalAnnotations / 1) * 100);
         break;
       case "annotator_25":
+        targetValue = 25;
+        currentValue = totalAnnotations;
+        unit = "annotations";
         unlocked = totalAnnotations >= 25;
         progress = Math.min(100, (totalAnnotations / 25) * 100);
         break;
       case "annotator_100":
+        targetValue = 100;
+        currentValue = totalAnnotations;
+        unit = "annotations";
         unlocked = totalAnnotations >= 100;
         progress = Math.min(100, (totalAnnotations / 100) * 100);
         break;
 
       // 6. Curation & Shelf Mastery
       case "first_favorite":
+        targetValue = 1;
+        currentValue = favoritesCount;
+        unit = "favorites";
         unlocked = favoritesCount >= 1;
         progress = Math.min(100, (favoritesCount / 1) * 100);
         break;
       case "first_collection":
+        targetValue = 1;
+        currentValue = collectionsCount;
+        unit = "collections";
         unlocked = collectionsCount >= 1;
         progress = Math.min(100, (collectionsCount / 1) * 100);
         break;
       case "offline_scholar":
+        targetValue = 1;
+        currentValue = offlineCount;
+        unit = "saved books";
         unlocked = offlineCount >= 1;
         progress = Math.min(100, (offlineCount / 1) * 100);
         break;
@@ -1774,10 +1889,17 @@ export function calculateUserAchievements(
         progress = 0;
     }
 
+    const cappedCurrent = targetValue > 0 ? Math.min(currentValue, targetValue) : currentValue;
+    const progressLabel = targetValue > 0 ? `${cappedCurrent} / ${targetValue} ${unit}` : undefined;
+
     return {
       ...cat,
       unlocked,
       progress: Math.round(progress),
+      currentValue,
+      targetValue,
+      unit,
+      progressLabel,
     };
   });
 }

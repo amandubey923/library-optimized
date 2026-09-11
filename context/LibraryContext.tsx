@@ -736,17 +736,24 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     let isNewCompletion = false;
     let updatedHistoryList: ReadingProgressItem[] = [];
 
+    const targetCatalogBook = BOOKS.find((b) => b.id === bookId);
+    const catalogPages = Number(targetCatalogBook?.pages) || 0;
+
     setReadingHistory((prev) => {
       const existing = prev.find((item) => item.bookId === bookId);
-      const wasCompleted = existing
-        ? existing.progress >= 95 || (existing.totalPages > 0 && existing.page >= existing.totalPages)
-        : false;
       const curPage = page > 1 ? page : (existing ? existing.page : 1);
-      const curTotal = totalPages || (existing ? existing.totalPages : 100);
+      const curTotal = (totalPages && totalPages > 0)
+        ? totalPages
+        : (existing?.totalPages && existing.totalPages > 0)
+        ? existing.totalPages
+        : (catalogPages > 0 ? catalogPages : 100);
+
       finalPage = curPage;
       finalTotal = curTotal;
       const progress = curTotal > 0 ? Math.min(100, Math.round((curPage / curTotal) * 100)) : 0;
-      const isNowCompleted = progress >= 95 || (curTotal > 0 && curPage >= curTotal);
+      
+      const wasCompleted = Boolean(existing && curTotal > 0 && existing.page >= curTotal);
+      const isNowCompleted = Boolean(curTotal > 0 && curPage >= curTotal);
 
       if (!wasCompleted && isNowCompleted) {
         isNewCompletion = true;
