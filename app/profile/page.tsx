@@ -1145,7 +1145,7 @@ export default function ProfilePage() {
                 <span>📊</span> Monthly Reading Journey
               </h2>
               <p className="text-xs text-[var(--text-secondary)]">
-                Historical monthly reading vs website active time breakdown
+
               </p>
             </div>
             <span className="text-xs text-[var(--text-secondary)] font-medium">
