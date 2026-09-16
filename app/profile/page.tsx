@@ -728,9 +728,7 @@ export default function ProfilePage() {
                 <h2 className="text-lg sm:text-xl font-serif font-bold text-[var(--foreground)] mt-0.5">
                   Reading Report Card
                 </h2>
-                <p className="text-xs sm:text-sm text-[var(--text-secondary)] mt-0.5">
-                  Your reading journey, beautifully summarized. Create a printable PDF of your reading habits and milestones.
-                </p>
+                
               </div>
             </div>
 
@@ -753,9 +751,7 @@ export default function ProfilePage() {
               <h2 className="text-lg font-bold text-[var(--foreground)]">
                 Reading Statistics Overview
               </h2>
-              <p className="text-xs text-[var(--text-secondary)]">
-                Aggregated from your real local reading and exploration records
-              </p>
+              
             </div>
 
             {/* Time Filter Pills */}
@@ -904,9 +900,7 @@ export default function ProfilePage() {
               <h2 className="text-lg font-bold text-[var(--foreground)] flex items-center gap-2">
                 <span>🗓️</span> Reading Activity Heatmap ({heatmap.year})
               </h2>
-              <p className="text-xs text-[var(--text-secondary)]">
-                Daily reading intensity colored strictly by genuine book reading time
-              </p>
+              
             </div>
             <div className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-[var(--secondary)] text-[var(--foreground)]">
               {heatmap.totalActiveCells} Active Days in {heatmap.year}
