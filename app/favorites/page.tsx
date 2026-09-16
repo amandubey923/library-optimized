@@ -1166,9 +1166,7 @@ export default function FavoritesPage() {
                   <span>🎯</span>
                   <span>Personal Daily Reading Target</span>
                 </h4>
-                <p className="text-[11px] sm:text-xs text-[var(--text-secondary)] font-normal mt-0.5">
-                  Streak qualifies at 15 minutes. Set your own higher personal commitment if desired.
-                </p>
+                
               </div>
               <div className="grid grid-cols-4 sm:flex gap-1.5 sm:gap-2 w-full sm:w-auto">
                 {[15, 30, 45, 60].map((mins) => (
@@ -1214,9 +1212,7 @@ export default function FavoritesPage() {
                   <span>📅</span>
                   <span>12-Week Active Reading Activity Heatmap</span>
                 </h4>
-                <p className="text-[11px] sm:text-xs text-[var(--text-secondary)] mt-0.5">
-                  Derived from your genuine authenticated reading sessions.
-                </p>
+                
               </div>
               <div className="flex items-center gap-1.5 text-[10px] text-[var(--text-secondary)] font-medium">
                 <span>Less</span>
@@ -1520,7 +1516,7 @@ export default function FavoritesPage() {
           <AchievementsGrid
             achievements={achievements}
             title="My Reading Achievements & Milestones"
-            subtitle="Personal verified milestones earned on Reader's HUB across your volumes read, unbroken streaks, study notes, and catalog exploration"
+            subtitle=""
           />
         </div>
       )}
