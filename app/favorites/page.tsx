@@ -407,8 +407,8 @@ export default function FavoritesPage() {
         </h1>
         <p className="text-xs sm:text-sm text-[var(--text-secondary)] font-normal max-w-2xl">
           {user
-            ? "Synced securely with your Reader's HUB cloud account across all your devices."
-            : "Your private reading workspace, saved locally on this device."}
+            ? ""
+            : ""}
         </p>
       </div>
 
