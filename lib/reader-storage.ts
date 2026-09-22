@@ -1607,6 +1607,20 @@ export function getGenuinelyCompletedBookIds(
     }
   }
 
+  // Also verify any books in allMemories with completed saved progress or genuine reading time
+  for (const [bId, mem] of Object.entries(allMemories)) {
+    if (!bId || completedIds.includes(bId)) continue;
+    const bookSecs = mem?.totalSeconds || 0;
+    const saved = typeof window !== "undefined" ? getSavedProgress(bId, targetUid) : null;
+    const catalogBook = BOOKS.find((b) => b.id === bId);
+    const catalogPages = Number(catalogBook?.pages) || 0;
+    const curPage = saved?.page || 0;
+    const curProg = saved?.progress || (catalogPages > 0 && curPage > 0 ? Math.round((curPage / catalogPages) * 100) : 0);
+    if ((curProg >= 95 || (catalogPages > 0 && curPage >= catalogPages)) && (bookSecs >= 180 || !mem || curProg >= 95)) {
+      completedIds.push(bId);
+    }
+  }
+
   return completedIds;
 }
 

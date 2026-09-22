@@ -8,9 +8,7 @@ import { useLibrary } from "@/context/LibraryContext";
 import { useAuth } from "@/context/AuthContext";
 import dynamic from "next/dynamic";
 import { Book, BOOKS } from "@/data/books";
-import BookCard from "@/components/BookCard";
-import { getLocalDateKey, getPreviousDateKey, DAILY_READING_GOAL_SECONDS, getGenuinelyCompletedBookIds } from "@/lib/reader-storage";
-import { syncUserSettingsToCloud, fetchUserSettingsFromCloud } from "@/lib/firestore-sync";
+import { getLocalDateKey, getPreviousDateKey, DAILY_READING_GOAL_SECONDS, getGenuinelyCompletedBookIds, getAllReadingMemories, getBookReadingMemory, getSavedProgress } from "@/lib/reader-storage";
 import AuthGuard from "@/components/auth/AuthGuard";
 import CollectionsTab from "@/components/collections/CollectionsTab";
 import ReadingPathsTab from "@/components/paths/ReadingPathsTab";
@@ -34,6 +32,7 @@ export default function FavoritesPage() {
     stats,
     streakData,
     getReadingMemory,
+    readingMemories,
     exportData,
     importData,
     showToast,
