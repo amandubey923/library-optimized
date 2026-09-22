@@ -1599,10 +1599,10 @@ export function getGenuinelyCompletedBookIds(
     const catalogPages = Number(catalogBook?.pages) || 0;
     const actualTotalPages = Number(item.totalPages) > 0 ? Number(item.totalPages) : catalogPages;
 
-    // A book is complete ONLY when the user has genuinely read through the end of all actual pages of that book
-    const isFinished = actualTotalPages > 0 && item.page >= actualTotalPages;
+    // A book is complete when the user reaches all actual pages, or reaches >= 100% progress, or >= 95% with genuine reading time
+    const isFinished = (actualTotalPages > 0 && item.page >= actualTotalPages) || item.progress >= 100 || (item.progress >= 95 && (bookSecs >= 180 || item.page > 1));
 
-    if (isFinished && (bookSecs >= 180 || !mem || item.progress === 100)) {
+    if (isFinished && (bookSecs >= 180 || !mem || item.progress >= 95)) {
       completedIds.push(item.bookId);
     }
   }

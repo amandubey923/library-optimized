@@ -156,8 +156,8 @@ export default function FavoritesPage() {
 
   // 1. Authoritative Completed Books Set for strict mutual exclusivity
   const completedSet = useMemo(() => {
-    return new Set(getGenuinelyCompletedBookIds(readingHistory));
-  }, [readingHistory]);
+    return new Set(getGenuinelyCompletedBookIds(readingHistory, undefined, user?.uid));
+  }, [readingHistory, user?.uid]);
 
   // Derive In-Progress Books from Reading History (Mutually exclusive with Completed)
   const currentlyReadingBooks = useMemo(() => {
@@ -165,6 +165,7 @@ export default function FavoritesPage() {
       .filter(
         (item) =>
           !completedSet.has(item.bookId) &&
+          item.progress < 100 &&
           (!item.totalPages || item.page < item.totalPages) &&
           !isDismissedFromShelf("reading", item.bookId)
       )
@@ -197,7 +198,11 @@ export default function FavoritesPage() {
     return readingHistory
       .filter(
         (item) =>
-          (completedSet.has(item.bookId) || (item.totalPages > 0 && item.page >= item.totalPages)) &&
+          (
+            completedSet.has(item.bookId) ||
+            item.progress >= 100 ||
+            (item.totalPages > 0 && item.page >= item.totalPages)
+          ) &&
           !isDismissedFromShelf("completed", item.bookId)
       )
       .map((item) => {
