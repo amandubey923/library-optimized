@@ -154,9 +154,13 @@ export default function FavoritesPage() {
   };
 
   // 1. Authoritative Completed Books Set for strict mutual exclusivity
+  // CRITICAL: pass readingMemories from context (not undefined) so that when
+  // Firestore cloud sync fires setReadingMemories(), this memo recomputes.
+  // Previously passing undefined caused getAllReadingMemories() to read from
+  // localStorage which may be empty on first render before cloud hydration.
   const completedSet = useMemo(() => {
-    return new Set(getGenuinelyCompletedBookIds(readingHistory, undefined, user?.uid));
-  }, [readingHistory, user?.uid]);
+    return new Set(getGenuinelyCompletedBookIds(readingHistory, readingMemories, user?.uid));
+  }, [readingHistory, readingMemories, user?.uid]);
 
   // Derive In-Progress Books from Reading History (Mutually exclusive with Completed)
   const currentlyReadingBooks = useMemo(() => {
