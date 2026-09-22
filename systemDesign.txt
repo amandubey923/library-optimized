@@ -1,0 +1,2252 @@
+╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                                                                                                              ║
+║  ███████╗██╗   ██╗███████╗████████╗███████╗███╗   ███╗    ██████╗ ███████╗███████╗██╗ ██████╗ ███╗   ██╗   ║
+║  ██╔════╝╚██╗ ██╔╝██╔════╝╚══██╔══╝██╔════╝████╗ ████║    ██╔══██╗██╔════╝██╔════╝██║██╔════╝ ████╗  ██║   ║
+║  ███████╗ ╚████╔╝ ███████╗   ██║   █████╗  ██╔████╔██║    ██║  ██║█████╗  ███████╗██║██║  ███╗██╔██╗ ██║   ║
+║  ╚════██║  ╚██╔╝  ╚════██║   ██║   ██╔══╝  ██║╚██╔╝██║    ██║  ██║██╔══╝  ╚════██║██║██║   ██║██║╚██╗██║   ║
+║  ███████║   ██║   ███████║   ██║   ███████╗██║ ╚═╝ ██║    ██████╔╝███████╗███████║██║╚██████╔╝██║ ╚████║   ║
+║  ╚══════╝   ╚═╝   ╚══════╝   ╚═╝   ╚══════╝╚═╝     ╚═╝    ╚═════╝ ╚══════╝╚══════╝╚═╝ ╚═════╝ ╚═╝  ╚═══╝   ║
+║                                                                                                              ║
+║          H A N D B O O K   •   H L D   •   L L D   •   C O D E   F L O W S   •   I N T E R V I E W         ║
+║                                                                                                              ║
+║   System  : Reader's HUB — Digital Reading Platform & AI Study Workspace                                     ║
+║   Live URL : https://reader-hub-library.vercel.app                                                           ║
+║   Root Dir : d:\Desktop\realProject\library-optimized                                                        ║
+║   Purpose  : Visual Architecture + HLD + LLD + Interview Preparation (All in One)                            ║
+║                                                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+                                         TABLE OF CONTENTS
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+  §01 ··· PROJECT AT A GLANCE
+  §02 ··· HLD — HIGH LEVEL DESIGN (10,000-Foot Architecture)
+  §03 ··· HLD COMPONENT MAP & MODULE TOPOLOGY
+  §04 ··· COMPLETE REQUEST LIFECYCLE (Step-by-Step Numbered Execution)
+  §05 ··· MAJOR FEATURE FLOWS (7 Features, User → UI → API → DB → Response)
+  §06 ··· AUTHENTICATION & AUTHORIZATION ARCHITECTURE
+  §07 ··· DATABASE DESIGN (Dual-Layer: LocalStorage + Cloud Firestore ER)
+  §08 ··· LLD — LOW LEVEL DESIGN (Module & Component Deep Dives)
+  §09 ··· CLASS / COMPONENT RELATIONSHIP DIAGRAMS
+  §10 ··· SEQUENCE DIAGRAMS (Core Interaction Lifecycles)
+  §11 ··· DATA FLOW DIAGRAMS
+  §12 ··· API / SERVERLESS ROUTE HANDLER SPECIFICATION
+  §13 ··· EXTERNAL SERVICE & AI INTEGRATION FLOWS
+  §14 ··· ERROR PROPAGATION & FAULT-TOLERANCE PATHS
+  §15 ··· PERFORMANCE ARCHITECTURE & BOTTLENECK MAP
+  §16 ··· SCALABILITY DESIGN (10 → 100K Users)
+  §17 ··· SECURITY ARCHITECTURE & DEFENSE MAP
+  §18 ··· DEPLOYMENT & CI/CD ARCHITECTURE
+  §19 ··· DEPENDENCY GRAPH
+  §20 ··· DESIGN PATTERNS (Evidence-Based)
+  §21 ··· ARCHITECTURAL DECISIONS & TRADEOFFS (ADRs)
+  §22 ··· "EXPLAIN THIS ARCHITECTURE IN AN INTERVIEW" (30s / 1m / 3m / 5m)
+  §23 ··· INTERVIEW WHITEBOARD SKETCH (Step-by-Step Drawing Guide)
+  §24 ··· SYSTEM DESIGN INTERVIEW QUESTIONS & MODEL ANSWERS
+  §25 ··· SYSTEM DESIGN CHEAT SHEET
+  §26 ··· ONE-PAGE VISUAL ARCHITECTURE (Final Overview)
+
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+§01  PROJECT AT A GLANCE
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+
+┌──────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                              ★  R E A D E R ' S   H U B  ★                                                  │
+├────────────────────┬─────────────────────────────────────────────────────────────────────────────────────────┤
+│ Purpose            │ Modern, offline-first digital library & study workspace. Zero login required.           │
+│ Users              │ CS students, literature readers, bilingual Hindi/English learners                       │
+│ Catalog Size       │ 386+ full-text PDFs: Classics, CS/DSA, Hindi Lit, Philosophy, Business, Fantasy        │
+├────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────┤
+│ Frontend           │ Next.js 16.2.1 App Router • React 19 • TypeScript 5 • Tailwind CSS v4                  │
+│ Reader Engine      │ PDF.js Web Worker → HTML5 Canvas double-buffer rendering                               │
+│ Backend            │ Next.js Serverless Route Handlers (Node.js runtime on Vercel)                          │
+│ Primary Store      │ Browser localStorage via `lib/reader-storage.ts` (sub-ms, in-memory Map cache)        │
+│ Cloud Database     │ Google Cloud Firestore (NoSQL, debounced background sync)                              │
+│ Static Catalog     │ `data/books.json` bundled at build time (0ms search, offline-capable)                  │
+├────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────┤
+│ Authentication     │ Firebase Auth v12 — Google OAuth 2.0 popup → JWT → browserLocalPersistence            │
+│ AI Services        │ Google Gemini API (`@google/genai` v2.18) — Chat assistant + Page translator          │
+│ Payments           │ Razorpay (UPI/Card) — server-side HMAC SHA256 verified • PRO currently FREE           │
+│ Email              │ Resend SDK — Transactional contact dispatch                                            │
+├────────────────────┼─────────────────────────────────────────────────────────────────────────────────────────┤
+│ Deployment         │ Vercel Global Edge + Serverless • git push → auto-deploy                               │
+│ PWA                │ sw.js service worker • offline PDF caching • standalone display                        │
+│ Monetization       │ PRO_ENFORCEMENT_ENABLED=false (all features FREE) • UPI donation active                │
+└────────────────────┴─────────────────────────────────────────────────────────────────────────────────────────┘
+
+EXECUTION SPINE (Actual Traced Components):
+───────────────────────────────────────────
+  📱  READER's HUB
+       │
+       ▼
+  👤  USER  (opens reader-hub-library.vercel.app in browser / PWA)
+       │
+       ▼
+  🖥️  FRONTEND  [Next.js App Router + React 19]
+       │   app/page.tsx                   → Landing hero, carousel
+       │   app/library/page.tsx           → 386+ book catalog grid
+       │   app/book/[id]/page.tsx         → Book detail + metadata
+       │   components/reader/BookReader.tsx → Core reading engine
+       │
+       ▼
+  ⚙️  APPLICATION LOGIC  [Contexts + Domain Libs]
+       │   context/AuthContext.tsx        → Login, token, user state
+       │   context/LibraryContext.tsx     → Reading history, favorites, streaks
+       │   context/EntitlementContext.tsx → Pro plan, daily quotas
+       │   lib/reader-storage.ts          → LocalStorage CRUD + memory caches
+       │
+       ▼
+  🔌  API / SERVER  [Next.js Serverless Handlers]
+       │   /api/chat                      → Gemini AI assistant
+       │   /api/translate                 → Page spread translator
+       │   /api/payment/create-order      → Razorpay order
+       │   /api/payment/verify            → HMAC SHA256 verification
+       │   /api/users/profile             → Profile CRUD
+       │
+       ▼
+  🗄️  DATABASE / EXTERNAL SERVICES
+       │   localStorage (primary — 0ms)   ← reader-storage.ts
+       │   Cloud Firestore (secondary)    ← firestore-sync.ts (3s debounce)
+       │   Google Gemini API              ← @google/genai
+       │   Razorpay API                   ← razorpay.ts
+       │   Firebase Auth                  ← firebase.ts + firebase-admin.ts
+       │
+       ▼
+  📊  RESPONSE  → JSON / Canvas Raster / Debounced Cloud Write
+       │
+       ▼
+  🖥️  UI UPDATE  → Toast, Drawer, Canvas Repaint, Streak Diya, Progress Bar
+
+
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+§02  HLD — HIGH LEVEL DESIGN
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+
+[IMPORTANT] This is the most critical section. Understand this and you can answer any architecture question.
+
+ASCII HIGH LEVEL DIAGRAM:
+─────────────────────────
+                            ┌─────────────────────────────────┐
+                            │           👤  U S E R            │
+                            │  (Browser / Mobile PWA / Desktop)│
+                            └──────────────┬──────────────────┘
+                                           │
+                    ┌──────────────────────┼──────────────────────┐
+                    │                      │                      │
+                    ▼                      ▼                      ▼
+          ┌──────────────┐      ┌─────────────────┐    ┌──────────────────┐
+          │ Service Worker│      │   React 19 UI   │    │  PDF.js Worker   │
+          │  /public/sw.js│      │ (Next.js 16.2.1)│    │  /vendor/pdfjs/  │
+          │ Cache-First   │      │ App Router      │    │  Web Worker      │
+          │ Offline Shell │      │ Tailwind CSS v4 │    │  Canvas Render   │
+          └──────┬───────┘      └────────┬────────┘    └──────┬───────────┘
+                 │                       │                     │
+                 │              ┌────────┴────────┐            │
+                 │              │ CONTEXT SHELL   │            │
+                 │              │ ThemeProvider   │            │
+                 │              │ AuthProvider    │            │
+                 │              │ Entitlement     │            │
+                 │              │ LibraryProvider │            │
+                 │              └────────┬────────┘            │
+                 │                       │                     │
+                 │              ┌────────┴────────┐            │
+                 │              │ DOMAIN SERVICES │◄───────────┘
+                 │              │ reader-storage  │
+                 │              │ firestore-sync  │
+                 │              │ reading-analytics│
+                 │              └──────┬──┬───────┘
+                 │                    │  │
+          ┌──────┘         ┌──────────┘  └──────────────────┐
+          │                │                                 │
+          ▼                ▼                                 ▼
+ ┌────────────────┐ ┌────────────────┐            ┌─────────────────────┐
+ │ Vercel Static  │ │  localStorage  │            │ Next.js Serverless  │
+ │ CDN: /pdfs/*   │ │  (Primary DB)  │            │ Route Handlers      │
+ │ /images/*      │ │  0ms latency   │            │ /api/chat           │
+ │ /manifest.json │ │  in-memory Map │            │ /api/translate      │
+ └────────────────┘ └───────┬────────┘            │ /api/payment/*      │
+                            │                     │ /api/users/*        │
+                            │ 3s debounce         │ /api/admin/*        │
+                            ▼                     └─────────┬───────────┘
+                  ┌─────────────────┐                       │
+                  │ Cloud Firestore │         ┌─────────────┼─────────────┐
+                  │ readers-hub-    │         │             │             │
+                  │ 52be2           │         ▼             ▼             ▼
+                  │ (Backup + Social│  ┌──────────┐ ┌──────────┐ ┌──────────────┐
+                  │  Graph + Admin) │  │ Google   │ │Razorpay  │ │  Resend      │
+                  └─────────────────┘  │ Gemini   │ │ Gateway  │ │  Email API   │
+                                       │ API      │ │(Payments)│ │(Contact Form)│
+                                       └──────────┘ └──────────┘ └──────────────┘
+
+SUBSYSTEM TOPOLOGY & INTERACTION MATRIX:
+────────────────────────────────────────
+ ┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
+ │                                   CLIENT-SIDE BROWSER / PWA TIER                                 │
+ │                                                                                                  │
+ │  ┌───────────────────────┐         ┌─────────────────────────┐         ┌──────────────────────┐  │
+ │  │    sw.js Worker       │         │   React 19 Next.js App  │         │    PDF.js Worker     │  │
+ │  │  • CacheStorage: PDF  │◄───────►│   • App Router UI Pages │◄───────►│  • Off-Main-Thread   │  │
+ │  │  • Cache-First Assets │ (Shell) │   • Tailwind CSS Tokens │(Canvas) │  • Vector Render     │  │
+ │  │  • Network Navigation │         │   • Double-Buffer Paint │         │  • SVG Text Layer    │  │
+ │  └───────────────────────┘         └────────────┬────────────┘         └──────────────────────┘  │
+ │                                                 │                                                │
+ │                              ┌──────────────────┴──────────────────┐                             │
+ │                              │        GLOBAL CONTEXT SHELL         │                             │
+ │                              │  ThemeProvider   → AuthContext      │                             │
+ │                              │  EntitlementCtx  → LibraryContext   │                             │
+ │                              └──────────────────┬──────────────────┘                             │
+ │                                                 │                                                │
+ │                              ┌──────────────────┴──────────────────┐                             │
+ │                              │       DOMAIN SERVICES LAYER         │                             │
+ │                              │  reader-storage  │ reading-analytic │                             │
+ │                              │  firestore-sync  │ library-assistan │                             │
+ │                              └────────┬───────────────────┬────────┘                             │
+ └───────────────────────────────────────┼───────────────────┼──────────────────────────────────────┘
+                                         │                   │
+                     ┌───────────────────┘                   └───────────────────┐
+                     │ Synchronous (<1ms)                                        │ HTTPS API Requests
+                     ▼                                                           ▼
+ ┌───────────────────────────────────────┐               ┌──────────────────────────────────────────┐
+ │         PRIMARY DATA STORE            │               │      VERCEL SERVERLESS ROUTE HANDLERS    │
+ │       Browser localStorage            │               │                                          │
+ │  • readershub:progress:v1:{uid}:*     │               │  POST /api/chat      POST /api/translate │
+ │  • readershub:annotations:v1:{uid}:*  │               │  POST /api/payment/* GET  /api/users/*   │
+ │  • readershub:reading-activity:v1:*   │               │  POST /api/admin/*   POST /api/contact   │
+ │  • In-Memory Map Cache (0ms latency)  │               │  Runtime: Node.js (Vercel Global Edge)   │
+ └───────────────────┬───────────────────┘               └────────────────────┬─────────────────────┘
+                     │                                                        │
+                     │ 3,000ms Debounced Async Sync                           │ Admin SDK & Cloud Integrations
+                     ▼                                                        ▼
+ ┌───────────────────────────────────────┐               ┌──────────────────────────────────────────┐
+ │         SECONDARY CLOUD STORE         │               │         EXTERNAL CLOUD SERVICES          │
+ │       Google Cloud Firestore          │               │                                          │
+ │  • Project: readers-hub-52be2         │◄──────────────┤  • Google Gemini API (5-Model Cascade)   │
+ │  • users/{uid}/reading_progress       │  Direct Client│  • Razorpay Payment Gateway (HMAC SHA256)│
+ │  • public_profiles/{uid}              │  & Server SDK │  • Resend Transactional Email Service    │
+ │  • follows/ & activity feeds          │               │  • Firebase Auth (Google OAuth 2.0 JWT)  │
+ └───────────────────────────────────────┘               └──────────────────────────────────────────┘
+
+COMPONENT RESPONSIBILITY TABLE:
+────────────────────────────────
+┌────────────────────────────────┬──────────────────────────────┬──────────────────────────────┐
+│ COMPONENT                      │ WHAT IT DOES                 │ WHERE IN CODEBASE            │
+├────────────────────────────────┼──────────────────────────────┼──────────────────────────────┤
+│ ThemeProvider                  │ CSS token switching (6 themes)│ components/visual/ThemeProvider│
+│ AuthContext                    │ OAuth, token, user state     │ context/AuthContext.tsx        │
+│ LibraryContext                 │ Central state facade         │ context/LibraryContext.tsx     │
+│ EntitlementContext             │ Pro plan + checkout state    │ context/EntitlementContext.tsx │
+│ BookReader.tsx                 │ PDF render, annotations,     │ components/reader/BookReader   │
+│                                │ canvas, timer, translation   │                                │
+│ reader-storage.ts              │ LocalStorage CRUD + cache    │ lib/reader-storage.ts          │
+│ firestore-sync.ts              │ Debounced cloud backup       │ lib/firestore-sync.ts          │
+│ /api/chat/route.ts             │ Gemini grounded AI chat      │ app/api/chat/route.ts          │
+│ /api/translate/route.ts        │ Hindi/Hinglish translation   │ app/api/translate/route.ts     │
+│ /api/payment/verify/route.ts   │ HMAC payment verification    │ app/api/payment/verify         │
+│ sw.js                          │ PWA offline + cache strategy │ public/sw.js                   │
+│ data/books.json                │ 386+ book catalog (static)   │ data/books.json                │
+│ firestore.rules                │ DB-level access control      │ firestore.rules                │
+└────────────────────────────────┴──────────────────────────────┴──────────────────────────────┘
+
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+§03  HLD COMPONENT MAP & MODULE TOPOLOGY
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+
+USER (any browser, no account required)
+ │
+ ├─────────────────────────────────────────────────────────────────────┐
+ │                                                                     │
+ ▼                                                                     ▼
+PAGE ROUTES (Next.js App Router)                             PWA SHELL (sw.js)
+ │                                                                     │
+ ├── app/page.tsx                 (Landing)                  Caches: /icons/* /images/*
+ ├── app/library/page.tsx         (Catalog)                  Network-first: navigation
+ ├── app/book/[id]/page.tsx       (Book detail)              Bypass: /api/* calls
+ ├── app/my-shelf/page.tsx        (Shelf)
+ ├── app/profile/[username]/page  (Social profile)
+ ├── app/admin/page.tsx           (Admin panel)
+ └── app/api/**/route.ts          (Serverless API)
+      │
+      ▼
+PROVIDER NESTING CHAIN (app/layout.tsx — Strict Order)
+ ┌──────────────────────────────────────────────────────────┐
+ │ ThemeProvider → AuthProvider → EntitlementProvider       │
+ │              → LibraryProvider → UI Shell                │
+ └──────────────────────────────────────────────────────────┘
+      │
+      ▼
+CORE UI COMPONENTS (components/)
+ │
+ ├── Navbar.tsx              ← Streak Diya, theme switcher, search trigger
+ ├── BookCard.tsx            ← Cover, progress bar, category badge
+ ├── SearchModal.tsx         ← Cmd+K instant keyword search (client-side)
+ ├── GlobalModals.tsx        ← Auth / Payment / Search modal portal
+ │
+ ├── reader/
+ │   ├── BookReader.tsx      ← 3,538 lines — core reading engine
+ │   ├── PdfReader.tsx       ← PDF.js canvas renderer
+ │   ├── DrawingCanvas.tsx   ← HTML5 Canvas freehand overlay
+ │   ├── AnnotationDrawer    ← Highlights, notes, bookmarks
+ │   ├── TranslationDrawer   ← Bilingual spread viewer
+ │   └── ReadingSessionTimer ← Pomodoro stopwatch
+ │
+ ├── assistant/
+ │   └── LibraryAssistant   ← Gemini chat UI with book cards
+ │
+ ├── payment/
+ │   ├── ProUpgradeModal    ← Plan selector + Razorpay trigger
+ │   └── SupportReaderModal ← UPI donation QR code
+ │
+ ├── social/
+ │   ├── FollowButton       ← Follow/unfollow toggle
+ │   ├── ActivityFeed       ← Real-time community stream
+ │   └── AchievementsGrid   ← Badge gamification display
+ │
+ └── visual/
+     ├── DiwaliDiya.tsx     ← Streak vitality flame indicator
+     ├── Hero3DLayer.tsx    ← Mouse-tracking 3D parallax
+     └── AmbientEffects.tsx ← Cosmic backdrop noise overlays
+      │
+      ▼
+DOMAIN SERVICES & UTILITIES (lib/)
+ │
+ ├── reader-storage.ts      ← LocalStorage engine (in-memory Map + namespace)
+ ├── firestore-sync.ts      ← Debounced Firestore writer + reconciliation
+ ├── reading-analytics.ts   ← GitHub heatmap, velocity, genre charts
+ ├── library-assistant.ts   ← Catalog grounder + regex fast-path
+ ├── translator.ts          ← Text normalization + translation cache
+ ├── recommendations.ts     ← Deterministic similarity scoring
+ ├── razorpay.ts            ← Order creation + HMAC verification
+ ├── entitlements.ts        ← Token verify + entitlement builder
+ ├── social.ts              ← Follow graph transactions
+ ├── admin.ts               ← Email whitelist predicate
+ ├── admin-catalog.ts       ← Override merge logic
+ ├── firebase.ts            ← Client SDK singleton
+ ├── firebase-admin.ts      ← Server SDK singleton
+ └── monetization-config.ts ← Plans, flags, UPI config
+      │
+      ├──────────────────────────────────────┬─────────────────────────┐
+      ▼                                      ▼                         ▼
+  localStorage (0ms)              Cloud Firestore (3s debounce)     data/books.json (0ms)
+  Browser primary store           User profiles, social, backup     Static catalog bundle
+
+
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+§04  COMPLETE REQUEST LIFECYCLE
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+
+[IMPORTANT] Traced flow: User opens a book and reads page 42 → flips to page 43
+
+ STEP 01 ── USER ACTION
+ ┌───────────────────────────────────────────────────────────────┐
+ │ FILE     : app/book/[id]/page.tsx                             │
+ │ ACTION   : User navigates to /book/atomic-habits              │
+ │ OUTPUT   : Next.js server executes, calls getBookById(id)     │
+ │            from data/books.ts, generates OpenGraph meta tags  │
+ │ NEXT     : Streams HTML shell + BookDetailClient.tsx          │
+ └───────────────────────────────────────────────────────────────┘
+          │
+          ▼
+ STEP 02 ── CLIENT HYDRATION
+ ┌───────────────────────────────────────────────────────────────┐
+ │ FILE     : app/book/[id]/BookDetailClient.tsx                 │
+ │ FUNCTION : useEffect() initializes BookReader with book prop  │
+ │ INPUT    : book: Book (from server-rendered props)            │
+ │ OUTPUT   : Mounts <BookReader book={book} />                  │
+ │ NEXT     : BookReader.tsx initialization                      │
+ └───────────────────────────────────────────────────────────────┘
+          │
+          ▼
+ STEP 03 ── PROGRESS HYDRATION (Sub-Millisecond)
+ ┌───────────────────────────────────────────────────────────────┐
+ │ FILE     : components/reader/BookReader.tsx                   │
+ │ FUNCTION : useEffect() → reader-storage.ts.getSavedProgress() │
+ │ INPUT    : bookId: "atomic-habits", uid: "usr_abc123"         │
+ │ LOGIC    : Checks progressCache Map first (hit = 0ms)         │
+ │            Falls back to localStorage.getItem(key)            │
+ │            Key: readershub:progress:v1:usr_abc123:atomic-habits│
+ │ OUTPUT   : { page: 42, totalPages: 320, progress: 13.1 }      │
+ │ NEXT     : setCurrentPage(42), PDF.js render page 42          │
+ └───────────────────────────────────────────────────────────────┘
+          │
+          ▼
+ STEP 04 ── PDF ASSET FETCH + SERVICE WORKER
+ ┌───────────────────────────────────────────────────────────────┐
+ │ FILE     : public/sw.js                                       │
+ │ FUNCTION : fetch event listener intercepts /pdfs/*.pdf        │
+ │ LOGIC    : sw.js does NOT cache PDFs by default in App Shell  │
+ │            If user cached book offline → CacheStorage.match() │
+ │            Otherwise → network fetch from Vercel CDN          │
+ │ OUTPUT   : PDF binary stream                                  │
+ │ NEXT     : PDF.js Web Worker processes binary                 │
+ └───────────────────────────────────────────────────────────────┘
+          │
+          ▼
+ STEP 05 ── PDF.JS CANVAS RENDERING (Off Main Thread)
+ ┌───────────────────────────────────────────────────────────────┐
+ │ FILE     : components/PdfReader.tsx                           │
+ │ FUNCTION : renderPage(pageNumber, scale, viewport)            │
+ │ INPUT    : pageNumber: 42, scale: 1.15, devicePixelRatio: 2  │
+ │ LOGIC    : PDF.js Worker renders vector ops → ImageData       │
+ │            Canvas double-buffering eliminates flicker         │
+ │            SVG text layer overlaid for selection/highlight    │
+ │ OUTPUT   : Painted <canvas> + invisible <div> text layer      │
+ │ NEXT     : User can read, annotate, draw                      │
+ └───────────────────────────────────────────────────────────────┘
+          │
+          ▼
+ STEP 06 ── USER TURNS PAGE (Right Arrow / Swipe)
+ ┌───────────────────────────────────────────────────────────────┐
+ │ FILE     : components/reader/BookReader.tsx                   │
+ │ FUNCTION : handleNextPage() — keyboard/touch event listener   │
+ │ INPUT    : KeyboardEvent: "ArrowRight" or TouchEvent: swipe   │
+ │ LOGIC    : setCurrentPage(prev => prev + 1)                   │
+ │            Triggers re-render with page 43                    │
+ │ NEXT     : Synchronous localStorage write                     │
+ └───────────────────────────────────────────────────────────────┘
+          │
+          ▼
+ STEP 07 ── SYNCHRONOUS LOCAL STORAGE COMMIT (<1ms)
+ ┌───────────────────────────────────────────────────────────────┐
+ │ FILE     : lib/reader-storage.ts                              │
+ │ FUNCTION : saveProgress(bookId, page, totalPages)             │
+ │ INPUT    : "atomic-habits", 43, 320                           │
+ │ LOGIC    : progress = (43/320 * 100).toFixed(1) = "13.4"     │
+ │            progressCache.set(key, record)   ← memory first   │
+ │            localStorage.setItem(key, JSON.stringify(record))  │
+ │ OUTPUT   : undefined (synchronous write, no promise needed)   │
+ │ NEXT     : Firestore sync scheduling                          │
+ └───────────────────────────────────────────────────────────────┘
+          │
+          ▼
+ STEP 08 ── DEBOUNCED CLOUD SYNC SCHEDULING
+ ┌───────────────────────────────────────────────────────────────┐
+ │ FILE     : lib/firestore-sync.ts                              │
+ │ FUNCTION : syncReadingProgressToCloud(uid, bookId)            │
+ │ INPUT    : uid: "usr_abc123", bookId: "atomic-habits"         │
+ │ LOGIC    : clearTimeout(progressDebounceTimers[key])          │
+ │            progressDebounceTimers[key] = setTimeout(fn, 3000) │
+ │ WHY      : User may flip 20 pages rapidly → coalesce to 1 write│
+ │ NEXT     : 3000ms later → Firestore atomic write              │
+ └───────────────────────────────────────────────────────────────┘
+          │
+          ▼ (after 3,000ms of no further page flips)
+ STEP 09 ── CLOUD FIRESTORE ATOMIC WRITE
+ ┌───────────────────────────────────────────────────────────────┐
+ │ FILE     : lib/firestore-sync.ts                              │
+ │ FUNCTION : async timeout handler                              │
+ │ CALL     : setDoc(doc(db, "users", uid, "reading_progress",   │
+ │                   bookId), payload, { merge: true })          │
+ │ PAYLOAD  : { page: 43, progress: 13.4, updatedAt: serverTs }  │
+ │ OUTPUT   : Firestore document updated in cloud                │
+ │ NEXT     : Session timer + streak check                       │
+ └───────────────────────────────────────────────────────────────┘
+          │
+          ▼
+ STEP 10 ── STREAK & ACTIVE TIME TRACKING
+ ┌───────────────────────────────────────────────────────────────┐
+ │ FILE     : components/reader/ReadingSessionTimer.tsx          │
+ │           + lib/active-tracker.ts                             │
+ │ FUNCTION : addActiveReadingTime(bookId, seconds)              │
+ │ LOGIC    : Checks if today's active seconds >= 900 (15 min)   │
+ │            If YES: marks daily activity as qualified=true     │
+ │            Recalculates currentStreak via calculateStreak()   │
+ │ OUTPUT   : DiwaliDiya.tsx flame glows golden in Navbar        │
+ │ CLOUD    : syncReadingActivityToCloud() debounced 5s          │
+ └───────────────────────────────────────────────────────────────┘
+
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+§05  MAJOR FEATURE FLOWS
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+
+╔══════════════════════════════════════════════════════════════════════════════════╗
+║  FEATURE 1 : AI LIBRARY ASSISTANT — Gemini-Powered Catalog Chat                 ║
+╚══════════════════════════════════════════════════════════════════════════════════╝
+
+USER ACTION   →  Types "Recommend a book on distributed systems" + clicks Send
+     │
+     ▼
+UI COMPONENT  →  components/assistant/LibraryAssistant.tsx
+                 handleSubmit(e: React.FormEvent)
+     │
+     ▼
+LOCAL FAST PATH (lib/library-assistant.ts → tryDeterministicQuery())
+     │
+     ├─── MATCH (regex / keyword) ──► Return static pre-indexed results (0ms, no API cost)
+     │
+     └─── NO MATCH ───────────────────────────────────────────────────────────────────┐
+                                                                                      │
+API CALL      →  POST /api/chat                                                       │
+                 Body: { message: "...", history: [...] }                             │
+     │                                                                                │
+     ▼                                                                                │
+CONTROLLER    →  app/api/chat/route.ts                                                │
+                 1. Parse body, sanitize message                                      │
+                 2. Call getCompactCatalogSummary() — condenses 386 books             │
+                 3. Build system instruction with full catalog context                │
+                 4. Cascade through 5 Gemini models (8s timeout each):               │
+                    gemini-3.1-flash-lite-preview → gemini-3-flash-preview →         │
+                    gemini-3.1-flash-lite → gemini-3.6-flash → gemini-3.7-flash      │
+                 5. responseMimeType: "application/json" enforced                    │
+     │                                                                                │
+     ▼                                                                                │
+EXTERNAL SVC  →  Google Gemini API (model cascade with Promise.race timeout)         │
+                 Returns JSON: { reply: "...", bookIds: ["deep-work", "clean-code"] } │
+     │                                                                                │
+     ▼                                                                                │
+RESPONSE      →  200 { reply, books: [Book, Book], suggestedActions: [...] }         │
+                 findBooksByIds() hydrates full Book objects from data/books.json ◄──┘
+     │
+     ▼
+STATE UPDATE  →  setMessages(prev => [...prev, assistantResponse])
+     │
+     ▼
+UI RE-RENDER  →  Chat bubble with interactive BookCard components
+
+─────────────────────────────────────────────────────────────────────────────────────
+
+╔══════════════════════════════════════════════════════════════════════════════════╗
+║  FEATURE 2 : REAL-TIME PAGE SPREAD TRANSLATION (Hindi / Hinglish)               ║
+╚══════════════════════════════════════════════════════════════════════════════════╝
+
+USER ACTION   →  Clicks "Translate Spread" button in BookReader toolbar
+     │
+     ▼
+UI COMPONENT  →  components/reader/BookReader.tsx → handleTranslateSpread()
+     │
+     ▼
+CACHE CHECK   →  lib/translator.ts → getCachedTranslation(bookId, pageNum, lang)
+     │
+     ├─── CACHE HIT  ──────────────────────────► Return cached text (0ms, no API)
+     │
+     └─── CACHE MISS ──┐
+                       │
+API CALL      →  POST /api/translate
+                 Body: { pages: [{pageNum: 42, text: "..."}], targetLanguage: "hindi" }
+     │
+     ▼
+CONTROLLER    →  app/api/translate/route.ts
+                 1. Validate: max 2 pages per spread (DoS prevention)
+                 2. Normalize text via normalizePdfText()
+                 3. Build literary translation prompt
+                 4. Same 5-model cascade with 8s timeout
+     │
+     ▼
+EXTERNAL SVC  →  Google Gemini API
+                 Returns: { translations: { "42": "हिन्दी पाठ..." } }
+     │
+     ▼
+CACHE WRITE   →  lib/translator.ts → setCachedTranslation() → localStorage
+     │
+     ▼
+UI RE-RENDER  →  TranslationDrawer.tsx renders side-by-side bilingual spread
+
+─────────────────────────────────────────────────────────────────────────────────────
+
+╔══════════════════════════════════════════════════════════════════════════════════╗
+║  FEATURE 3 : RAZORPAY PRO SUBSCRIPTION CHECKOUT + ENTITLEMENT GRANT             ║
+╚══════════════════════════════════════════════════════════════════════════════════╝
+
+USER ACTION   →  Clicks "Upgrade to Pro Annual ₹299" in ProUpgradeModal.tsx
+     │
+     ▼
+UI COMPONENT  →  components/payment/ProUpgradeModal.tsx
+     │           handleCheckout(planId: "PRO_YEARLY")
+     ▼
+CONTEXT       →  context/EntitlementContext.tsx → initiateCheckout(planId)
+     │
+     ▼
+API CALL 1    →  POST /api/payment/create-order
+                 Body: { planId: "PRO_YEARLY" }
+     │
+     ▼
+SERVER LOGIC  →  app/api/payment/create-order/route.ts
+                 1. Map planId → monetization-config.ts → amount: 29900 paise
+                 2. Server NEVER trusts client price ← [IMPORTANT SECURITY]
+                 3. lib/razorpay.ts → createRazorpayOrder(29900, "INR")
+     │
+     ▼
+EXTERNAL SVC  →  Razorpay API: POST /v1/orders
+                 Returns: { orderId: "order_xyz", amount: 29900 }
+     │
+     ▼
+CLIENT MODAL  →  new window.Razorpay(options).open()
+                 User pays via UPI / Card / NetBanking
+     │
+     ▼ (on payment success callback from Razorpay SDK)
+API CALL 2    →  POST /api/payment/verify
+                 Body: { razorpay_order_id, razorpay_payment_id, razorpay_signature }
+     │
+     ▼
+SERVER LOGIC  →  app/api/payment/verify/route.ts
+                 1. lib/razorpay.ts → verifyPaymentSignature()
+                    HMAC = crypto.createHmac("sha256", secret)
+                           .update(orderId + "|" + paymentId)
+                           .digest("hex")
+                 2. crypto.timingSafeEqual(expected, received) ← [TIMING ATTACK DEFENSE]
+                 3. lib/entitlements.ts → constructPurchasedEntitlement()
+     │
+     ▼
+DATABASE      →  Firestore: setDoc(users/{uid}/data/entitlement, entitlementDoc)
+     │
+     ▼
+STATE UPDATE  →  EntitlementContext.isPro = true globally
+     │
+     ▼
+UI RE-RENDER  →  <ProBadge /> in Navbar, Pro features unlocked
+
+─────────────────────────────────────────────────────────────────────────────────────
+
+╔══════════════════════════════════════════════════════════════════════════════════╗
+║  FEATURE 4 : FREEHAND PDF DRAWING CANVAS                                         ║
+╚══════════════════════════════════════════════════════════════════════════════════╝
+
+USER ACTION   →  Enables "Pen" mode in BookReader toolbar; draws on PDF page
+     │
+     ▼
+UI COMPONENT  →  components/reader/DrawingCanvas.tsx
+                 onPointerDown → start stroke at (x, y)
+                 onPointerMove → extend stroke via ctx.bezierCurveTo()
+                 onPointerUp   → end stroke, save strokes array
+     │
+     ▼
+STORAGE       →  lib/reader-storage.ts → savePageDrawings(bookId, page, strokes)
+                 Key: readershub:annotations:v1:{uid}:{bookId}
+                 Writes to memory cache first → then localStorage
+     │
+     ▼
+CLOUD SYNC    →  lib/firestore-sync.ts → syncAnnotationsToCloud() (debounced 5s)
+                 → Firestore: users/{uid}/annotations/{bookId}
+     │
+     ▼
+UI RE-RENDER  →  Strokes rendered immediately on canvas overlay — zero latency
+
+─────────────────────────────────────────────────────────────────────────────────────
+
+╔══════════════════════════════════════════════════════════════════════════════════╗
+║  FEATURE 5 : SOCIAL FOLLOW / UNFOLLOW                                            ║
+╚══════════════════════════════════════════════════════════════════════════════════╝
+
+USER ACTION   →  Clicks "Follow" on /profile/someuser page
+     │
+     ▼
+UI COMPONENT  →  components/social/FollowButton.tsx → handleFollow()
+     │
+     ▼
+API CALL      →  POST /api/users/follow
+                 Header: Authorization: Bearer <ID_TOKEN>
+                 Body: { targetUid: "user_xyz", action: "follow" }
+     │
+     ▼
+SERVER AUTH   →  app/api/users/follow/route.ts
+                 1. verifyFirebaseIdToken(idToken) via Firebase Admin SDK
+                 2. Decode followerUid from verified token
+     │
+     ▼
+SERVICE       →  lib/social.ts → followUser(followerUid, followingUid)
+                 Firestore Batch/Transaction:
+                 1. setDoc(follows/{followerUid_followingUid}, followData)
+                 2. increment(public_profiles/{followingUid}.followersCount, 1)
+                 3. increment(public_profiles/{followerUid}.followingCount, 1)
+                 4. write to public_activities/{activityId} (community stream)
+     │
+     ▼
+RESPONSE      →  { success: true, isFollowing: true, followersCount: 127 }
+     │
+     ▼
+STATE UPDATE  →  FollowButton toggles to "Following" with check icon
+
+─────────────────────────────────────────────────────────────────────────────────────
+
+╔══════════════════════════════════════════════════════════════════════════════════╗
+║  FEATURE 6 : DIWALI DIYA READING STREAK SYSTEM                                   ║
+╚══════════════════════════════════════════════════════════════════════════════════╝
+
+BACKGROUND    →  ReadingSessionTimer.tsx ticks every minute while reader is active
+                 lib/active-tracker.ts monitors mouse moves + scroll events
+     │
+     ▼
+FUNCTION      →  lib/reader-storage.ts → addActiveReadingTime(bookId, 60)
+                 Accumulates seconds under today's date key in dailyActivity map
+     │
+     ▼
+THRESHOLD CHECK → if (todaySeconds >= 900) { dailyActivity[today].qualified = true }
+     │              900 seconds = 15 minutes of genuine reading
+     ▼
+STREAK CALC   →  calculateStreak(dailyActivity)
+                 Walks backward from today counting consecutive qualified days
+                 Sets: currentStreak, longestStreak
+     │
+     ▼
+CLOUD SYNC    →  syncReadingActivityToCloud() (5s debounce)
+                 → Firestore: users/{uid}/data/activity
+     │
+     ▼
+UI            →  DiwaliDiya.tsx flame animates to energized golden glow
+                 Navbar shows streak count e.g. "🔥 14"
+
+─────────────────────────────────────────────────────────────────────────────────────
+
+╔══════════════════════════════════════════════════════════════════════════════════╗
+║  FEATURE 7 : OFFLINE BOOK CACHING (PWA)                                          ║
+╚══════════════════════════════════════════════════════════════════════════════════╝
+
+USER ACTION   →  Clicks "Download / Save Offline" on book detail page
+     │
+     ▼
+UI COMPONENT  →  app/book/[id]/BookDetailClient.tsx → handleCacheOffline()
+     │
+     ▼
+CONTEXT       →  context/LibraryContext.tsx → cacheBookOffline(book)
+                 1. fetch("/pdfs/" + book.pdfPath) — full binary fetch
+                 2. caches.open("readers-hub-books-offline-v1")
+                 3. cache.put(request, response.clone())
+                 4. localStorage flag: book is now available offline
+     │
+     ▼
+WHEN OFFLINE  →  Service Worker intercepts /pdfs/*.pdf fetch
+                 Serves from CacheStorage directly (no network required)
+                 BookReader.tsx loads PDF blob from cache
+                 PDF.js renders locally — 100% offline reading
+
+
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+§06  AUTHENTICATION ARCHITECTURE
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+
+COMPLETE AUTH FLOW (ASCII):
+────────────────────────────
+  GUEST USER (No account)
+       │
+       │  Reads books, makes annotations, builds streak
+       │  Data saved under namespace: "readershub:*:v1:guest:*"
+       │
+  DECIDES TO LOGIN
+       │
+       ▼
+  [components/auth/AuthModal.tsx]
+       │  User clicks "Sign in with Google"
+       │  triggers: signInWithGoogle()
+       ▼
+  [context/AuthContext.tsx]
+       │  setPersistence(auth, browserLocalPersistence)
+       │  signInWithPopup(auth, new GoogleAuthProvider())
+       ▼
+  [lib/firebase.ts → Google Identity Platform]
+       │  next.config.ts sets Cross-Origin-Opener-Policy:
+       │  "same-origin-allow-popups" ← Required for OAuth popup
+       ▼
+  [Google OAuth 2.0 Consent Screen]
+       │  User grants consent
+       │  Google returns: credential + ID Token (JWT)
+       ▼
+  [Firebase Auth State Update]
+       │  onAuthStateChanged fires with User object
+       │  Token stored in IndexedDB by Firebase SDK
+       ▼
+  [lib/firestore-sync.ts → syncUserProfile(user)]
+       │  setDoc(users/{uid}, { email, displayName, photoURL })
+       │  setDoc(public_profiles/{uid}, { username, stats })
+       ▼
+  [lib/firestore-sync.ts → reconcileAndSyncAllUserData(user)]
+       │  1. Fetch cloud data from Firestore
+       │  2. Merge with local guest data:
+       │     - Progress: Math.max(local.page, cloud.page)
+       │     - Favorites: Set union of both arrays
+       │     - Annotations: Concatenate + deduplicate by UUID
+       │     - Streak: Merge daily maps, recalculate
+       │  3. Write merged result to localStorage under uid namespace
+       │  4. Clear guest namespace to avoid duplication
+       ▼
+  [AUTHENTICATED STATE — UI fully reactive]
+       │  LibraryContext re-scopes to uid storage
+       │  EntitlementContext subscribes: onSnapshot(users/{uid}/data/entitlement)
+
+PROTECTED API REQUEST FLOW:
+────────────────────────────
+  Client Component (needs protected resource)
+       │  Gets token: await auth.currentUser.getIdToken()
+       │  Attaches: Authorization: Bearer <JWT_TOKEN>
+       ▼
+  Next.js Serverless Route Handler (/api/*)
+       │  const authHeader = req.headers.get("authorization")
+       │  const token = authHeader.replace("Bearer ", "")
+       ▼
+  [lib/entitlements.ts → verifyFirebaseIdToken(token)]
+       │  getFirebaseAdminAuth().verifyIdToken(token)
+       ▼
+  Google Firebase Admin SDK validates JWT signature
+       │  Returns: { uid, email, name, ... }
+       ▼
+  [lib/admin.ts → isAdminUser(email)] (admin routes only)
+       │  email.toLowerCase().trim() === ADMIN_EMAIL
+       ▼
+  AUTHORIZED: Execute business logic
+  UNAUTHORIZED: return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+
+LOGOUT FLOW:
+────────────
+  User clicks "Sign Out" in Navbar
+       │
+       ▼
+  context/AuthContext.tsx → signOutUser()
+       │  auth.signOut() — clears Firebase IndexedDB tokens
+       │  LibraryContext resets uid to "guest"
+       │  localStorage scope reverts to guest namespace
+       ▼
+  UI resets: Pro badge removed, social features hidden
+
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+§07  DATABASE DESIGN
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+
+[FACT] Reader's HUB uses TWO SEPARATE storage planes:
+
+  PLANE 1 — Browser localStorage (Primary)       PLANE 2 — Cloud Firestore (Secondary)
+  ─────────────────────────────────────────       ──────────────────────────────────────
+  Speed    : Sub-millisecond (<1ms)               Speed    : 50-200ms (network latency)
+  Scope    : This device, this browser            Scope    : All devices, all sessions
+  Auth req : None (guest or user)                 Auth req : Firebase Authentication
+  Cost     : Zero (browser native)                Cost     : Firestore read/write quotas
+  Offline  : Yes, fully functional                Offline  : No (network required)
+  Capacity : ~5MB per origin                      Capacity : Unlimited (quota-based)
+
+LOCALSTORAGE KEY SCHEMA:
+─────────────────────────
+  Pattern: readershub:{feature}:v1:{uid}:{bookId?}
+  Guest uid: "guest" | Authenticated uid: Firebase UID
+
+  ┌───────────────────────────────────────────────────────────────────────────────────┐
+  │ Key Template                                   │ Value Type │ Used For             │
+  ├───────────────────────────────────────────────────────────────────────────────────┤
+  │ readershub:progress:v1:{uid}:{bookId}          │ JSON Obj   │ page, progress%, date│
+  │ readershub:annotations:v1:{uid}:{bookId}       │ JSON Obj   │ highlights, notes,   │
+  │                                                │            │ drawings strokes     │
+  │ readershub:bookmarks:v1:{uid}:{bookId}         │ JSON Array │ saved page numbers   │
+  │ readershub:reading-activity:v1:{uid}           │ JSON Obj   │ daily seconds + qual.│
+  │ readershub:active-time:v1:{uid}                │ JSON Obj   │ total engagement secs│
+  │ readershub:favorites:v1:{uid}                  │ JSON Array │ favorited book IDs   │
+  │ readershub:history:v1:{uid}                    │ JSON Array │ chronological visits │
+  │ readershub:collections:v1:{uid}                │ JSON Array │ custom reading lists │
+  │ readershub:reflections:v1:{uid}                │ JSON Obj   │ ratings + takeaways  │
+  │ readershub:shelf-dismissals:v1:{uid}           │ JSON Obj   │ dismissed suggestions│
+  │ readershub:translations:v1:{uid}:{bookId}:{pg} │ string     │ cached translated txt│
+  └───────────────────────────────────────────────────────────────────────────────────┘
+
+CLOUD FIRESTORE SCHEMA (Production DB — readers-hub-52be2):
+─────────────────────────────────────────────────────────────
+VISUAL CLOUD FIRESTORE ENTITY-RELATIONSHIP (ER) MAP:
+────────────────────────────────────────────────────
+
+ ┌───────────────────────────────┐                  ┌─────────────────────────────────┐
+ │             USERS             │ 1              * │        READING_PROGRESS         │
+ ├───────────────────────────────┤─────────────────►├─────────────────────────────────┤
+ │ • uid [PK, string]            │ (subcollection)  │ • bookId [PK, string]           │
+ │ • email [string]              │                  │ • page [number]                 │
+ │ • displayName [string]        │                  │ • totalPages [number]           │
+ │ • photoURL [string]           │                  │ • progress [float, percentage]  │
+ │ • username [string, unique]   │                  │ • lastReadAt [timestamp]        │
+ │ • bio [string]                │                  └─────────────────────────────────┘
+ │ • isPublic [boolean]          │
+ │ • createdAt, updatedAt        │                  ┌─────────────────────────────────┐
+ └──────────────┬────────────────┘ 1              * │           ANNOTATIONS           │
+                ├──────────────────────────────────►├─────────────────────────────────┤
+                │                  (subcollection)  │ • bookId [PK, string]           │
+                │                                   │ • highlights [array of objects] │
+                │                                   │ • notes [array of objects]      │
+                │                                   │ • drawings [map of page strokes]│
+                │                                   └─────────────────────────────────┘
+                │
+                │ 1                               * ┌─────────────────────────────────┐
+                ├──────────────────────────────────►│         USER_DATA_DOCS          │
+                │                  (subcollection)  ├─────────────────────────────────┤
+                │                                   │ • docId: "activity" | "entitle" │
+                │                                   │ • dailyActivity [map of dates]  │
+                │                                   │ • currentStreak, longestStreak  │
+                │                                   │ • totalActiveSeconds [number]   │
+                │                                   │ • entitlement [Pro plan state]  │
+                │                                   └─────────────────────────────────┘
+                │
+                │ 1                               1 ┌─────────────────────────────────┐
+                ├──────────────────────────────────►│         PUBLIC_PROFILES         │
+                │                 (1:1 public view) ├─────────────────────────────────┤
+                │                                   │ • uid [PK, string]              │
+                │                                   │ • username, displayName         │
+                │                                   │ • followersCount, followingCount│
+                │                                   │ • stats [totalRead, streak]     │
+                │                                   │ • achievements [array of badges]│
+                │                                   └────────────────┬────────────────┘
+                │                                                    │
+                │                                                    │ 1 generates *
+                │                                                    ▼
+ ┌──────────────┴────────────────┐                  ┌─────────────────────────────────┐
+ │            FOLLOWS            │                  │        PUBLIC_ACTIVITIES        │
+ ├───────────────────────────────┤                  ├─────────────────────────────────┤
+ │ • followId [PK: follower_tgt] │                  │ • activityId [PK, auto-id]      │
+ │ • followerUid [string]        │                  │ • uid, username, displayName    │
+ │ • followingUid [string]       │                  │ • type: "streak"|"finished"|etc │
+ │ • createdAt [timestamp]       │                  │ • bookTitle, pageCount, time    │
+ └───────────────────────────────┘                  │ • timestamp [serverTimestamp]   │
+                                                    └─────────────────────────────────┘
+
+ ┌───────────────────────────────┐                  ┌─────────────────────────────────┐
+ │       CATALOG_OVERRIDES       │                  │        ADMIN_AUDIT_LOGS         │
+ ├───────────────────────────────┤                  ├─────────────────────────────────┤
+ │ • bookId [PK, slug string]    │                  │ • logId [PK, auto-id]           │
+ │ • isDeleted [boolean]         │                  │ • action: "soft_delete" | "edit"│
+ │ • updates [map of patches]    │                  │ • adminEmail [string whitelist] │
+ │ • updatedAt [timestamp]       │                  │ • targetId [string]             │
+ └───────────────────────────────┘                  │ • timestamp [IMMUTABLE AUDIT]   │
+                                                    └─────────────────────────────────┘
+
+FIRESTORE SECURITY RULES SUMMARY:
+───────────────────────────────────
+  users/{userId}           → Read/Write: owner or admin only
+  public_profiles/{userId} → Read: public | Write: owner or admin
+  usernames/{username}     → Read: public | Create: claiming user
+  follows/{followId}       → Read: public | Create: followerUid==auth.uid
+                             Self-follow prevention: followerUid != followingUid
+  catalog_overrides/*      → Read: public | Write: admin only
+  admin_audit_logs/*       → Read/Write: admin only
+                             Update+Delete: FALSE (immutable audit trail)
+  Default catch-all        → Read/Write: false (deny all others)
+
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+§08  LLD — LOW LEVEL DESIGN
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│ MODULE: lib/reader-storage.ts  (2,375 lines)                                        │
+├─────────────────────────────────────────────────────────────────────────────────────┤
+│ Responsibility  : Abstraction layer over browser localStorage.                      │
+│                  Handles all read/write for reading data. Never exposes raw keys.   │
+│ Key Functions   :                                                                   │
+│  saveProgress(bookId, page, totalPages)   → Writes progress + updates memory cache │
+│  getSavedProgress(bookId)                 → Returns from memory cache or localStorage│
+│  saveAnnotations(bookId, annotations)     → Highlights, notes, canvas strokes       │
+│  getAnnotations(bookId)                   → Retrieves annotation object             │
+│  addActiveReadingTime(bookId, seconds)    → Accumulates session seconds             │
+│  calculateStreak(dailyActivity)           → Walks daily map backward                │
+│  exportAllUserData()                      → Full JSON dump for portability          │
+│ In-Memory Caches:                                                                   │
+│  progressCache    : Map<string, ProgressRecord>                                     │
+│  annotationsCache : Map<string, AnnotationData>                                     │
+│  bookmarksCache   : Map<string, Bookmark[]>                                         │
+│ Dependencies    : window.localStorage (browser API)                                 │
+│ Called By       : BookReader.tsx, LibraryContext.tsx, firestore-sync.ts             │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│ MODULE: lib/firestore-sync.ts  (1,183 lines)                                        │
+├─────────────────────────────────────────────────────────────────────────────────────┤
+│ Responsibility  : Bridges local storage with Cloud Firestore.                       │
+│                  All writes are debounced to reduce Firestore write costs.          │
+│ Key Functions   :                                                                   │
+│  syncReadingProgressToCloud(uid, bookId)  → 3,000ms debounced Firestore setDoc     │
+│  syncReadingActivityToCloud(uid)          → 5,000ms debounced activity sync        │
+│  syncAnnotationsToCloud(uid, bookId)      → 5,000ms debounced annotation sync      │
+│  reconcileAndSyncAllUserData(user)        → Full merge on login (guest→authenticated│
+│  syncUserProfile(user)                    → Create/update users + public_profiles   │
+│ Debounce Timers :                                                                   │
+│  progressDebounceTimers : { [uid_bookId]: NodeJS.Timeout }                         │
+│  activityDebounceTimers : { [uid]: NodeJS.Timeout }                                │
+│  annotationDebounceTimers: { [uid_bookId]: NodeJS.Timeout }                        │
+│ Dependencies    : lib/firebase.ts (Firestore client), lib/reader-storage.ts         │
+│ Called By       : AuthContext.tsx (on login), LibraryContext.tsx                    │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│ COMPONENT: components/reader/BookReader.tsx  (3,538 lines)                          │
+├─────────────────────────────────────────────────────────────────────────────────────┤
+│ Responsibility  : Core reading engine — orchestrates all reader features            │
+│ Key State       :                                                                   │
+│  currentPage    : number (current PDF page index)                                   │
+│  numPages       : number (total pages from PDF.js)                                  │
+│  readingMode    : "default" | "sepia" | "dark" | "dim"                              │
+│  layoutMode     : "single" | "double"                                               │
+│  readerPrefs    : { brightness, warmth, contrast, zoom, font }                      │
+│  annotations    : { highlights[], notes[], drawings{} }                             │
+│  isFocusMode    : boolean                                                           │
+│  isTranslationOpen: boolean                                                         │
+│ Key Handlers    :                                                                   │
+│  handleNextPage(), handlePrevPage()                                                 │
+│  handleTextSelection() → creates highlight from selected PDF text                  │
+│  handleCanvasDraw() → delegates to DrawingCanvas                                   │
+│  handleTranslateSpread() → triggers TranslationDrawer                              │
+│  handleBookmark(page) → toggles page bookmark                                      │
+│ Dependencies    : PdfReader, DrawingCanvas, AnnotationDrawer, TranslationDrawer,    │
+│                  ReadingSessionTimer, lib/reader-storage, lib/firestore-sync        │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│ MODULE: lib/library-assistant.ts  (220 lines)                                       │
+├─────────────────────────────────────────────────────────────────────────────────────┤
+│ Responsibility  : AI assistant catalog grounding + fast-path deterministic queries  │
+│ Key Functions   :                                                                   │
+│  tryDeterministicQuery(message)  → Regex match → instant static response (0ms)     │
+│  getCompactCatalogSummary()      → Condenses 386 books by category for LLM context │
+│  findBooksByIds(ids)             → Hydrates Book objects from data/books.json       │
+│ Key Logic       : System instruction injection prevents AI hallucinations           │
+│                  "ONLY recommend books present in the provided catalog list"        │
+│ Dependencies    : data/books.json (static catalog)                                  │
+│ Called By       : app/api/chat/route.ts                                             │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────────────┐
+│ MODULE: lib/razorpay.ts  (185 lines)                                                │
+├─────────────────────────────────────────────────────────────────────────────────────┤
+│ Responsibility  : Razorpay payment order creation + signature verification          │
+│ Key Functions   :                                                                   │
+│  createRazorpayOrder(amount, currency)    → Calls Razorpay /v1/orders API          │
+│  verifyPaymentSignature(orderId, payId, sig) → HMAC SHA256 constant-time compare  │
+│  verifyWebhookSignature(payload, sig)     → Webhook authenticity check             │
+│ Security Logic  :                                                                   │
+│  expectedSig = crypto.createHmac("sha256", RAZORPAY_KEY_SECRET)                   │
+│                .update(orderId + "|" + paymentId).digest("hex")                    │
+│  crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(received))              │
+│ Dependencies    : node:crypto (built-in Node.js module)                             │
+│ Called By       : app/api/payment/create-order, app/api/payment/verify             │
+└─────────────────────────────────────────────────────────────────────────────────────┘
+
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+§09  CLASS / COMPONENT RELATIONSHIP DIAGRAMS
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+
+VISUAL UML CLASS & COMPONENT RELATIONSHIP MAP:
+──────────────────────────────────────────────
+
+ ┌──────────────────────────────────────────────┐          ┌──────────────────────────────────────────────┐
+ │                 AuthContext                  │          │              EntitlementContext              │
+ ├──────────────────────────────────────────────┤          ├──────────────────────────────────────────────┤
+ │ + user: User | null                          │          │ + isPro: boolean                             │
+ │ + isLoading: boolean                         │          │ + dailyQuota: QuotaState                     │
+ ├──────────────────────────────────────────────┤          │ + currentPlan: PlanId                        │
+ │ + signInWithGoogle(): Promise<void>          │          ├──────────────────────────────────────────────┤
+ │ + signOutUser(): Promise<void>               │          │ + initiateCheckout(planId: string): void     │
+ │ + onAuthStateChanged(callback): Unsubscribe  │          │ + checkQuotaAvailability(): boolean          │
+ └──────────────────────┬───────────────────────┘          └──────────────────────┬───────────────────────┘
+                        │ on login / logout                                       │ triggers checkout
+                        ▼ triggers sync                                           ▼
+ ┌──────────────────────────────────────────────┐          ┌──────────────────────────────────────────────┐
+ │                FirestoreSync                 │          │                 RazorpayLib                  │
+ ├──────────────────────────────────────────────┤          ├──────────────────────────────────────────────┤
+ │ - progressDebounceTimers: Record<string, id> │          │ - crypto: HmacSHA256                         │
+ │ - activityDebounceTimers: Record<string, id> │          │ - keySecret: string                          │
+ ├──────────────────────────────────────────────┤          ├──────────────────────────────────────────────┤
+ │ + syncReadingProgressToCloud(uid, bookId)    │          │ + createRazorpayOrder(amount, cur): Promise  │
+ │ + reconcileAndSyncAllUserData(user): Promise │          │ + verifyPaymentSignature(ord, pay, sig): bool│
+ │ + syncUserProfile(user): Promise<void>       │          │ + verifyWebhookSignature(payload, sig): bool │
+ └──────────────────────▲───────────────────────┘          └──────────────────────────────────────────────┘
+                        │
+                        │ 3s debounced cloud sync
+ ┌──────────────────────┴───────────────────────┐          ┌──────────────────────────────────────────────┐
+ │                  BookReader                  │          │                LibraryContext                │
+ ├──────────────────────────────────────────────┤          ├──────────────────────────────────────────────┤
+ │ + currentPage: number                        │          │ + favorites: string[]                        │
+ │ + numPages: number                           │          │ + readingHistory: HistoryRecord[]            │
+ │ + readingMode: "default"|"sepia"|"dark"|"dim"│          │ + streakData: StreakData                     │
+ │ + annotations: AnnotationData                │          │ + offlineBooks: string[]                     │
+ ├──────────────────────────────────────────────┤          ├──────────────────────────────────────────────┤
+ │ + handleNextPage(): void                     │          │ + toggleFavorite(bookId: string): void       │
+ │ + handlePrevPage(): void                     │          │ + saveProgress(bookId, page, total): void    │
+ │ + handleTranslateSpread(): Promise<void>     │          │ + cacheBookOffline(book: Book): Promise      │
+ │ + handleTextSelection(range): void           │          │ + exportAllUserData(): string                │
+ └──────────────────────┬───────────────────────┘          └──────────────────────┬───────────────────────┘
+                        │                                                         │
+                        │ reads & writes progress                                 │ delegates persistence
+                        ▼                                                         ▼
+ ┌────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+ │                                             ReaderStorage                                              │
+ ├────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+ │ - progressCache: Map<string, ProgressRecord>                                                           │
+ │ - annotationsCache: Map<string, AnnotationData>                                                        │
+ │ - bookmarksCache: Map<string, Bookmark[]>                                                              │
+ ├────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+ │ + saveProgress(bookId: string, page: number, totalPages: number): void                                 │
+ │ + getSavedProgress(bookId: string): ProgressRecord | null                                              │
+ │ + saveAnnotations(bookId: string, data: AnnotationData): void                                          │
+ │ + getAnnotations(bookId: string): AnnotationData                                                       │
+ │ + addActiveReadingTime(bookId: string, seconds: number): void                                          │
+ │ + calculateStreak(activity: Record<string, DailyActivity>): StreakResult                               │
+ └───────────────────────────────────────────────────┬────────────────────────────────────────────────────┘
+                                                     │
+                                                     │ stores progress / annotations for
+                                                     ▼
+ ┌──────────────────────────────────────────────┐          ┌──────────────────────────────────────────────┐
+ │               LibraryAssistant               │          │                  BooksJSON                   │
+ ├──────────────────────────────────────────────┤          ├──────────────────────────────────────────────┤
+ │ - geminiClient: GoogleGenAI                  │          │ + 386 Book records                           │
+ │ - catalogCache: CompactCatalog               │          │ + 10 primary categories                      │
+ ├──────────────────────────────────────────────┤          │ + technical subcategories                    │
+ │ + tryDeterministicQuery(msg): Reply | null   │          ├──────────────────────────────────────────────┤
+ │ + getCompactCatalogSummary(): string         │◄─────────┤ + getBookById(id: string): Book | undefined  │
+ │ + findBooksByIds(ids: string[]): Book[]      │ grounds  │ + getFeaturedBooks(): Book[]                 │
+ └──────────────────────────────────────────────┘ catalog  └──────────────────────────────────────────────┘
+
+
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+§10  SEQUENCE DIAGRAMS
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+
+┌────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ SEQUENCE 1: User Login & Dual-Storage Data Reconciliation                                              │
+├────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Flow: User initiates Google OAuth → Firebase issues JWT → firestore-sync merges local guest data with │
+│       cloud records (Math.max on progress, Set union on favorites) → UI hydrates unified history.     │
+└────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+ [ User ]    [ AuthModal ]   [ AuthCtx ]   [ FB SDK ]   [ Google ]   [ SyncLib ]   [ Firestore ]   [ Storage ]
+    │              │              │            │            │             │              │              │
+    ├─ 1. Login ──►│              │            │            │             │              │              │
+    │              ├── 2. Auth ──►│            │            │             │              │              │
+    │              │              ├── 3.popup ►│            │             │              │              │
+    │              │              │            ├── 4.OAuth ►│             │              │              │
+    │              │              │            │            │             │              │              │
+    │              │              │            │◄── 5.JWT ──┤             │              │              │
+    │              │              │◄── 6.user ─┤            │             │              │              │
+    │              │              │                         │             │              │              │
+    │              │              ├────────── 7. syncUserProfile() ──────►│              │              │
+    │              │              │                         │             ├── 8. setDoc ─►              │
+    │              │              │                         │             │              │              │
+    │              │              ├────────── 9. reconcileAndSync() ─────►│              │              │
+    │              │              │                         │             ├── 10.getDocs ─►             │
+    │              │              │                         │             │◄── cloud data ┤             │
+    │              │              │                         │             │                             │
+    │              │              │                         │             ├────── 11. getProgress ─────►│
+    │              │              │                         │             │◄────── guest data ──────────┤
+    │              │              │                         │             │                             │
+    │              │              │                         │             ├──[ 12. Math.max & Union ]───┤
+    │              │              │                         │             │                             │
+    │              │              │                         │             ├────── 13. saveProgress ────►│
+    │              │              │                         │             ├── 14. batchSetDoc() ────────►
+    │              │              │                         │             ├────── 15. clear guest ─────►│
+    │              │              │◄───────── 16. Done ───────────────────┤              │              │
+    │◄── 17. Hydrated UI ─────────┤                         │             │              │              │
+    │              │              │            │            │             │              │              │
+
+
+──────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+┌────────────────────────────────────────────────────────────────────────────────────────────────────────┐
+│ SEQUENCE 2: AI Assistant Chat Flow (Deterministic Fast-Path + Gemini Cascade)                          │
+├────────────────────────────────────────────────────────────────────────────────────────────────────────┤
+│ Flow: User sends message → regex fast-path checked (0ms) → if miss, catalog summarized (386 books) →  │
+│       Gemini 5-model cascade called with 8s timeout → structured book IDs resolved to catalog entities.│
+└────────────────────────────────────────────────────────────────────────────────────────────────────────┘
+
+ [ User ]           [ Assistant ]        [ FastPath ]        [ /api/chat ]       [ Gemini AI ]       [ BooksData ]
+    │                     │                   │                    │                   │                   │
+    ├─ 1. "Recommend CS" ►│                   │                    │                   │                   │
+    │                     ├── 2. tryRegex() ─►│                    │                   │                   │
+    │                     │                   │                    │                   │                   │
+    │ ┌──[ OPTION A : DETERMINISTIC FAST-PATH MATCH (0ms, $0.00 API COST) ]──────────────────────────────┐ │
+    │ │                   │◄── 3. HIT (reply) ┤                    │                   │                 │ │
+    │ │◄─ 4. Instant UI ──┤                   │                    │                   │                 │ │
+    │ └──[ END FAST-PATH ]───────────────────────────────────────────────────────────────────────────────┘ │
+    │                     │                   │                    │                   │                   │
+    │ ┌──[ OPTION B : AI LLM INFERENCE PATH (GEMINI 5-MODEL CASCADE) ]───────────────────────────────────┐ │
+    │ │                   │◄── 3. MISS (null) ┤                    │                   │                 │ │
+    │ │                   ├───────── 4. POST /api/chat ───────────►│                   │                 │ │
+    │ │                   │                   │                    ├── 5. getCatalog ─►│                 │ │
+    │ │                   │                   │                    │                   ├── 6. 386 bks ──►│ │
+    │ │                   │                   │                    │                   │◄── records ─────┤ │
+    │ │                   │                   │                    │◄── 7. context ────┤                 │ │
+    │ │                   │                   │                    │                   │                 │ │
+    │ │                   │                   │                    ├────── 8. generateContent() ────────►│ │
+    │ │                   │                   │                    │       (system prompt + catalog)     │ │
+    │ │                   │                   │                    │       (cascade: 8s timeout each)    │ │
+    │ │                   │                   │                    │                                     │ │
+    │ │                   │                   │                    │◄───── 10. JSON {reply, bookIds} ────┤ │
+    │ │                   │                   │                    │                                     │ │
+    │ │                   │                   │                    ├────────── 11. findBooksByIds ──────►│ │
+    │ │                   │                   │                    │◄───────── full Book entities ───────┤ │
+    │ │                   │                   │                    │                                     │ │
+    │ │                   │◄──────── 12. 200 OK (reply + cards) ───┤                   │                 │ │
+    │ │◄─ 13. Render Chat ┤                   │                    │                   │                 │ │
+    │ └──[ END INFERENCE PATH ]──────────────────────────────────────────────────────────────────────────┘ │
+    │                     │                   │                    │                   │                   │
+
+
+
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+§11  DATA FLOW DIAGRAMS
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+
+DFD 1: Reading Progress Data Flow
+──────────────────────────────────
+  USER TURNS PAGE
+       │ page: 43, bookId: "atomic-habits"
+       ▼
+  BookReader.tsx → handleNextPage()
+       │
+       ▼
+  lib/reader-storage.ts → saveProgress()
+       │  VALIDATION: page >= 1 && page <= totalPages
+       │  TRANSFORM:  progress = (43/320)*100 = 13.4
+       │  CACHE:      progressCache.set(key, record)
+       │
+       ├──────────────────────────────────────────────► localStorage.setItem() [SYNC, <1ms]
+       │
+       └──────────────────────────────────────────────► lib/firestore-sync.ts [ASYNC, 3s debounce]
+                                                              │
+                                                              ▼
+                                                        Cloud Firestore
+                                                        users/{uid}/reading_progress/{bookId}
+
+DFD 2: Translation Request Data Flow
+──────────────────────────────────────
+  USER clicks Translate
+       │ bookId, pageNum, targetLang: "hindi"
+       ▼
+  lib/translator.ts → getCachedTranslation()
+       │
+       ├── CACHE HIT ─────────────────────────────────► Return from localStorage [0ms]
+       │
+       └── CACHE MISS ─► POST /api/translate
+                              │ Input: { pages: [{pageNum, text}], targetLanguage }
+                              ▼
+                         app/api/translate/route.ts
+                              │ Normalize: normalizePdfText() strips ligatures
+                              │ Validate: pages.length <= 2
+                              ▼
+                         Google Gemini API → JSON response
+                              │
+                              ▼
+                         lib/translator.ts → setCachedTranslation()
+                              │
+                              ▼
+                         localStorage [cache for next visit]
+                              │
+                              ▼
+                         TranslationDrawer.tsx renders bilingual spread
+
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+§12  API / SERVERLESS ROUTE HANDLER SPECIFICATION
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+
+API FLOW TEMPLATE (All Endpoints Follow This Pattern):
+──────────────────────────────────────────────────────
+  HTTP REQUEST
+       │
+       ▼
+  Next.js App Router → app/api/**/route.ts
+       │  export const runtime = "nodejs"
+       │  export const dynamic = "force-dynamic"
+       ▼
+  CORS / HEADERS (auto via Next.js)
+       ▼
+  BODY PARSING: await request.json()
+       ▼
+  AUTH CHECK (if required):
+       │  const token = request.headers.get("authorization")?.replace("Bearer ", "")
+       │  const decoded = await verifyFirebaseIdToken(token)
+       ▼
+  VALIDATION: Check required fields, types
+       ▼
+  BUSINESS LOGIC: Delegate to lib/* services
+       ▼
+  DATABASE / EXTERNAL API CALL
+       ▼
+  return NextResponse.json(result, { status: 200 })
+  return NextResponse.json({ error }, { status: 4xx/5xx })
+
+COMPLETE API ENDPOINT TABLE:
+─────────────────────────────
+┌───────┬────────────────────────────────┬───────┬──────────────────────────────────────────────────────────┐
+│Method │ Endpoint                       │ Auth  │ File → Service → DB/External                             │
+├───────┼────────────────────────────────┼───────┼──────────────────────────────────────────────────────────┤
+│ POST  │ /api/chat                      │ None  │ app/api/chat/route.ts → library-assistant.ts → Gemini API│
+│ POST  │ /api/translate                 │ None  │ app/api/translate/route.ts → translator.ts → Gemini API  │
+│ POST  │ /api/contact                   │ None  │ app/api/contact/route.ts → Resend API (SMTP)             │
+│ POST  │ /api/payment/create-order      │ Opt   │ create-order/route.ts → razorpay.ts → Razorpay /v1/orders│
+│ POST  │ /api/payment/verify            │ Opt   │ verify/route.ts → razorpay.ts (HMAC) → Firestore         │
+│ POST  │ /api/payment/webhook           │ Sig   │ webhook/route.ts → razorpay.ts → Firestore (entitlement) │
+│ GET   │ /api/payment/entitlement       │ Token │ entitlement/route.ts → entitlements.ts → Firestore       │
+│ GET   │ /api/users/profile             │ None  │ profile/route.ts → firebase-admin.ts → Firestore         │
+│ PUT   │ /api/users/profile             │ Token │ profile/route.ts → firebase-admin.ts → Firestore         │
+│ POST  │ /api/users/follow              │ Token │ follow/route.ts → social.ts → Firestore (transaction)    │
+│ GET   │ /api/users/search              │ None  │ search/route.ts → social.ts → Firestore (prefix query)   │
+│ POST  │ /api/admin/catalog             │ Admin │ catalog/route.ts → admin-catalog.ts → Firestore + audit  │
+│ GET   │ /api/admin/catalog             │ Admin │ catalog/route.ts → admin.ts → Firestore (audit logs)     │
+│ GET   │ /api/admin/users               │ Admin │ users/route.ts → admin-users.ts → Firestore              │
+│ GET   │ /api/admin/users/[uid]         │ Admin │ [uid]/route.ts → admin-users.ts → Firestore              │
+│ PATCH │ /api/admin/users/[uid]         │ Admin │ [uid]/route.ts → admin-users.ts → Firestore (ban user)   │
+└───────┴────────────────────────────────┴───────┴──────────────────────────────────────────────────────────┘
+Auth Levels: None=Public | Opt=Optional Token | Token=Required JWT | Sig=Webhook HMAC | Admin=JWT+Email Check
+
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+§13  EXTERNAL SERVICE & AI INTEGRATION FLOWS
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+
+SERVICE 1: GOOGLE GEMINI AI
+─────────────────────────────
+  WHY USED  : Powers grounded library chat assistant + bilingual page translation
+  WHERE     : app/api/chat/route.ts, app/api/translate/route.ts
+  HOW CONFIG: GEMINI_API_KEY environment variable (server-only)
+  SDK       : @google/genai v2.18.0 — GoogleGenAI class
+
+  USER QUERY
+       │
+       ▼
+  tryDeterministicQuery() ──MATCH──► Static response (0ms cost)
+       │ NO MATCH
+       ▼
+  new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY })
+       │
+       ▼
+  MODEL CASCADE (Promise.race with 8,000ms AbortSignal):
+  ┌─────────────────────────────────────────────────────┐
+  │ 1st try: gemini-3.1-flash-lite-preview              │
+  │ 2nd try: gemini-3-flash-preview                     │
+  │ 3rd try: gemini-3.1-flash-lite                      │
+  │ 4th try: gemini-3.6-flash                           │
+  │ 5th try: gemini-3.7-flash                           │
+  └─────────────────────────────────────────────────────┘
+       │
+       ▼
+  Configuration:
+  { temperature: 0.2, responseMimeType: "application/json" }
+  systemInstruction: [catalog grounding + strict JSON output rules]
+       │
+       ▼
+  FAILURE HANDLING:
+  - Timeout (8s): catch → try next model
+  - Rate Limit (429): catch → try next model
+  - All 5 fail: return 503 { error: "AI temporarily unavailable" }
+
+SERVICE 2: FIREBASE AUTH + CLOUD FIRESTORE
+───────────────────────────────────────────
+  CLIENT SDK (lib/firebase.ts) — Browser Only
+  ├── getFirebaseApp()   → singleton via getApps().length check
+  ├── getFirebaseAuth()  → Auth instance for OAuth
+  └── getFirebaseDb()    → Firestore client for real-time updates
+
+  SERVER SDK (lib/firebase-admin.ts) — Node.js Only
+  ├── Initialized via FIREBASE_SERVICE_ACCOUNT_KEY (JSON env var)
+  │   OR fallback: FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY
+  ├── getFirebaseAdminApp() → singleton via getApps() check
+  └── getFirebaseAdminAuth() → verifyIdToken() for all protected routes
+
+SERVICE 3: RAZORPAY PAYMENT GATEWAY
+──────────────────────────────────────
+  WHY USED  : Indian payment infrastructure (UPI, NetBanking, Cards)
+  WHERE     : lib/razorpay.ts, /api/payment/* routes
+  STATUS    : RAZORPAY_PAYMENTS_ENABLED=false (pending KYC)
+  CONFIG    : RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET (server-only)
+
+  SECURITY CHAIN:
+  Server creates order (amount from monetization-config.ts — never from client)
+       ▼
+  Client opens window.Razorpay modal
+       ▼
+  Server verifies HMAC SHA256 with crypto.timingSafeEqual()
+       ▼
+  If valid → grant entitlement → write to Firestore
+
+SERVICE 4: RESEND EMAIL
+─────────────────────────
+  WHY USED  : Contact form submission delivery
+  WHERE     : app/api/contact/route.ts
+  CONFIG    : RESEND_API_KEY (server-only), RESEND_FROM_EMAIL
+  WHAT SENT : HTML email template with reader name, email, message
+  RECIPIENT : kumaraman19137@gmail.com (platform maintainer)
+
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+§14  ERROR PROPAGATION & FAULT-TOLERANCE PATHS
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+
+ERROR FLOW MAP:
+────────────────
+  API REQUEST
+       │
+       ▼
+  VALIDATION CHECK
+       ├── ✗ Missing required fields ──────────────► 400 { error: "message required" }
+       ├── ✗ Invalid format                ──────────► 400 { error: "invalid planId" }
+       │
+       ▼
+  AUTHENTICATION CHECK
+       ├── ✗ No token / expired token ─────────────► 401 { error: "Unauthorized" }
+       ├── ✗ Not admin email           ─────────────► 403 { error: "Authorized admin required" }
+       │
+       ▼
+  BUSINESS LOGIC
+       ├── ✗ Invalid payment signature ─────────────► 400 { error: "Payment verification failed" }
+       ├── ✗ User not found in Firestore ───────────► 404 { error: "User not found" }
+       │
+       ▼
+  EXTERNAL API CALL (Gemini / Razorpay / Resend)
+       ├── ✗ Gemini timeout (8s) ─────────────────► try next model in cascade
+       ├── ✗ All 5 models fail ──────────────────► 503 { error: "AI unavailable" }
+       ├── ✗ Razorpay API error ─────────────────► 500 { error: "Payment service error" }
+       ├── ✗ Resend delivery fail ───────────────► 500 { error: "Email service error" }
+       │
+       ▼
+  DATABASE OPERATION
+       ├── ✗ Firestore write failure ────────────► try/catch → 500 error log + response
+       ├── ✗ localStorage quota exceeded ────────► catch → graceful fallback to memory only
+       ├── ✗ localStorage disabled (incognito) ──► catch → in-memory state (no crash)
+       │
+       ▼
+  SUCCESS → 200 with result payload
+
+CLIENT-SIDE ERROR HANDLING:
+─────────────────────────────
+  All BookReader.tsx operations wrapped in try/catch:
+  catch(error) → Toast.tsx displays non-intrusive notification
+  Storage fails → Default values returned, app continues normally
+  Translation fails → Toast "Translation unavailable. Try again."
+  AI assistant fails → Toast "Assistant temporarily unavailable."
+
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+§15  PERFORMANCE ARCHITECTURE & BOTTLENECK MAP
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+
+PERFORMANCE TIERING:
+─────────────────────
+  OPERATION                          │ LATENCY     │ TIER    │ MECHANISM
+  ───────────────────────────────────┼─────────────┼─────────┼─────────────────────────────────
+  Read in-memory cache               │ ~0ms        │ HOT     │ Map.get() — in-memory
+  Write reading progress             │ <1ms        │ HOT     │ localStorage.setItem() — sync
+  Search/filter 386 books            │ <2ms        │ HOT     │ Array.filter() on static JSON
+  Render next PDF page               │ 16–80ms     │ WARM    │ PDF.js Web Worker + canvas paint
+  Load book cover images             │ 20–200ms    │ WARM    │ Vercel CDN AVIF/WebP (30-day TTL)
+  Cloud Firestore sync               │ 50–300ms    │ COOL    │ HTTPS round-trip (debounced 3s)
+  Gemini AI chat response            │ 500–3000ms  │ SLOW    │ LLM inference (model cascade)
+  Gemini page translation            │ 800–4000ms  │ SLOW    │ LLM inference + text extraction
+  Load full PDF binary               │ 1–30 sec    │ COLD    │ Network (size varies 1–50 MB)
+
+BOTTLENECK DIAGRAM:
+────────────────────
+  USER
+   │
+   ▼
+  READING (0ms localStorage) ────────────────────────────────── FAST ✅
+   │
+   ▼
+  PDF RENDERING (Web Worker, 16-80ms) ───────────────────────── ACCEPTABLE ✅
+   │
+   ▼
+  AI CHAT (500-3000ms, multiple roundtrips) ─────────────────── SLOW ⚠️
+   │          └─► Mitigated by: deterministic fast-path, cascaded models
+   ▼
+  INITIAL PDF LOAD (1-30s depending on book size) ───────────── COLD ⚠️
+   │          └─► Mitigated by: Service Worker cache, offline download
+   ▼
+  FIRESTORE SYNC (50-300ms but debounced 3s) ────────────────── BUFFERED ✅
+              └─► 3s debounce coalesces rapid changes into single write
+
+PERFORMANCE OPTIMIZATIONS (FACT):
+───────────────────────────────────
+  [FACT] next.config.ts → optimizePackageImports: ["lucide-react", "@google/genai", "date-fns"]
+         Tree-shakes large libraries at build time
+  [FACT] In-memory Map caches in reader-storage.ts prevent repeated JSON.parse()
+  [FACT] PDF.js runs in isolated Web Worker — never blocks main thread
+  [FACT] Canvas double-buffering eliminates page-turn flicker artifacts
+  [FACT] Images delivered as AVIF + WebP with 30-day CDN TTL
+  [FACT] Dynamic imports used for heavy libs (firestore-sync imported lazily in AuthContext)
+  [RECOMMENDATION] Implement semantic translation caching using content hash as key
+  [RECOMMENDATION] Implement Upstash Redis for server-side AI request rate limiting
+
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+§16  SCALABILITY DESIGN
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+
+USER SCALE ANALYSIS:
+─────────────────────
+  ► 10 USERS
+    Status: ✅ Fully comfortable. No architectural pressure.
+    Notes:  localStorage handles all reading. Firestore quota trivial.
+            Vercel free tier sufficient. Gemini API costs negligible.
+
+  ► 100 USERS
+    Status: ✅ Comfortable. System well within all limits.
+    Notes:  PDF CDN serves files without issue. Firestore writes debounced.
+            Minor Gemini API cost accumulation begins.
+
+  ► 1,000 USERS
+    Status: ✅ Mostly stable. Watch bandwidth costs.
+    Pressure: PDF egress bandwidth from Vercel may exceed plan limits.
+    Notes:  Search is instant (in-memory static JSON).
+            Firestore reads/writes manageable. Gemini quota monitored.
+
+  ► 10,000 USERS
+    Status: ⚠️ Architectural pressure emerging.
+    Pressure Points:
+    1. PDF Egress Cost: 10K users × avg 50MB PDFs = serious CDN cost
+       [RECOMMENDATION] Migrate /public/pdfs/ to Cloudflare R2 (zero egress fees)
+    2. Gemini Rate Limits: Concurrent AI requests may hit quota
+       [RECOMMENDATION] Add Upstash Redis rate limiting per user (sliding window)
+    3. Firestore Hot Documents: public_profiles with high follower counts may bottleneck
+       [RECOMMENDATION] Distribute counter updates with sharded counter pattern
+
+  ► 100,000 USERS
+    Status: ❌ Current architecture requires evolution.
+    Critical Pressure Points:
+    1. PDF Bandwidth: CDN costs become prohibitive on Vercel
+       [RECOMMENDATION] Cloudflare R2 + Cloudflare CDN (bandwidth included free)
+    2. Gemini Throughput: Single API key rate-limited
+       [RECOMMENDATION] Multiple API key rotation + server-side request queue
+    3. Firestore Write Throughput: Activity + progress sync could bottleneck
+       [RECOMMENDATION] Message queue (Pub/Sub / Kafka) buffering writes in batches
+    4. localStorage Quota: Power readers may hit ~5MB limit with heavy annotations
+       [RECOMMENDATION] Migrate to IndexedDB via `idb` library (50MB+ capacity)
+    5. Bundle Size at scale: books.json grows with catalog expansion
+       [RECOMMENDATION] Paginated Firestore catalog with client-side caching layer
+
+SCALABILITY DIAGRAM:
+─────────────────────
+                    ┌──────── 100K USERS ────────┐
+                    │                            │
+                    ▼                            ▼
+               FRONTEND (Vercel)           FRONTEND (Vercel)
+               [Stateless — scales         [No server session
+                horizontally auto]          dependency]
+                    │                            │
+                    └─────────────┬──────────────┘
+                                  │
+                                  ▼
+                           SERVERLESS API
+                        (Auto-scales on Vercel)
+                                  │
+               ┌──────────────────┼──────────────────┐
+               ▼                  ▼                  ▼
+          FIRESTORE           GEMINI API          RAZORPAY
+      [Scales natively]   [RATE LIMITED ⚠️]    [Scales natively]
+               │
+    [RECOMMENDATION: Add Redis rate limiter + queue workers at 10K+ users]
+
+
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+§17  SECURITY ARCHITECTURE & DEFENSE MAP
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+
+SECURITY LAYER DIAGRAM:
+────────────────────────
+  USER REQUEST
+       │
+       ▼
+  ┌───────────────────────────────────────────────────┐
+  │  AUTHENTICATION LAYER                             │
+  │  [FACT] Google OAuth 2.0 via Firebase Auth        │
+  │  [FACT] JWT ID Tokens — short-lived, Google-signed│
+  │  [FACT] browserLocalPersistence (IndexedDB)       │
+  │  [FACT] Zero passwords stored anywhere            │
+  └────────────────────────┬──────────────────────────┘
+                           │
+                           ▼
+  ┌───────────────────────────────────────────────────┐
+  │  AUTHORIZATION LAYER                              │
+  │  [FACT] Server: verifyFirebaseIdToken() — Admin SDK│
+  │  [FACT] Admin routes: isAdminUser(email) check    │
+  │  [FACT] Firestore Rules: ownership + role checks  │
+  │  [FACT] Self-follow prevention in Firestore rules │
+  └────────────────────────┬──────────────────────────┘
+                           │
+                           ▼
+  ┌───────────────────────────────────────────────────┐
+  │  INPUT VALIDATION LAYER                           │
+  │  [FACT] Required field checks in all API handlers │
+  │  [FACT] planId validated against server config    │
+  │  [FACT] max 2 pages per translation request       │
+  │  [FACT] Username sanitized: /[^a-z0-9_]/g → "_"  │
+  │  [FACT] React 19 auto-escapes all JSX text        │
+  └────────────────────────┬──────────────────────────┘
+                           │
+                           ▼
+  ┌───────────────────────────────────────────────────┐
+  │  CRYPTOGRAPHIC SECURITY                           │
+  │  [FACT] HMAC SHA256 on payment signature          │
+  │  [FACT] crypto.timingSafeEqual() for comparison   │
+  │         Prevents timing side-channel attacks      │
+  │  [FACT] RAZORPAY_KEY_SECRET server-side only      │
+  └────────────────────────┬──────────────────────────┘
+                           │
+                           ▼
+  ┌───────────────────────────────────────────────────┐
+  │  HEADER & TRANSPORT SECURITY                      │
+  │  [FACT] Cross-Origin-Opener-Policy:               │
+  │         "same-origin-allow-popups" (next.config)  │
+  │  [FACT] poweredByHeader: false (hides Next.js)    │
+  │  [FACT] All traffic over HTTPS via Vercel         │
+  └────────────────────────┬──────────────────────────┘
+                           │
+                           ▼
+  ┌───────────────────────────────────────────────────┐
+  │  DATABASE SECURITY                                │
+  │  [FACT] Firestore rules enforce ownership per doc │
+  │  [FACT] Admin audit logs: update+delete=false     │
+  │  [FACT] Catalog overrides: admin-write only       │
+  │  [FACT] NoSQL — no SQL injection surface          │
+  │  [FACT] Queries use typed SDK params, not strings │
+  └───────────────────────────────────────────────────┘
+
+KNOWN SECURITY GAPS:
+─────────────────────
+  [INFERENCE] AI quota (daily limits) tracked in localStorage:
+              A user can clear browser storage to reset quota.
+              [RECOMMENDATION] Track AI quotas server-side (Redis + user UID)
+
+  [INFERENCE] Rate limiting on API endpoints: Not determinable from inspected code.
+              No express-rate-limit or Upstash rate limiter found.
+              [RECOMMENDATION] Add sliding-window rate limiter per IP/UID
+
+  [INFERENCE] Admin authorization is tied to one hardcoded email.
+              [RECOMMENDATION] Use Firebase Custom Claims for multi-admin support
+
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+§18  DEPLOYMENT ARCHITECTURE
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+
+DEPLOYMENT PIPELINE:
+─────────────────────
+  Developer Laptop (d:\Desktop\realProject\library-optimized)
+       │
+       │  git push origin main
+       ▼
+  GitHub Repository
+       │
+       │  Webhook triggers Vercel Build
+       ▼
+  ┌─────────────────────────────────────────────────────────────┐
+  │  VERCEL CI/CD BUILD PIPELINE                                │
+  │                                                             │
+  │  Step 1: npm ci (install frozen lockfile)                   │
+  │  Step 2: TypeScript check + SWC compilation                 │
+  │  Step 3: next build                                         │
+  │           ├── Static pages: /, /about, /contact, /library   │
+  │           ├── Dynamic pages: /book/[id] (ISR ready)         │
+  │           ├── sitemap.ts generates XML for all 386 books     │
+  │           ├── robots.ts generates crawler policy            │
+  │           └── Serverless functions bundled: /api/**         │
+  │  Step 4: SWC tree-shaking: lucide-react, @google/genai      │
+  │  Step 5: Image optimization pipeline (AVIF + WebP)          │
+  │  Step 6: Deploy to Vercel Edge Network                      │
+  └──────────────────────────┬──────────────────────────────────┘
+                             │
+                             ▼
+  ┌─────────────────────────────────────────────────────────────┐
+  │  PRODUCTION RUNTIME                                         │
+  │                                                             │
+  │  Global Edge CDN: Static assets, PDF files, images         │
+  │  Node.js Serverless: /api/** route handlers                 │
+  │  Environment: Variables injected by Vercel dashboard        │
+  │  Domain: reader-hub-library.vercel.app                      │
+  └─────────────────────────────────────────────────────────────┘
+
+BOOK INGESTION PIPELINE (Local — Not CI/CD):
+──────────────────────────────────────────────
+  Drop PDF → public/pdfs/ or book-inbox/
+       ▼
+  npm run ingest-batch (scripts/ingest-batch.ts)
+       ▼
+  scanner.ts → finds new PDF files
+       ▼
+  metadata.ts → pdf-parse extracts page count
+       ▼
+  covers.ts → sharp + pdf-lib → first page WebP cover
+       ▼
+  naming.ts → sanitizes title → creates slug
+       ▼
+  validator.ts → schema conformance check
+       ▼
+  writer.ts → atomic write to data/books.json
+       ▼
+  git commit + push → Vercel auto-deploys updated catalog
+
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+§19  DEPENDENCY GRAPH
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+
+TOP-LEVEL MODULE DEPENDENCY TREE:
+───────────────────────────────────
+  app/book/[id]/page.tsx
+    └── BookDetailClient.tsx
+          └── components/reader/BookReader.tsx [3,538 lines]
+                ├── components/PdfReader.tsx
+                │     └── pdfjs-dist (vendored Web Worker)
+                ├── components/reader/DrawingCanvas.tsx
+                ├── components/reader/AnnotationDrawer.tsx
+                ├── components/reader/TranslationDrawer.tsx
+                │     └── lib/translator.ts
+                │           └── fetch("/api/translate")
+                │                 └── @google/genai
+                ├── components/reader/ReadingSessionTimer.tsx
+                │     └── lib/active-tracker.ts
+                ├── lib/reader-storage.ts [localStorage + Map cache]
+                └── lib/firestore-sync.ts [Firestore SDK]
+                      └── lib/firebase.ts [Firestore singleton]
+
+  app/api/chat/route.ts
+    ├── lib/library-assistant.ts
+    │     └── data/books.json [386+ records]
+    └── @google/genai [GoogleGenAI SDK]
+
+  app/api/payment/verify/route.ts
+    ├── lib/razorpay.ts [node:crypto]
+    ├── lib/entitlements.ts
+    │     └── lib/firebase-admin.ts [Admin SDK singleton]
+    └── lib/firestore-sync.ts
+
+  app/api/admin/catalog/route.ts
+    ├── lib/admin.ts [email predicate]
+    ├── lib/admin-catalog.ts [override merge]
+    └── lib/entitlements.ts → lib/firebase-admin.ts
+
+TIGHTLY COUPLED AREAS:
+───────────────────────
+  [INFERENCE] LibraryContext.tsx is tightly coupled to reader-storage.ts and firestore-sync.ts.
+              Any change to storage key names requires updating both files simultaneously.
+  [INFERENCE] BookReader.tsx (3,538 lines) is the most complex component and has the highest
+              surface area for bugs. Splitting it into sub-modules would improve testability.
+  [RECOMMENDATION] Extract PDF rendering logic into a dedicated usePdfRenderer() custom hook.
+
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+§20  DESIGN PATTERNS APPLIED
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+
+PATTERN 1 — SINGLETON
+─────────────────────
+  Where    : lib/firebase.ts, lib/firebase-admin.ts
+  Evidence : getApps().length === 0 ? initializeApp(config) : getApp()
+  Why      : Firebase SDK throws if initialized multiple times across Next.js hot reloads
+  Interview: "I used lazy Singleton getters for both Firebase Client and Admin SDKs.
+              Before each initialization, the getter checks if an existing app instance
+              is registered to guarantee one shared connection pool."
+
+PATTERN 2 — FACADE
+───────────────────
+  Where    : context/LibraryContext.tsx
+  Evidence : Component calls toggleFavorite(bookId). Context handles: localStorage write,
+             memory cache update, debounced Firestore sync — all hidden from the component.
+  Why      : Hides immense complexity of dual-storage, caching, and sync coordination.
+  Interview: "LibraryContext acts as a Facade. A BookCard simply calls toggleFavorite().
+              Behind that facade, the context coordinates local cache invalidation,
+              localStorage commits, and background Firestore synchronization."
+
+PATTERN 3 — STRATEGY (Model Cascade)
+──────────────────────────────────────
+  Where    : app/api/chat/route.ts, app/api/translate/route.ts
+  Evidence : Array of model names iterated in for loop with Promise.race(8s timeout)
+  Why      : Preview Gemini models get deprecated or rate-limited unexpectedly.
+             The cascade ensures service continuity by automatically switching strategies.
+  Interview: "I implemented the Strategy pattern for AI resilience. Each Gemini model
+              is a candidate strategy executed with an 8-second timeout. On failure,
+              the next model is activated — providing transparent fault tolerance."
+
+PATTERN 4 — DEBOUNCE (Write Coalescing)
+─────────────────────────────────────────
+  Where    : lib/firestore-sync.ts
+  Evidence : progressDebounceTimers, activityDebounceTimers — NodeJS.Timeout maps
+  Why      : 300-page reading session → would generate 300 Firestore writes without debounce.
+             Debounce coalesces to ~1-3 writes. Reduces DB cost by >90%.
+  Interview: "I applied the Debounce pattern to all Firestore write operations.
+              Rapid page flips are coalesced into a single write after 3 seconds of
+              inactivity, reducing Firestore write costs by over 90%."
+
+PATTERN 5 — REPOSITORY / STORAGE ABSTRACTION
+──────────────────────────────────────────────
+  Where    : lib/reader-storage.ts
+  Evidence : Components never call localStorage directly. All calls go through
+             saveProgress(), getAnnotations(), etc.
+  Why      : Centralizes serialization, key generation, cache management, and error handling.
+  Interview: "I built a Repository abstraction over localStorage. Components interact
+              with typed domain methods. The underlying engine handles key namespacing,
+              in-memory caching, JSON serialization, and error recovery."
+
+PATTERN 6 — CONTEXT PROVIDER (Dependency Injection)
+─────────────────────────────────────────────────────
+  Where    : context/AuthContext, LibraryContext, EntitlementContext
+  Evidence : Nested providers in app/layout.tsx wrap the entire component tree
+  Why      : Eliminates prop-drilling. Navbar and BookReader can both access reading state
+             without passing props 8 levels deep.
+  Interview: "I used the Context Provider pattern as a form of Dependency Injection.
+              Three independent context domains — Auth, Library, and Entitlements —
+              each expose memoized state and actions to the entire component tree."
+
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+§21  ARCHITECTURAL DECISIONS & TRADEOFFS (ADRs)
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+
+ADR-1 ── LocalStorage First, Firestore Second
+──────────────────────────────────────────────
+  DECISION   : Use browser localStorage as the primary data store.
+               Firestore is a secondary async backup, not the source of truth.
+  [FACT]     : lib/reader-storage.ts handles all reads. firestore-sync.ts writes after debounce.
+  BENEFIT    : Sub-millisecond reads. Works without internet. Works without login.
+               Zero Firestore read costs for catalog browsing.
+  TRADEOFF   : Data is device-local for guests. Device switching requires login.
+               5MB localStorage limit could be hit by heavy annotation users.
+  ALTERNATIVE: Cloud-first (all reads from Firestore) — rejected: 50-300ms latency on every action.
+
+ADR-2 ── Static JSON Catalog vs. Database-Driven Catalog
+──────────────────────────────────────────────────────────
+  DECISION   : Bundle all 386+ books in data/books.json at build time.
+               Dynamic overrides managed via Firestore catalog_overrides collection.
+  [FACT]     : data/books.ts exports BOOKS = booksData. Admin catalog route merges overrides.
+  BENEFIT    : Instant client-side search and filtering. Zero DB reads for browsing.
+               Full offline catalog availability.
+  TRADEOFF   : Adding books requires a code commit + Vercel deployment.
+  ALTERNATIVE: Full database catalog (Firestore) — rejected: latency + reads cost per session.
+
+ADR-3 ── Catalog Grounding for Gemini (No RAG)
+────────────────────────────────────────────────
+  DECISION   : Inject entire catalog summary into Gemini system instruction.
+               No vector database, no RAG pipeline.
+  [FACT]     : lib/library-assistant.ts → getCompactCatalogSummary() injects catalog context.
+  BENEFIT    : Zero hallucinations. No external vector DB infrastructure. Simple to maintain.
+  TRADEOFF   : ~2,000 tokens consumed per AI request for catalog context.
+  ALTERNATIVE: Pinecone / Weaviate RAG — rejected as unnecessary overhead given catalog fits in context window.
+
+ADR-4 ── Feature-Flag Driven Monetization
+───────────────────────────────────────────
+  DECISION   : PRO_ENFORCEMENT_ENABLED=false makes all Pro features free during Razorpay KYC.
+  [FACT]     : lib/monetization-config.ts defines the flag. EntitlementContext evaluates it.
+  BENEFIT    : Builds organic user base before payments activate. No broken checkout experience.
+  TRADEOFF   : Zero subscription revenue during promotional period.
+  ALTERNATIVE: Block features until payments active — rejected: poor UX and user acquisition loss.
+
+ADR-5 ── PDF.js Client-Side Rendering vs. Server-Side Tile Generation
+───────────────────────────────────────────────────────────────────────
+  DECISION   : Render PDFs entirely in the browser using PDF.js Web Worker.
+  [FACT]     : public/vendor/pdfjs/ is vendored. PdfReader.tsx uses Web Worker explicitly.
+  BENEFIT    : Zero server CPU for rendering. True offline reading. No binary transfer overhead.
+  TRADEOFF   : Client devices with limited RAM must handle rendering workload.
+  ALTERNATIVE: Server-side PNG tile rasterization — rejected: cost + no offline capability.
+
+
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+§22  "EXPLAIN THIS ARCHITECTURE IN AN INTERVIEW"
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+
+─── 30-SECOND VERSION ───────────────────────────────────────────────────────────────────────────────────────
+"Reader's HUB is a client-first digital reading platform built with Next.js 16, React 19, and Firebase.
+It gives users instant, offline-ready access to 386+ curated books without requiring a login. The architecture
+uses a dual-storage model — sub-millisecond localStorage for all reading data, and debounced Cloud Firestore
+sync for authenticated users. It's powered by Google Gemini for catalog search and page translation,
+deployed on Vercel as a full Progressive Web App."
+
+─── 1-MINUTE VERSION ────────────────────────────────────────────────────────────────────────────────────────
+"Reader's HUB is a full-stack PWA built on Next.js 16 App Router with React 19 and TypeScript. The key
+architectural decision was to make the platform completely functional without any server round-trip for reading:
+all book progress, annotations, highlights, canvas sketches, and streak calculations are persisted immediately
+to namespaced browser localStorage through a custom abstraction layer in lib/reader-storage.ts.
+
+When a user authenticates via Google OAuth through Firebase, a background sync engine in lib/firestore-sync.ts
+uses debounced timers to push their data to Cloud Firestore, coalescing rapid page flips into single writes
+to reduce database costs.
+
+The static book catalog — 386 books — is bundled at build time as a JSON file, making all search and filtering
+instantaneous without any database calls. Dynamic admin modifications are handled via a Firestore catalog_overrides
+collection that gets merged at runtime.
+
+Two Gemini-powered endpoints provide grounded AI chat — where the catalog is injected into the system prompt to
+prevent hallucinations — and real-time bilingual page translation. The platform is deployed on Vercel and is a
+fully installable PWA with offline reading support."
+
+─── 3-MINUTE VERSION ────────────────────────────────────────────────────────────────────────────────────────
+"Reader's HUB is a digital reading environment designed around one core principle: zero friction. Users can
+open a book and start reading immediately — no signup, no ads, no paywalls.
+
+Architecturally, I made a deliberate decision to invert the typical cloud-first model. Instead of fetching
+reading data from a server on every interaction, the entire reading experience runs locally in the browser.
+lib/reader-storage.ts provides a namespaced localStorage abstraction with in-memory Map caches, so reading
+progress, annotations, canvas drawings, and streak data are committed in under a millisecond. For authenticated
+users, lib/firestore-sync.ts runs in the background with debounce timers — typically 3 seconds — that coalesce
+rapid page-flip events into single Firestore document writes, reducing cloud database costs by over 90%.
+
+The book catalog is another architectural decision I'm proud of. Rather than querying a database on every visit,
+I compile all 386+ books into a static JSON bundle that ships with the application. This makes the search,
+filtering, and offline catalog browsing instantaneous. Administrative changes like soft-deletions are handled
+through a small Firestore catalog_overrides collection that gets merged with the static data at runtime.
+
+The AI features use Google Gemini with a cascade failover strategy. For the chat assistant, I first run
+deterministic regex matching to handle common questions at zero API cost. If that fails, the system builds a
+system instruction that includes a condensed summary of all 386 books — this is the catalog grounding that
+prevents the LLM from hallucinating books outside our library. The translation endpoint similarly caches
+translated pages locally to avoid repeated API calls.
+
+On the security side, payment verification uses HMAC SHA256 with Node.js's crypto.timingSafeEqual to prevent
+timing attacks. All admin routes require both a valid Firebase ID token and email whitelist validation.
+
+The platform is deployed on Vercel as a PWA with a service worker for offline shell caching and a separate
+CacheStorage layer for offline PDF reading."
+
+─── 5-MINUTE DEEP DIVE ──────────────────────────────────────────────────────────────────────────────────────
+[Deliver the 3-minute version, then extend into tradeoffs and scaling:]
+
+"Let me talk through the five most interesting architectural decisions and their tradeoffs:
+
+1. Client-First Dual Storage Architecture:
+The most important decision was choosing localStorage as the primary data plane rather than Firestore. This
+gives us sub-millisecond reads that feel instantaneous even on slow mobile connections, and the reading
+experience works completely offline. The tradeoff is that data is device-local for guests — if someone reads
+on their phone and then switches to their laptop without logging in, the progress doesn't transfer. We accept
+this tradeoff because the zero-friction reading experience is the platform's core value proposition. For logged-in
+users, reconcileAndSyncAllUserData() merges cloud records with local records on login, taking the higher page
+count and unioning favorites sets.
+
+2. Static JSON Catalog vs. Dynamic Database:
+Bundling 386 books as a static JSON file means catalog search and filtering are instantaneous — literally
+array.filter() running in under 2 milliseconds. The cost is that adding books requires a code commit and
+redeployment. But our ingestion pipeline (scripts/ingest-batch.ts) makes this a single CLI command that
+auto-extracts metadata, rasterizes covers, and updates the JSON. The hybrid approach — static JSON plus Firestore
+catalog_overrides for admin soft-deletions — gives us the best of both worlds.
+
+3. Gemini Grounding Without RAG:
+I avoided building a vector database and RAG pipeline by simply injecting the entire catalog summary into
+Gemini's system instruction. At our catalog size (~2,000 tokens for 386 books), this fits comfortably within
+the context window. The tradeoff is that each AI request carries this overhead. If the catalog grew to 5,000+
+books, we'd need to move to a proper RAG architecture with Pinecone or similar. The deterministic fast-path
+also saves significant API costs — common questions like 'show CS books' never reach the LLM at all.
+
+4. Timing-Safe Payment Verification:
+The payment flow uses a two-step design where the server creates orders with server-verified pricing — the client
+only passes a planId, never a price. Verification uses crypto.timingSafeEqual to compare HMAC SHA256 signatures
+in constant time, preventing timing attacks where an attacker could analyze response time deltas to guess
+signature bytes. This is a subtle but critical security consideration.
+
+5. PWA Without a Full Framework:
+Rather than using next-pwa or similar libraries, I implemented the service worker manually. This gives precise
+control over the caching strategy — network-first for navigation, cache-first for static assets, and complete
+bypass for API routes. The offline PDF reading is handled through CacheStorage, separate from the app shell cache,
+so users can selectively download individual books without caching the entire library."
+
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+§23  INTERVIEW WHITEBOARD SKETCH
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+
+DRAW THIS IN YOUR INTERVIEW (Step-by-Step Instructions):
+────────────────────────────────────────────────────────
+
+STEP 1: Start with User + Browser
+  Draw a box: "USER / BROWSER / PWA"
+  Write below it: "React 19 + Next.js 16"
+
+STEP 2: Split into two immediate layers
+  Left box:  "PDF.js Web Worker" (arrow from User)
+  Right box: "Context Shell (Auth / Library / Entitlement)" (arrow from User)
+
+STEP 3: Connect Context Shell down to Local Storage
+  Draw arrow from Context Shell → "localStorage (reader-storage.ts)"
+  Label: "< 1ms — primary store"
+
+STEP 4: Draw dotted arrow from Local Storage → Cloud Firestore
+  Label: "3s debounce sync (firestore-sync.ts)"
+
+STEP 5: Draw the API layer
+  On the right side, draw "Vercel Serverless API (/api/*)"
+  Connect from Context Shell to API with "HTTPS"
+
+STEP 6: Fan out from API to external services
+  Three arrows from API:
+  ├── "Google Gemini API" (chat + translate)
+  ├── "Razorpay" (payments)
+  └── "Resend" (email)
+
+STEP 7: Show Static Catalog separately
+  Draw "data/books.json (386 books)"
+  Arrow from it to API labeled "catalog grounding"
+  Arrow from it to Context Shell labeled "instant search"
+
+STEP 8: Show Security Layer note
+  Write in corner: "Security: Firebase JWT verify → HMAC SHA256 payments → Firestore Rules"
+
+FINAL WHITEBOARD RESULT:
+─────────────────────────
+  ┌────────────────────────────────────────────────────────────────────────────┐
+  │  USER / BROWSER / PWA                                                      │
+  │  React 19 + Next.js 16.2.1 + Tailwind CSS v4                               │
+  │   │                        │                                                │
+  │   ▼                        ▼                                                │
+  │  PDF.js Worker          Context Shell          data/books.json             │
+  │  (Canvas render)        Auth + Library         (386 books, 0ms search)     │
+  │                         Entitlement                    │                   │
+  │                           │                            │ catalog grounding │
+  │                           ▼                            │                   │
+  │                      reader-storage.ts ◄───────────────┘                   │
+  │                      (localStorage + Map cache, <1ms)                      │
+  │                           │                                                │
+  │                           │ 3s debounce                                    │
+  │                           ▼                  HTTPS                        │
+  │                    Cloud Firestore      ◄──────────── Vercel Serverless    │
+  │                    (Firestore rules)                   /api/*              │
+  │                                                          │                 │
+  │                                          ┌──────────────┼─────────────┐   │
+  │                                          ▼              ▼             ▼   │
+  │                                      Gemini AI      Razorpay       Resend │
+  │                                     (5-model       (HMAC SHA256)  (Email) │
+  │                                      cascade)                             │
+  └────────────────────────────────────────────────────────────────────────────┘
+
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+§24  SYSTEM DESIGN INTERVIEW QUESTIONS & MODEL ANSWERS
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+
+── BEGINNER ─────────────────────────────────────────────────────────────────────────────────────────────────
+
+Q1: What does Reader's HUB do? What is the tech stack?
+    TESTING   : High-level comprehension and communication
+    ANSWER    : Full-stack offline-first digital reading platform. Frontend: Next.js 16.2.1 App Router +
+                React 19 + TypeScript + Tailwind CSS v4. Backend: Vercel Serverless Route Handlers. Primary
+                storage: Browser localStorage. Cloud DB: Firestore. AI: Google Gemini. Payments: Razorpay.
+    FILE      : package.json, next.config.ts
+    FOLLOW-UP : Why Next.js over a pure React SPA?
+
+Q2: Does the app require login to read books?
+    TESTING   : Understanding of the zero-friction architecture
+    ANSWER    : No. All 386+ books are fully readable without any account. Progress, annotations, canvas
+                drawings, and streaks are saved under a "guest" namespace in localStorage. Logging in with
+                Google activates cross-device cloud sync.
+    FILE      : lib/reader-storage.ts (guest uid fallback)
+    FOLLOW-UP : What happens to guest data when the user eventually logs in?
+
+── INTERMEDIATE ─────────────────────────────────────────────────────────────────────────────────────────────
+
+Q3: How does reading progress persist and sync?
+    TESTING   : Dual-storage architecture and debounce pattern knowledge
+    ANSWER    : Page turns call saveProgress() in reader-storage.ts. This writes synchronously to an in-memory
+                Map cache (<1ms) and then to localStorage. Simultaneously, syncReadingProgressToCloud() in
+                firestore-sync.ts clears any existing 3-second debounce timer and sets a new one. After 3s of
+                inactivity, the latest progress is flushed to Firestore users/{uid}/reading_progress/{bookId}.
+    FILE      : lib/reader-storage.ts, lib/firestore-sync.ts
+    FOLLOW-UP : What happens if the browser closes during the 3-second debounce window?
+
+Q4: How does the AI assistant avoid recommending books that don't exist?
+    TESTING   : LLM grounding, practical AI engineering
+    ANSWER    : The catalog is grounded in the system instruction. getCompactCatalogSummary() condenses all
+                386 books by category. This is injected into Gemini's system instruction with strict rules:
+                "ONLY recommend books present in this catalog. Return valid JSON." The response bookIds are
+                then validated against the static BOOKS array. Additionally, tryDeterministicQuery() intercepts
+                common questions with regex patterns before calling Gemini at all.
+    FILE      : lib/library-assistant.ts, app/api/chat/route.ts
+    FOLLOW-UP : What is the token cost of this grounding approach?
+
+Q5: How is the Razorpay payment signature verified?
+    TESTING   : Cryptographic security, payment security knowledge
+    ANSWER    : After user pays, the client sends razorpay_order_id, razorpay_payment_id, and
+                razorpay_signature to /api/payment/verify. The server computes:
+                HMAC = crypto.createHmac("sha256", RAZORPAY_KEY_SECRET)
+                            .update(orderId + "|" + paymentId).digest("hex")
+                Then uses crypto.timingSafeEqual() to compare byte buffers. This prevents timing attacks
+                where an attacker measures nanosecond response differences to guess valid bytes.
+    FILE      : lib/razorpay.ts, app/api/payment/verify/route.ts
+    FOLLOW-UP : Why can't the client calculate the order amount?
+
+── ADVANCED ─────────────────────────────────────────────────────────────────────────────────────────────────
+
+Q6: What happens when the AI service goes down?
+    TESTING   : Fault tolerance, cascading failure design
+    ANSWER    : Both /api/chat and /api/translate implement a 5-model cascade. Each model attempt is wrapped
+                in Promise.race(8,000ms timeout). If model 1 times out or returns 429/503, the catch block
+                moves to model 2. If all 5 fail, the route returns 503 with a user-facing error. On the
+                client, Toast.tsx displays a non-blocking notification. The reading experience itself is
+                completely unaffected since it runs locally.
+    FILE      : app/api/chat/route.ts, app/api/translate/route.ts
+    FOLLOW-UP : How would you add proper circuit breaker pattern here?
+
+Q7: How does the app work completely offline?
+    TESTING   : PWA architecture, Service Worker, CacheStorage knowledge
+    ANSWER    : Two offline layers: 1) The app shell (icons, manifest) is cached by sw.js using Cache-First
+                strategy during Service Worker install. 2) Individual books are cached when user clicks
+                "Download Offline" — LibraryContext.cacheBookOffline() fetches the full PDF binary and stores
+                it in a dedicated CacheStorage bucket ("readers-hub-books-offline-v1"). When offline, sw.js
+                intercepts /pdfs/*.pdf requests and serves from cache. PDF.js renders entirely in the browser.
+    FILE      : public/sw.js, context/LibraryContext.tsx
+    FOLLOW-UP : How do you handle CacheStorage quota limits on mobile devices?
+
+── SENIOR ───────────────────────────────────────────────────────────────────────────────────────────────────
+
+Q8: How would you scale this to 100,000 daily active users?
+    TESTING   : Systems thinking, identifying bottlenecks, pragmatic scaling
+    ANSWER    : The four biggest pressure points at 100K DAU:
+                1. PDF Bandwidth: Migrate /public/pdfs/ from Vercel to Cloudflare R2 (zero egress fees).
+                2. Gemini Rate Limits: Add Upstash Redis sliding-window rate limiter per UID + rotate multiple
+                   API keys.
+                3. Firestore Write Hot Spots: Buffer activity sync through Google Cloud Pub/Sub → batch workers
+                   instead of direct setDoc calls.
+                4. localStorage Quota: Migrate from localStorage to IndexedDB (via `idb` library) for heavy
+                   annotators hitting the ~5MB limit.
+    FILE      : lib/firestore-sync.ts, public/pdfs/, lib/reader-storage.ts
+    FOLLOW-UP : What would you monitor to detect these issues proactively?
+
+Q9: What is the biggest architectural risk in the current design?
+    TESTING   : Honest self-assessment, technical debt awareness
+    ANSWER    : Three honest risks: 1) BookReader.tsx at 3,538 lines is extremely complex and difficult to
+                unit test. A bug here affects the core reading experience. Fix: Extract PDF rendering,
+                annotation, and translation into separate custom hooks. 2) AI quota is tracked in localStorage,
+                meaning a user can clear their browser storage to bypass daily limits. Fix: Server-side quota
+                tracking with Redis keyed to Firebase UID. 3) Admin authorization is tied to one hardcoded
+                email. Fix: Firebase Custom Claims for multi-admin role assignment.
+    FILE      : components/reader/BookReader.tsx, lib/monetization-config.ts, lib/admin.ts
+    FOLLOW-UP : How would you prioritize fixing these?
+
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+§25  SYSTEM DESIGN CHEAT SHEET
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+
+TOP 10 COMPONENTS:
+───────────────────
+  1. BookReader.tsx           — 3,538 lines, core reading engine
+  2. lib/reader-storage.ts    — 2,375 lines, localStorage + memory cache abstraction
+  3. lib/firestore-sync.ts    — 1,183 lines, debounced cloud sync + reconciliation
+  4. context/LibraryContext   — 1,434 lines, global state facade
+  5. lib/social.ts            — 2,014 lines, follow graph + activity feed
+  6. app/api/chat/route.ts    — Gemini AI assistant with 5-model cascade
+  7. data/books.json          — 386+ book catalog (static, 0ms search)
+  8. firestore.rules          — DB-level security enforcement
+  9. public/sw.js             — PWA offline caching + network strategy
+ 10. lib/monetization-config  — Feature flags + pricing source of truth
+
+TOP 10 FLOWS:
+──────────────
+  1. User reads book → page flip → localStorage write (<1ms) → 3s debounce → Firestore
+  2. User queries AI → tryDeterministic() → MISS → Gemini cascade → grounded JSON response
+  3. User translates page → cache check → MISS → Gemini → cache write → render
+  4. User logs in → Google OAuth → reconcileAndSyncAllUserData() → guest merge
+  5. User pays Pro → create-order → Razorpay modal → verify HMAC → Firestore entitlement
+  6. User draws on PDF → Canvas pointer events → savePageDrawings() → localStorage
+  7. User reads 15min → streak qualifies → calculateStreak() → DiwaliDiya glows
+  8. User saves offline → fetch PDF binary → CacheStorage → offline reading
+  9. Admin soft-deletes book → admin route → catalog_overrides write → immutable audit log
+ 10. New book added → ingest-batch.ts → metadata + cover → books.json → git deploy
+
+TOP 10 APIs:
+─────────────
+  1.  POST /api/chat          — Gemini AI catalog assistant
+  2.  POST /api/translate     — Page spread translation
+  3.  POST /api/payment/create-order  — Razorpay order creation
+  4.  POST /api/payment/verify        — HMAC signature verification
+  5.  PUT  /api/users/profile         — Profile updates
+  6.  POST /api/users/follow          — Social follow/unfollow
+  7.  POST /api/admin/catalog         — Soft delete / metadata edit
+  8.  GET  /api/admin/users           — User directory
+  9.  GET  /api/payment/entitlement   — Pro status check
+  10. POST /api/contact               — Resend email dispatch
+
+TOP SECURITY POINTS:
+─────────────────────
+  1. Firebase JWT verified server-side via Admin SDK (verifyIdToken)
+  2. Admin routes require JWT + email whitelist (kumaraman19137@gmail.com)
+  3. Payment: HMAC SHA256 + crypto.timingSafeEqual (timing attack prevention)
+  4. Server-side pricing: client sends planId, never price amount
+  5. Firestore rules: ownership + role enforcement at DB level
+  6. Audit logs: update+delete=false (immutable audit trail)
+  7. Username sanitized: /[^a-z0-9_]/g (injection prevention)
+  8. React 19 auto-escapes JSX text (XSS prevention)
+  9. poweredByHeader: false (infrastructure fingerprint prevention)
+ 10. Cross-Origin-Opener-Policy: same-origin-allow-popups (OAuth popup security)
+
+TOP PERFORMANCE POINTS:
+────────────────────────
+  1. localStorage + in-memory Map cache: <1ms reads (reader-storage.ts)
+  2. 3-second debounce: coalesces rapid writes by >90% (firestore-sync.ts)
+  3. Static JSON catalog: 0ms search via Array.filter() (data/books.json)
+  4. PDF.js Web Worker: off-main-thread rendering (no UI blocking)
+  5. Canvas double-buffering: zero page-turn flicker
+  6. AVIF/WebP images: next-gen formats with 30-day CDN TTL
+  7. optimizePackageImports: tree-shaking lucide-react, @google/genai
+  8. Deterministic AI fast-path: 0ms for common queries (tryDeterministicQuery)
+  9. Translation cache: repeat translation = 0ms API cost
+ 10. Service Worker: offline shell + on-demand PDF caching
+
+TOP ARCHITECTURAL DECISIONS:
+──────────────────────────────
+  1. LocalStorage first (not Firestore) — zero latency + offline reading
+  2. Static JSON catalog — instant search + no DB reads for browsing
+  3. Catalog grounding (no RAG) — prevents AI hallucination without vector DB
+  4. PRO_ENFORCEMENT_ENABLED=false — all features free during Razorpay KYC
+  5. Client-side PDF.js rendering — no server rasterization cost, true offline
+
+TOP INTERVIEW QUESTIONS:
+─────────────────────────
+  1. How does reading progress persist and sync to the cloud?
+  2. Why did you choose localStorage over Firestore as the primary store?
+  3. How do you prevent the AI from recommending books that don't exist?
+  4. Explain the cryptographic mechanism behind payment verification.
+  5. How does the platform work offline?
+  6. How would you scale this to 100,000 users?
+  7. What is the debounce pattern and why does your app use it?
+  8. How does authentication work from popup to protected API call?
+  9. What design patterns are present in the codebase?
+ 10. What would you change about the architecture if given another month?
+
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+§26  ONE-PAGE VISUAL ARCHITECTURE MAP
+════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+
+╔══════════════════════════════════════════════════════════════════════════════════════════════════════════════╗
+║                          R E A D E R ' S   H U B  —  SYSTEM ARCHITECTURE                                    ║
+╠══════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║                                                                                                              ║
+║   👤  U S E R   (Browser / PWA / Mobile)                                                                     ║
+║        │                      │                         │                                                    ║
+║        ▼                      ▼                         ▼                                                    ║
+║  ┌───────────┐        ┌────────────────┐       ┌────────────────────┐                                        ║
+║  │  sw.js    │        │  React 19 +    │       │   PDF.js Worker    │                                        ║
+║  │  Service  │        │  Next.js 16    │       │  (Web Worker)      │                                        ║
+║  │  Worker   │        │  App Router    │       │  Canvas Rendering  │                                        ║
+║  │  Offline  │        │  Tailwind v4   │       │  Off Main Thread   │                                        ║
+║  └─────┬─────┘        └───────┬────────┘       └─────────┬──────────┘                                        ║
+║        │                      │                          │                                                   ║
+║        │              ┌───────┴──────────────────────────┘                                                   ║
+║        │              │                                                                                      ║
+║        │              ▼                                                                                      ║
+║        │    ┌──────────────────────────────────────────────────────────┐                                     ║
+║        │    │              CONTEXT SHELL (app/layout.tsx)              │                                     ║
+║        │    │  ThemeProvider → AuthContext → EntitlementContext        │                                     ║
+║        │    │               → LibraryContext                          │                                     ║
+║        │    └──────────────────────────┬───────────────────────────────┘                                     ║
+║        │                              │                                                                      ║
+║        │              ┌───────────────┴───────────────┐                                                      ║
+║        │              ▼                               ▼                                                      ║
+║        │    ┌─────────────────────┐       ┌──────────────────────┐                                          ║
+║        │    │  reader-storage.ts  │       │  firestore-sync.ts   │                                          ║
+║        │    │  (Primary Store)    │──────►│  (Cloud Bridge)      │                                          ║
+║        │    │  localStorage +     │  3s   │  debounce timers     │                                          ║
+║        │    │  in-memory Map      │ debou │  reconciliation      │                                          ║
+║        │    │  <1ms read/write    │  nce  │  merge on login      │                                          ║
+║        │    └─────────────────────┘       └──────────┬───────────┘                                          ║
+║        │                                             │                                                      ║
+║        ▼                                             ▼                                                      ║
+║  ┌───────────┐                              ┌────────────────────┐                                           ║
+║  │  Vercel   │                              │  Cloud Firestore   │                                           ║
+║  │   CDN     │                              │  readers-hub-52be2 │                                           ║
+║  │ /pdfs/*   │                              │  users/            │                                           ║
+║  │ /images/* │                              │  public_profiles/  │                                           ║
+║  │ /icons/*  │                              │  follows/          │                                           ║
+║  └─────┬─────┘                              │  catalog_overrides/│                                           ║
+║        │                                   │  admin_audit_logs/ │                                           ║
+║        │  PDF binary stream                └────────────────────┘                                           ║
+║        └──────────────────────────────────────────────────────────────────────────────────────────────────  ║
+║                                                                                                              ║
+║   ┌──────────────────────────────────────────────────────────────────────────────────────────┐               ║
+║   │                  VERCEL SERVERLESS ROUTE HANDLERS  (/api/**)                             │               ║
+║   │                                                                                          │               ║
+║   │  /api/chat          /api/translate      /api/payment/*      /api/users/*   /api/admin/*  │               ║
+║   └────────┬─────────────────┬──────────────────┬───────────────────┬──────────────┬─────────┘               ║
+║            │                 │                  │                   │              │                         ║
+║            ▼                 ▼                  ▼                   ▼              ▼                         ║
+║    ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐                 ║
+║    │  Google      │  │  Google      │  │  Razorpay    │  │  Firestore   │  │  Firebase    │                 ║
+║    │  Gemini AI   │  │  Gemini AI   │  │  Gateway     │  │  (User DB)   │  │  Admin SDK   │                 ║
+║    │  5-model     │  │  Translation │  │  HMAC SHA256 │  │  Social+Pro  │  │  Token Verify│                 ║
+║    │  cascade     │  │  Hindi/Hindi │  │  verified    │  │  Entitlements│  │  Admin guard │                 ║
+║    │  8s timeout  │  │  Hinglish    │  │              │  │              │  │              │                 ║
+║    └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘                 ║
+║                                                                                                              ║
+║   ┌──────────────────────────────────────────────────────────────────────────────────────────┐               ║
+║   │                        STATIC CATALOG (Build-Time Bundle)                               │               ║
+║   │    data/books.json (386+ books) → 0ms search, offline browse, AI grounding              │               ║
+║   └──────────────────────────────────────────────────────────────────────────────────────────┘               ║
+║                                                                                                              ║
+╠══════════════════════════════════════════════════════════════════════════════════════════════════════════════╣
+║  KEY NUMBERS  │  <1ms local write │  3s Firestore debounce │  8s AI timeout │  386+ books │  5 AI models   ║
+║  KEY PATTERNS │  Singleton • Facade • Strategy • Debounce • Repository • Context Provider                  ║
+║  KEY SECURITY │  Firebase JWT • HMAC SHA256 timingSafeEqual • Firestore Rules • Admin Email Check          ║
+╚══════════════════════════════════════════════════════════════════════════════════════════════════════════════╝
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  END OF SYSTEMDESIGN.TXT
+  Verified against: d:\Desktop\realProject\library-optimized (READ-ONLY audit)
+  Covers: HLD + LLD + 7 Feature Flows + 5 ADRs + 6 Design Patterns + 9 Interview Q&A + Cheat Sheet
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
