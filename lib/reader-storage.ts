@@ -1636,6 +1636,102 @@ export function getGenuinelyCompletedBookIds(
     }
   }
 
+  // Also union with any books found directly in local progress storage keys
+  if (typeof window !== "undefined") {
+    const fromProgressKeys = scanAllLocalProgressCompletedIds(targetUid);
+    for (const bId of fromProgressKeys) {
+      if (bId && !completedIds.includes(bId)) {
+        completedIds.push(bId);
+      }
+    }
+  }
+
+  return completedIds;
+}
+
+/**
+ * Scans ALL namespaced localStorage progress keys for this user (readershub:progress:v1:{uid}:*)
+ * and checks the readingHistory array to find every book at >= 95% or final page.
+ * This bridges the gap: saveProgress() writes to individual progress keys; this function finds
+ * completions from BOTH sources and unions them.
+ */
+export function scanAllLocalProgressCompletedIds(uid?: string | null): string[] {
+  if (typeof window === "undefined") return [];
+  const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
+
+  const completedIds: string[] = [];
+  const seenIds = new Set<string>();
+
+  const userProgressPrefix = targetUid
+    ? `readershub:progress:v1:${targetUid}:`
+    : "readershub:progress:v1:guest:";
+  const legacyProgressPrefix = `${PROGRESS_KEY_PREFIX}:`;
+  const guestProgressPrefix = "readershub:progress:v1:guest:";
+
+  const prefixesToScan = [userProgressPrefix];
+  if (targetUid) {
+    prefixesToScan.push(guestProgressPrefix, legacyProgressPrefix);
+  } else {
+    prefixesToScan.push(legacyProgressPrefix, guestProgressPrefix);
+  }
+
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key) continue;
+
+      const matchedPrefix = prefixesToScan.find((p) => key.startsWith(p));
+      if (!matchedPrefix) continue;
+
+      const bookId = key.slice(matchedPrefix.length);
+      if (!bookId || bookId.includes(":") || seenIds.has(bookId)) continue;
+
+      try {
+        const raw = localStorage.getItem(key);
+        if (!raw) continue;
+        const data = JSON.parse(raw);
+        if (!data || typeof data !== "object") continue;
+
+        const page = Number(data.page) || 0;
+        const totalPages = Number(data.totalPages) || 0;
+        const progress = Number(data.progress) || (totalPages > 0 && page > 0 ? Math.round((page / totalPages) * 100) : 0);
+
+        const isComplete =
+          progress >= 95 ||
+          (totalPages > 0 && page >= totalPages);
+
+        if (isComplete) {
+          seenIds.add(bookId);
+          completedIds.push(bookId);
+        }
+      } catch {}
+    }
+  } catch {}
+
+  // Also sweep the stored readingHistory
+  try {
+    const histKey = getHistoryStorageKey(targetUid);
+    const histRaw = localStorage.getItem(histKey);
+    if (histRaw) {
+      const hist: ReadingProgressItem[] = JSON.parse(histRaw);
+      if (Array.isArray(hist)) {
+        for (const item of hist) {
+          if (!item?.bookId || seenIds.has(item.bookId)) continue;
+          const progress = Number(item.progress) || 0;
+          const page = Number(item.page) || 0;
+          const totalPages = Number(item.totalPages) || 0;
+          const isComplete =
+            progress >= 95 ||
+            (totalPages > 0 && page >= totalPages);
+          if (isComplete) {
+            seenIds.add(item.bookId);
+            completedIds.push(item.bookId);
+          }
+        }
+      }
+    }
+  } catch {}
+
   return completedIds;
 }
 

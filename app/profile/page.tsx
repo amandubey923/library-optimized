@@ -1348,13 +1348,13 @@ export default function ProfilePage() {
         </div>
 
         {/* =========================================================================
-            8. LOCAL PRIVACY & DATA TRANSPARENCY NOTE
+            8. LOCAL-FIRST PRIVACY & CLOUD SYNC TRANSPARENCY NOTE
            ========================================================================= */}
         <footer className="rounded-3xl bg-[var(--card)]/60 border border-[var(--border)]/80 p-5 text-center text-xs text-[var(--text-secondary)] flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-left">
             <span className="text-base">🔒</span>
             <span>
-              <strong>100% Local &amp; Private:</strong> All reading telemetry and statistics are computed entirely inside your browser. No account, login, server tracking, or cloud sync is used.
+              <strong>Local-First &amp; Cloud Synced:</strong> All reading progress and telemetry are saved instantly on your device, and seamlessly backed up to your personal cloud profile.
             </span>
           </div>
           <Link

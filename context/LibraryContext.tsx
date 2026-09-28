@@ -282,6 +282,7 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
   const [stats, setStats] = useState<ReadingStats>({
     booksStarted: 0,
     booksCompleted: 0,
+    completedBookIds: [],
     pagesRead: 0,
     totalFavorites: 0,
     totalBookmarks: 0,
@@ -633,6 +634,8 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     if (localDism && Object.keys(localDism).length > 0) {
       setShelfDismissals(localDism);
     }
+    const localStats = calculateReadingStats(user.uid, localHist, localFavs, localUserStreak, localActiveTime);
+    setStats(localStats);
 
     let isCancelled = false;
 
