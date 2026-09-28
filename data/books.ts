@@ -24,18 +24,13 @@ export interface Book {
 export const CATEGORIES = [
   "All",
   "Technical Knowledge",
-  "Science & Physics",
-  "History & Civilization",
-  "Geography & Geopolitics",
-  "Politics & Political Thought",
-  "Economics & Finance",
-  "Business & Management",
-  "Philosophy & Spirituality",
-  "Psychology & Self-Development",
+  "Classics",
   "Hindi Literature",
-  "Classics & Literature",
+  "Philosophy & Spirituality",
+  "Self-Development & Psychology",
   "Fiction & Dystopian",
   "Romance",
+  "Business, Finance & Economics",
   "Fantasy & Adventure"
 ] as const;
 
