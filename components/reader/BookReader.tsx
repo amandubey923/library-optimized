@@ -770,11 +770,6 @@ export default function BookReader({ book }: BookReaderProps) {
     }
 
     saveProgress(book.id, currentPage, numPages, user?.uid);
-
-    // Immediate Firestore & readingHistory sync on reaching final page
-    if (numPages > 0 && currentPage >= numPages) {
-      updateReadingProgress(book.id, currentPage, numPages);
-    }
   }, [
     currentPage,
     numPages,
@@ -786,7 +781,6 @@ export default function BookReader({ book }: BookReaderProps) {
     renderPageToCanvas,
     book.id,
     user?.uid,
-    updateReadingProgress,
   ]);
 
   // 6. Navigation Logic

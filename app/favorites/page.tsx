@@ -9,7 +9,7 @@ import { useAuth } from "@/context/AuthContext";
 import dynamic from "next/dynamic";
 import { Book, BOOKS, getBookById } from "@/data/books";
 import BookCard from "@/components/BookCard";
-import { getLocalDateKey, getPreviousDateKey, DAILY_READING_GOAL_SECONDS, getGenuinelyCompletedBookIds, getAllReadingMemories, getBookReadingMemory, getSavedProgress, scanAllLocalProgressCompletedIds } from "@/lib/reader-storage";
+import { getLocalDateKey, getPreviousDateKey, DAILY_READING_GOAL_SECONDS, getGenuinelyCompletedBookIds, getAllReadingMemories, getBookReadingMemory, getSavedProgress } from "@/lib/reader-storage";
 import { syncUserSettingsToCloud, fetchUserSettingsFromCloud } from "@/lib/firestore-sync";
 import AuthGuard from "@/components/auth/AuthGuard";
 import CollectionsTab from "@/components/collections/CollectionsTab";
@@ -161,8 +161,7 @@ export default function FavoritesPage() {
   const completedSet = useMemo(() => {
     const statsIds = stats.completedBookIds || [];
     const directIds = getGenuinelyCompletedBookIds(readingHistory, readingMemories, user?.uid);
-    const localProgressIds = scanAllLocalProgressCompletedIds(user?.uid);
-    return new Set([...statsIds, ...directIds, ...localProgressIds]);
+    return new Set([...statsIds, ...directIds]);
   }, [stats.completedBookIds, readingHistory, readingMemories, user?.uid]);
 
   // Derive In-Progress Books from Reading History (Mutually exclusive with Completed)

@@ -37,7 +37,6 @@ import {
   getGenuinelyCompletedBookIds,
   getAllReadingMemories,
   migrateGuestDataToUser,
-  scanAllLocalProgressCompletedIds,
 } from "./reader-storage";
 import { UserEntitlement, DEFAULT_FREE_ENTITLEMENT } from "./entitlements";
 import { BOOKS, getBookById } from "@/data/books";
@@ -526,14 +525,9 @@ export async function reconcileAndSyncAllUserData(user: User): Promise<CloudFull
     }
 
     // 6. Two-way safe union merge for completed books
-    const localCompletedFromHistory = getGenuinelyCompletedBookIds(localHistory, mergedMemories, user.uid);
-    const localCompletedFromProgress = scanAllLocalProgressCompletedIds(user.uid);
+    const localCompletedIds = getGenuinelyCompletedBookIds(localHistory, mergedMemories, user.uid);
     const cloudCompletedIds = Array.isArray(cloudData.completedBookIds) ? cloudData.completedBookIds : [];
-    const mergedCompletedIds = Array.from(new Set([
-      ...localCompletedFromHistory,
-      ...localCompletedFromProgress,
-      ...cloudCompletedIds,
-    ]));
+    const mergedCompletedIds = Array.from(new Set([...localCompletedIds, ...cloudCompletedIds]));
     cloudData.completedBookIds = mergedCompletedIds;
 
     mergedCompletedIds.forEach((bId) => {
