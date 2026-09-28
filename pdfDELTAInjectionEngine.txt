@@ -1,18 +1,39 @@
-# 📚 READER’S HUB — MASTER REUSABLE PDF INGESTION PROMPT
+# 📚 READER’S HUB — DELTA PDF INGESTION PROMPT
+# EXISTING PDF + EXISTING COVER IMAGE — CATALOG ONLY
 
 I have added a NEW batch of PDF files to:
 
-`public/pdfs/`
+public/pdfs/
 
-Process ONLY the newly added / unindexed PDFs from this batch using the existing **Delta PDF Ingestion Engine**.
+IMPORTANT:
+The PDF files and their corresponding cover images are ALREADY prepared.
 
-The Reader's HUB project is already stable and production-ready.
+For every new book, the PDF and cover image use the SAME BASE NAME.
 
----
+Example:
 
-# ABSOLUTE RULE — EXTEND, NEVER BREAK
+public/pdfs/cosmos.pdf
+public/covers/cosmos.png
 
-Do NOT:
+public/pdfs/capitalByKarlMarx.pdf
+public/covers/capitalByKarlMarx.png
+
+public/pdfs/sevenBriefLessonsOnPhysics.pdf
+public/covers/sevenBriefLessonsOnPhysics.png
+
+Your job is ONLY to discover, validate, match and register these existing resources into Reader's HUB.
+
+DO NOT regenerate covers.
+DO NOT rename PDFs.
+DO NOT rename covers.
+
+==================================================
+# 1. ABSOLUTE RULE — EXTEND, NEVER BREAK
+==================================================
+
+Reader's HUB is already stable and production-ready.
+
+DO NOT:
 
 - rewrite the project
 - redesign UI
@@ -35,163 +56,260 @@ Do NOT:
 - delete existing books
 - reprocess the whole catalog
 - refactor unrelated code
+- rename existing PDFs
+- rename new PDFs
+- rename existing covers
+- rename new covers
+- generate new covers
 
-Only process genuinely NEW PDFs.
+ONLY register genuinely NEW PDFs.
 
----
-
-# 1. USE THE DELTA INGESTION ENGINE
+==================================================
+# 2. USE EXISTING DELTA INGESTION ENGINE
+==================================================
 
 Use the existing:
 
-`npm run ingest-batch`
+npm run ingest-batch
 
 workflow.
 
 The system must process ONLY the delta.
 
-Do not manually recreate the old ingestion workflow.
+Do not manually recreate a completely different ingestion workflow.
 
----
+==================================================
+# 3. FIRST RUN DRY-RUN
+==================================================
 
-# 2. FIRST RUN DRY-RUN
+FIRST run:
 
-Run:
+npm run ingest-batch -- --dry-run
 
-`npm run ingest-batch -- --dry-run`
-
-The dry-run must show:
+Dry-run must identify:
 
 - newly detected PDFs
+- already indexed PDFs
 - duplicates
-- invalid/placeholder files
-- proposed names
-- proposed IDs
-- proposed categories
-- resource types
-- covers
+- invalid / placeholder PDFs
+- matching cover images
+- missing cover images
+- title
+- author/source
+- proposed ID
+- category
+- subcategory
+- resource type
 - final additions
 
-Do NOT modify the catalog during dry-run.
+DRY-RUN MUST NOT MODIFY THE CATALOG.
 
----
+==================================================
+# 4. PDF + COVER MATCHING
+==================================================
 
-# 3. PROCESS ONLY NEW FILES
+This is the MOST IMPORTANT CHANGE from the previous workflow.
 
-Already-indexed PDFs must be skipped.
+The cover image has ALREADY been generated.
 
-Use the existing delta detection and hash/index logic.
+Find the cover by matching the PDF's BASE NAME.
 
-Do NOT:
+Example:
 
-- re-read the full existing catalog unnecessarily
-- regenerate old covers
-- recreate old IDs
-- rename already-canonical files
-- duplicate existing resources
+PDF:
+public/pdfs/aBriefHistoryofTime.pdf
 
----
+Cover:
+public/covers/aBriefHistoryofTime.png
 
-# 4. DUPLICATE HANDLING
+These belong to the same resource.
 
-Check:
+Another example:
+
+PDF:
+public/pdfs/annihilationOfCaste.pdf
+
+Cover:
+public/covers/annihilationOfCaste.png
+
+Match them automatically.
+
+Do NOT generate another image.
+
+Do NOT modify the existing image.
+
+Do NOT rename either file.
+
+==================================================
+# 5. COVER HANDLING
+==================================================
+
+NO COVER GENERATION.
+
+The cover already exists.
+
+DO NOT:
+
+- call any image generation process
+- generate a replacement cover
+- regenerate an existing cover
+- redesign a cover
+- resize/re-render unnecessarily
+- rename the cover
+- create duplicate covers
+
+ONLY:
+
+1. Find the matching existing cover.
+2. Verify that it exists.
+3. Connect its path to the new catalog entry.
+
+If the matching cover is missing:
+
+mark the resource:
+
+MISSING COVER
+
+Do NOT generate a replacement.
+
+Do NOT abort the entire batch.
+
+Report it clearly.
+
+==================================================
+# 6. PDF NAMING — DO NOT RENAME
+==================================================
+
+The PDFs have already been intentionally named.
+
+KEEP THEIR EXACT FILENAMES.
+
+For example:
+
+aBriefHistoryofTime.pdf
+annihilationOfCaste.pdf
+anUncertainGlory.pdf
+artificialIntelligenceModernApproach.pdf
+behave.pdf
+BlackHolesAndTimeWarps.pdf
+capitalByKarlMarx.pdf
+capitalismAndFreedom.pdf
+cosmos.pdf
+deepLearningGoodfellow.pdf
+
+etc.
+
+DO NOT rename them.
+
+The existing filename/path is the source of truth for the physical file path.
+
+However, title and author metadata should still be verified from the PDF itself when necessary.
+
+==================================================
+# 7. TITLE / AUTHOR IDENTIFICATION
+==================================================
+
+Do not blindly assume the filename is the exact display title.
+
+When necessary, inspect:
+
+- title page
+- first page
+- author
+- publisher/source
+- PDF metadata
+- visible headings
+
+Use actual PDF evidence.
+
+DO NOT invent titles or authors.
+
+The filename itself MUST NOT be changed even if the display title differs.
+
+If the identity is genuinely ambiguous:
+
+mark:
+
+NEEDS_REVIEW
+
+==================================================
+# 8. DUPLICATE HANDLING
+==================================================
+
+Before adding a PDF, check:
 
 - exact SHA-256 duplicate
-- already indexed filename/path
+- existing indexed filename/path
+- existing book ID
 - duplicate title/author where applicable
-- known placeholder/dummy PDFs
+- known placeholder/dummy PDF
 
 If duplicate:
 
-SKIP it.
+SKIP IT.
 
-Do NOT delete the file automatically.
+Do NOT delete it.
+
+Do NOT rename it.
+
+Do NOT modify it.
 
 Report it.
 
----
-
-# 5. INVALID / PLACEHOLDER PDFs
+==================================================
+# 9. INVALID / PLACEHOLDER PDFS
+==================================================
 
 Skip:
 
 - corrupt PDFs
 - empty PDFs
 - obvious 1-page placeholder files
-- unusable files
+- unusable PDFs
 
 Do NOT delete them.
 
-Report them as:
+Report as:
 
-`INVALID / PLACEHOLDER`
+INVALID / PLACEHOLDER
 
----
+==================================================
+# 10. STABLE IDs
+==================================================
 
-# 6. NAMING
-
-Use the existing canonical naming system.
-
-### For confirmed Osho/Rajneesh works:
-
-Use:
-
-`<MeaningfulTitle>ByOsho.pdf`
+Generate/use deterministic stable IDs.
 
 Example:
 
-`AnandKiKhojByOsho.pdf`
+cosmos.pdf
+→ cosmos
 
-If the filename is already clean/canonical:
+capitalByKarlMarx.pdf
+→ capital-by-karl-marx
 
-DO NOT rename it unnecessarily.
+Before adding:
 
-### For non-Osho resources:
+- verify ID does not already exist
+- never overwrite an existing ID
+- never change an existing ID
 
-Use the existing generic CamelCase/PascalCase naming convention.
+Once an ID exists, keep it stable.
 
-Do not invent titles.
-
-If the title is ambiguous:
-
-mark:
-
-`NEEDS_REVIEW`
-
----
-
-# 7. TITLE IDENTIFICATION
-
-Use actual PDF evidence when necessary:
-
-- title page
-- first page
-- author/source
-- headings
-- metadata
-- visible title
-
-Do NOT blindly trust filenames.
-
-Do NOT invent titles.
-
----
-
-# 8. CATEGORIES
+==================================================
+# 11. CATEGORIES
+==================================================
 
 Reuse the existing Reader's HUB taxonomy.
 
-### Osho / spiritual works:
-Prefer:
+Do NOT create unnecessary new top-level categories.
 
-`Philosophy & Spirituality`
+Examples:
 
-### Technical:
-Use:
+Philosophy & Spirituality
 
-`Technical Knowledge`
+Technical Knowledge
 
-with existing subcategories such as:
+Technical subcategories may include:
 
 - DSA & Problem Solving
 - Computer Science & Systems
@@ -201,13 +319,15 @@ with existing subcategories such as:
 - System Design & DevOps
 - Programming Languages
 
-Do NOT create new top-level technical categories.
+Other existing categories should be reused where appropriate.
 
----
+Determine category from the actual book/resource subject.
 
-# 9. RESOURCE TYPES
+==================================================
+# 12. RESOURCE TYPES
+==================================================
 
-Use existing types:
+Use existing resource types:
 
 - Book
 - Notes
@@ -216,288 +336,73 @@ Use existing types:
 - InterviewPrep
 - Reference
 
-Determine type from actual content where needed.
+Determine the type from actual content.
 
----
+==================================================
+# 13. METADATA
+==================================================
 
-# 10. METADATA
-
-For every genuinely new resource create:
+For every genuinely NEW resource create:
 
 - stable ID
-- title
+- display title
 - author/source
 - category
 - subcategory
 - resource type
-- PDF path
+- existing PDF path
 - page count
 - description if needed
-- cover path
+- EXISTING cover path
 - hash where supported
 
-Do NOT alter metadata of existing books.
+IMPORTANT:
 
----
+Do not alter metadata of existing books.
 
-# 11. STABLE IDs
+==================================================
+# 14. CATALOG UPDATE
+==================================================
 
-Generate deterministic slug IDs.
+Add ONLY validated new resources to:
 
-Example:
-
-`anand-ki-khoj`
-
-Before adding:
-
-- verify the ID does not already exist
-- never overwrite an existing ID
-
-Once created, keep it stable.
-
----
-
-# 12. COVERS — UNIQUE, BOOK-SPECIFIC, PROFESSIONAL
-
-Use the existing cover-generation engine.
-
-Generate the standard:
-
-`600 × 900 WebP`
-
-cover.
-
-Preserve the overall Reader's HUB visual quality and branding.
-
-## CRITICAL COVER UNIQUENESS RULE
-
-Do NOT generate every book using the exact same visual template.
-
-Each NEW book cover must feel:
-
-- visually distinct
-- book-specific
-- professionally designed
-- intentionally composed
-- recognizable at thumbnail size
-
-The cover-generation process must use the actual book's identity to decide its visual direction.
-
-Consider:
-
-- title
-- author
-- subject
-- category
-- subcategory
-- genre
-- era
-- tone
-- themes
-- language
-- literary / philosophical / technical nature
-
-The goal is:
-
-`SAME READER'S HUB BRAND FAMILY + DIFFERENT BOOK PERSONALITY`
-
-NOT:
-
-`SAME TEMPLATE + DIFFERENT TITLE`
-
-## CONTROLLED VISUAL VARIATION
-
-Vary where appropriate:
-
-- background composition
-- color palette
-- accent colors
-- title typography treatment
-- author typography treatment
-- title placement
-- author placement
-- border treatment
-- decorative motifs
-- abstract vs illustrated composition
-- geometric structure
-- texture
-- lighting
-- symbolic imagery
-- editorial layout
-- negative space
-- visual hierarchy
-
-The variation must be controlled and intentional.
-
-Do NOT make covers look random or unrelated.
-
-## CATEGORY-AWARE VISUAL DIRECTION
-
-Use the subject to guide the cover's visual personality.
-
-### Philosophy / Spirituality
-Prefer combinations of:
-- contemplative imagery
-- symbolism
-- classical motifs
-- abstract conceptual compositions
-- restrained editorial layouts
-
-Avoid making every philosophy book look identical.
-
-### Technical Knowledge
-Prefer:
-- modern editorial layouts
-- subtle diagrams
-- geometric motifs
-- structured visual compositions
-- code/system inspired abstraction where appropriate
-
-Avoid making every technical book look like the same generic tech template.
-
-### Romance
-Prefer:
-- elegant
-- emotional
-- atmospheric
-- literary compositions
-- restrained romantic symbolism
-
-Avoid generic stock-looking romance covers.
-
-### Hindi Literature
-Prefer:
-- refined literary styling
-- culturally appropriate motifs
-- classical/editorial aesthetics
-- language-aware typography
-
-Avoid making all Hindi books use identical motifs.
-
-### Poetry
-Prefer:
-- artistic
-- expressive
-- minimal
-- metaphorical
-- strong use of negative space
-
-### Finance / Business
-Prefer:
-- restrained
-- analytical
-- editorial
-- sophisticated compositions
-
-### History
-Prefer:
-- archival
-- historical
-- classical
-- period-inspired visual elements
-
-### Psychology / Self-Development
-Prefer:
-- thoughtful
-- modern
-- minimal
-- conceptual compositions
-
-## ANTI-REPETITION CHECK
-
-Before generating a new cover:
-
-1. Inspect the existing cover patterns where feasible.
-2. Detect repeated visual structures.
-3. Avoid repeatedly using the exact same:
-   - background layout
-   - dominant color combination
-   - decorative motif
-   - title placement
-   - typography treatment
-   - border design
-   - illustration style
-
-4. When the previous few newly generated covers look too similar, deliberately choose a different visual direction.
-
-Do NOT regenerate existing covers to accomplish this.
-
-Only newly generated covers should receive this variation.
-
-## TITLE / AUTHOR LEGIBILITY
-
-Every generated cover must keep:
-
-- title clearly readable
-- author clearly readable
-- strong contrast
-- good hierarchy
-- no overlapping important text
-- no cropped title
-- no unreadable decorative typography
-
-The cover must still work when displayed as a small library card.
-
-## QUALITY CONTROL
-
-Every new cover must be:
-
-- exactly `600 × 900`
-- WebP
-- sharp
-- balanced
-- professionally composed
-- visually coherent
-- readable
-- appropriate for the book
-- consistent with Reader's HUB overall identity
-
-Avoid:
-
-- generic stock imagery
-- random AI-looking visual noise
-- excessive ornaments
-- unreadable typography
-- excessive text
-- cluttered compositions
-- inconsistent branding
-- near-duplicate covers
-
-## COVER FAILURE HANDLING
-
-If cover generation fails:
-
-- do NOT abort the whole batch
-- report the affected item
-- continue safely with other valid PDFs
-
-Do NOT regenerate old covers unnecessarily.
-
-Do NOT redesign the existing cover catalog.
-
----
-
-# 13. CATALOG UPDATE
-
-Add only the validated new resources to:
-
-`data/books.json`
+data/books.json
 
 Preserve the current synchronization strategy with:
 
-`data/books.ts`
+data/books.ts
 
-Do NOT create a second catalog system.
+Do NOT create another catalog system.
 
 Write the catalog safely/atomically.
 
-Existing entries must remain unchanged.
+Existing entries MUST remain unchanged.
 
----
+==================================================
+# 15. EXISTING CATALOG PROTECTION
+==================================================
 
-# 14. SEARCH / FILTER / READER COMPATIBILITY
+Before writing, verify that existing entries remain intact.
 
-Each new resource must work automatically with:
+Existing books must keep:
+
+- same ID
+- same title
+- same author
+- same PDF path
+- same cover
+- same metadata
+- same reading data
+
+Do NOT migrate old entries.
+
+Do NOT rewrite old entries unnecessarily.
+
+==================================================
+# 16. READER COMPATIBILITY
+==================================================
+
+Every newly registered resource must work automatically with:
 
 - global search
 - category filters
@@ -514,38 +419,47 @@ Each new resource must work automatically with:
 - fullscreen
 - reader navigation
 
-Do not add special-case logic for individual PDFs.
+Do NOT add special-case logic for individual books.
 
----
+==================================================
+# 17. REFERENCE VALIDATION
+==================================================
 
-# 15. REFERENCE VALIDATION
+For every new resource verify:
 
-For renamed/new PDFs verify:
-
-- physical file exists
-- catalog path is correct
-- no stale references remain
-- cover exists
+- PDF physically exists
+- PDF path is correct
+- matching cover physically exists
+- cover path is correct
 - ID is unique
 - metadata is valid
+- no stale references exist
 
----
+PDF and cover must remain associated through their existing matching base name.
 
-# 16. IDEMPOTENCY
+==================================================
+# 18. IDEMPOTENCY
+==================================================
 
 If this prompt is run again on the same files:
 
-- do not create duplicates
-- do not recreate IDs
-- do not regenerate old covers unnecessarily
-- do not rename already-clean files
-- do not alter existing catalog entries
+DO NOT:
 
-Only genuinely new PDFs should be processed.
+- create duplicates
+- recreate IDs
+- generate covers
+- rename PDFs
+- rename covers
+- modify existing catalog entries
+- recreate existing resources
 
----
+The second run should detect that they are already indexed and skip them.
 
-# 17. BATCH FAILURE ISOLATION
+Only genuinely NEW PDFs should be added.
+
+==================================================
+# 19. BATCH FAILURE ISOLATION
+==================================================
 
 If one PDF fails:
 
@@ -553,49 +467,35 @@ DO NOT abort the entire batch.
 
 Example:
 
-```text
 24 detected
 20 added
 2 duplicates
 1 invalid
-1 needs review
+1 missing cover
 
-Valid PDFs should still be processed safely.
+Continue processing all other valid PDFs safely.
 
-18. EXISTING CATALOG PROTECTION
+==================================================
+# 20. NO UNRELATED CHANGES
+==================================================
 
-Before writing:
+DO NOT touch:
 
-verify existing entries remain intact.
+- reader UI
+- unrelated components
+- storage logic
+- translation
+- annotations
+- streak
+- offline system
+- existing technical taxonomy
+- existing project features
 
-Existing books must keep:
+Only make changes required to register the new resources.
 
-same ID
-same title
-same author
-same PDF path
-same cover
-same metadata
-same reading data
-
-Do not migrate or rewrite old entries unnecessarily.
-
-19. NO UNRELATED CHANGES
-
-Do NOT touch:
-
-reader
-UI
-components unrelated to ingestion
-storage logic
-translation
-annotations
-streak
-offline system
-technical taxonomy unless a genuinely new category is required
-existing project features
-
-20. BUILD VALIDATION
+==================================================
+# 21. BUILD VALIDATION
+==================================================
 
 After successful ingestion:
 
@@ -603,111 +503,127 @@ Run:
 
 npm run build
 
-Only once.
+Run it ONLY ONCE.
 
 Do NOT enter repeated build/dev loops.
 
 If build fails:
 
-protect the last known-good catalog
-report exact error
-do not continue unrelated modifications
+- protect the last known-good catalog
+- report the exact error
+- do not make unrelated modifications
 
-21. FINAL BATCH REPORT
+==================================================
+# 22. FINAL BATCH REPORT
+==================================================
 
-Return:
+Return a clear report:
 
-Detected
+Detected:
+COUNT
 
-Count
+Added:
+COUNT
+- Title
+- Title
+- Title
 
-Added
+Duplicates:
+COUNT
+- filename
+- filename
 
-Count + titles
+Invalid / Placeholder:
+COUNT
+- filename
 
-Duplicates
+Missing Cover:
+COUNT
+- filename
 
-Count + files
+Needs Review:
+COUNT
+- filename
 
-Invalid / Placeholder
+Renamed:
+0
 
-Count + files
+Cover Generated:
+0
 
-Needs Review
+Cover Reused:
+COUNT
+- filename → matching existing cover
 
-Count + files
+Catalog:
+BEFORE → AFTER
 
-Renamed
+Build:
+ACTUAL RESULT
 
-Old → New
+Safety:
+Confirm that existing catalog entries, PDFs, covers and Reader's HUB features were preserved.
 
-Covers
+==================================================
+# 23. STOP AFTER THIS BATCH
+==================================================
 
-Generated count + for each new cover briefly mention the chosen visual direction/style
+Process ONLY the currently added PDFs.
 
-Catalog
+Do NOT scan/add future files.
 
-Before → After
+Do NOT generate anything for future batches.
 
-Build
+Do NOT modify unrelated project files.
 
-Actual result
+Stop after the final batch report.
 
-Safety
-
-Confirm existing catalog/features were preserved.
-
-22. STOP AFTER THIS BATCH
-
-Process ONLY the current newly added PDFs.
-
-Do NOT continue scanning for future files.
-
-Do NOT add anything that belongs to a later batch.
-
-Stop after the report.
-
-FINAL WORKFLOW
-
-Future usage should be:
-
-Drop 20–30 new PDFs into:
-
-public/pdfs/
-
-Run:
-
-npm run ingest-batch -- --dry-run
-
-Review
-
-Run:
-
-npm run ingest-batch
-
-Build/test
-
-Stop
-
-FINAL PRINCIPLE
+==================================================
+# FINAL PRINCIPLE
+==================================================
 
 DELTA ONLY.
 NEW PDFs ONLY.
-EXISTING DATA PROTECTED.
+EXISTING PDF NAMES PRESERVED.
+EXISTING COVER IMAGES REUSED.
+NO COVER GENERATION.
+NO PDF RENAMING.
+NO COVER RENAMING.
 NO DUPLICATES.
+EXISTING DATA PROTECTED.
 NO UNRELATED CHANGES.
 SAFE + IDEMPOTENT + MODULAR INGESTION.
 
-COVER PRINCIPLE:
+==================================================
+# SIMPLE WORKFLOW
+==================================================
 
-SAME READER'S HUB BRAND
-+
-UNIQUE BOOK-SPECIFIC VISUAL IDENTITY
-+
-CONTROLLED VARIATION
-+
-NO REPETITIVE TEMPLATES
-+
-PROFESSIONAL 600 × 900 WEBP
-+
-NO UNNECESSARY REGENERATION OF EXISTING COVERS
+1. Detect new PDFs.
+
+2. Match each PDF with its existing same-base-name cover.
+
+3. Run:
+
+npm run ingest-batch -- --dry-run
+
+4. Review the detected resources.
+
+5. Run:
+
+npm run ingest-batch
+
+6. Verify PDF + cover references.
+
+7. Run:
+
+npm run build
+
+8. Return final batch report.
+
+9. STOP.
+
+The files are already prepared.
+
+Your job is NOT to create content.
+
+Your job is to safely REGISTER the prepared PDFs and their already-existing covers into Reader's HUB.
