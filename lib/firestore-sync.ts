@@ -34,8 +34,12 @@ import {
   getBookReflections,
   getShelfDismissals,
   getWebsiteActiveTimeData,
+  getGenuinelyCompletedBookIds,
+  getAllReadingMemories,
+  migrateGuestDataToUser,
 } from "./reader-storage";
 import { UserEntitlement, DEFAULT_FREE_ENTITLEMENT } from "./entitlements";
+import { BOOKS, getBookById } from "@/data/books";
 
 export interface CloudFullUserData {
   favorites: string[];
@@ -47,6 +51,7 @@ export interface CloudFullUserData {
   collections: ReadingCollection[];
   reflections: Record<string, BookReflection>;
   shelfDismissals: ShelfDismissalsMap;
+  completedBookIds?: string[];
   entitlement?: UserEntitlement;
 }
 
@@ -171,6 +176,7 @@ export async function fetchFullCloudUserData(uid: string): Promise<CloudFullUser
     collections: [],
     reflections: {},
     shelfDismissals: {},
+    completedBookIds: [],
   };
 
   const currentDb = getFirebaseDb() || db;
@@ -195,7 +201,11 @@ export async function fetchFullCloudUserData(uid: string): Promise<CloudFullUser
           page: data.page,
           totalPages: data.totalPages || 100,
           progress: data.progress || Math.round((data.page / (data.totalPages || 100)) * 100),
-          lastReadAt: data.lastReadAt?.toMillis ? data.lastReadAt.toMillis() : Date.now(),
+          lastReadAt: data.lastReadAt?.toMillis
+            ? data.lastReadAt.toMillis()
+            : typeof data.lastReadAt === "number"
+            ? data.lastReadAt
+            : Date.now(),
         });
       }
     });
@@ -289,6 +299,15 @@ export async function fetchFullCloudUserData(uid: string): Promise<CloudFullUser
         defaultResult.entitlement = entData as UserEntitlement;
       }
     }
+    // 11. Fetch Cloud Completed Books
+    const completedDocRef = doc(currentDb, "users", uid, "data", "completed_books");
+    const completedDocSnap = await getDoc(completedDocRef);
+    if (completedDocSnap.exists()) {
+      const compData = completedDocSnap.data();
+      if (compData && Array.isArray(compData.completedIds)) {
+        defaultResult.completedBookIds = compData.completedIds;
+      }
+    }
   } catch (err) {
     console.warn("[Firestore] Error fetching full cloud user data:", err);
   }
@@ -310,6 +329,40 @@ export async function syncEntitlementToCloud(
     await setDoc(entRef, entitlement, { merge: true });
   } catch (err) {
     console.warn("[Firestore] Failed to sync entitlement to cloud:", err);
+  }
+}
+
+/**
+ * Persist completed books array to Firestore under /users/{uid}/data/completed_books
+ */
+export async function syncCompletedBooksToCloud(
+  uid: string,
+  completedIds: string[]
+): Promise<void> {
+  const currentDb = getFirebaseDb() || db;
+  if (!currentDb || !uid || !Array.isArray(completedIds)) return;
+  try {
+    const compRef = doc(currentDb, "users", uid, "data", "completed_books");
+    await setDoc(compRef, { completedIds, lastUpdated: Date.now() }, { merge: true });
+  } catch (err) {
+    console.warn("[Firestore] Failed to sync completed books to cloud:", err);
+  }
+}
+
+/**
+ * Bulk persist all reading memories to Firestore under /users/{uid}/data/reading_memory
+ */
+export async function syncAllReadingMemoriesToCloud(
+  uid: string,
+  memories: Record<string, BookReadingMemory>
+): Promise<void> {
+  const currentDb = getFirebaseDb() || db;
+  if (!currentDb || !uid || !memories || Object.keys(memories).length === 0) return;
+  try {
+    const memRef = doc(currentDb, "users", uid, "data", "reading_memory");
+    await setDoc(memRef, { memories }, { merge: true });
+  } catch (err) {
+    console.warn("[Firestore] Failed to sync all reading memories to cloud:", err);
   }
 }
 
@@ -338,6 +391,9 @@ export async function reconcileAndSyncAllUserData(user: User): Promise<CloudFull
   }
 
   try {
+    // 0. Non-destructively attach any pre-login guest data on this device to this user account
+    migrateGuestDataToUser(user.uid);
+
     // 1. Sync User Profile metadata document
     await syncUserProfile(user);
 
@@ -432,7 +488,71 @@ export async function reconcileAndSyncAllUserData(user: User): Promise<CloudFull
     cloudData.readingHistory = Array.from(historyMap.values()).sort((a, b) => (b.lastReadAt || 0) - (a.lastReadAt || 0));
     saveStoredReadingHistory(cloudData.readingHistory, user.uid);
 
-    // 5. Two-way safe union merge for collections & reflections
+    // 5. Two-way safe union merge for reading memories
+    const localMemories = getAllReadingMemories(user.uid);
+    const cloudMemories = cloudData.readingMemories || {};
+    const mergedMemories: Record<string, BookReadingMemory> = { ...cloudMemories };
+    let hasLocalMemoriesToUpload = false;
+
+    for (const [bookId, localMem] of Object.entries(localMemories)) {
+      if (!bookId || !localMem) continue;
+      const cloudMem = mergedMemories[bookId];
+      if (!cloudMem) {
+        mergedMemories[bookId] = localMem;
+        hasLocalMemoriesToUpload = true;
+      } else {
+        const mergedTotal = Math.max(localMem.totalSeconds || 0, cloudMem.totalSeconds || 0);
+        const mergedSessions = Math.max(localMem.sessionsCount || 0, cloudMem.sessionsCount || 0);
+        const mergedTimeline = (localMem.timeline?.length || 0) >= (cloudMem.timeline?.length || 0)
+          ? localMem.timeline
+          : cloudMem.timeline;
+        mergedMemories[bookId] = {
+          bookId,
+          totalSeconds: mergedTotal,
+          sessionsCount: mergedSessions,
+          firstReadAt: Math.min(localMem.firstReadAt || Date.now(), cloudMem.firstReadAt || Date.now()),
+          lastReadAt: Math.max(localMem.lastReadAt || 0, cloudMem.lastReadAt || 0),
+          timeline: mergedTimeline,
+        };
+        if (localMem.totalSeconds > (cloudMem.totalSeconds || 0)) {
+          hasLocalMemoriesToUpload = true;
+        }
+      }
+    }
+    cloudData.readingMemories = mergedMemories;
+    if (hasLocalMemoriesToUpload && Object.keys(mergedMemories).length > 0) {
+      syncAllReadingMemoriesToCloud(user.uid, mergedMemories);
+    }
+
+    // 6. Two-way safe union merge for completed books
+    const localCompletedIds = getGenuinelyCompletedBookIds(localHistory, mergedMemories, user.uid);
+    const cloudCompletedIds = Array.isArray(cloudData.completedBookIds) ? cloudData.completedBookIds : [];
+    const mergedCompletedIds = Array.from(new Set([...localCompletedIds, ...cloudCompletedIds]));
+    cloudData.completedBookIds = mergedCompletedIds;
+
+    mergedCompletedIds.forEach((bId) => {
+      const existing = historyMap.get(bId);
+      const catalogBook = getBookById(bId) || BOOKS.find((b) => b.id === bId || b.id.toLowerCase() === bId.toLowerCase());
+      const total = Number(catalogBook?.pages) || existing?.totalPages || 100;
+      if (!existing || existing.progress < 100) {
+        historyMap.set(bId, {
+          bookId: bId,
+          page: total,
+          totalPages: total,
+          progress: 100,
+          lastReadAt: existing?.lastReadAt || Date.now(),
+        });
+        syncReadingProgressToCloud(user.uid, bId, total, total);
+      }
+    });
+    cloudData.readingHistory = Array.from(historyMap.values()).sort((a, b) => (b.lastReadAt || 0) - (a.lastReadAt || 0));
+    saveStoredReadingHistory(cloudData.readingHistory, user.uid);
+
+    if (mergedCompletedIds.length > cloudCompletedIds.length) {
+      syncCompletedBooksToCloud(user.uid, mergedCompletedIds);
+    }
+
+    // 7. Two-way safe union merge for collections & reflections
     const localCollections = getReadingCollections(user.uid);
     const cloudCollections = Array.isArray(cloudData.collections) ? cloudData.collections : [];
     const colMap = new Map<string, ReadingCollection>();
@@ -464,7 +584,7 @@ export async function reconcileAndSyncAllUserData(user: User): Promise<CloudFull
     });
     cloudData.shelfDismissals = mergedDismissals;
 
-    // 6. Two-way merge for active website time
+    // 8. Two-way merge for active website time
     const localActive = getWebsiteActiveTimeData(user.uid);
     const cloudActive = cloudData.activeTime || { totalActiveSeconds: 0, daily: {}, lastUpdated: Date.now() };
     const mergedDailyActive: Record<string, number> = { ...(cloudActive.daily || {}) };
@@ -477,23 +597,26 @@ export async function reconcileAndSyncAllUserData(user: User): Promise<CloudFull
       lastUpdated: Math.max(localActive.lastUpdated || 0, cloudActive.lastUpdated || 0),
     };
 
-    // 7. Hydrate local in-memory storage caches with authoritative merged cloud state
+    // 9. Hydrate local in-memory storage caches with authoritative merged cloud state
     hydrateStorageFromCloudData(cloudData, user.uid);
 
     return cloudData;
   } catch (err) {
     console.warn("[Firestore] Error in cloud user sync, safely falling back to local UID cache:", err);
     // CRITICAL: On network failure, NEVER return blank empty state if the user has local UID data!
+    const fallbackHistory = getStoredReadingHistory(user.uid);
+    const fallbackMemories = getAllReadingMemories(user.uid);
     return {
       favorites: getStoredFavorites(user.uid),
-      readingHistory: getStoredReadingHistory(user.uid),
+      readingHistory: fallbackHistory,
       readingActivity: getReadingActivityData(user.uid),
       activeTime: getWebsiteActiveTimeData(user.uid),
-      readingMemories: {},
+      readingMemories: fallbackMemories,
       annotations: {},
       collections: getReadingCollections(user.uid),
       reflections: getBookReflections(user.uid),
       shelfDismissals: getShelfDismissals(user.uid),
+      completedBookIds: getGenuinelyCompletedBookIds(fallbackHistory, fallbackMemories, user.uid),
       entitlement: DEFAULT_FREE_ENTITLEMENT,
     };
   }

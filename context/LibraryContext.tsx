@@ -69,6 +69,8 @@ import {
   clearStoredReadingHistory,
   clearStoredFavorites,
   clearAllUserDataForUid,
+  migrateGuestDataToUser,
+  getGenuinelyCompletedBookIds,
 } from "@/lib/reader-storage";
 import { useAuth } from "@/context/AuthContext";
 import {
@@ -85,6 +87,7 @@ import {
   syncCollectionsToCloud,
   syncReflectionsToCloud,
   syncShelfDismissalsToCloud,
+  syncCompletedBooksToCloud,
   cancelAllPendingSyncTimers,
   flushPendingActivitySyncs,
   deleteCloudReadingProgress,
@@ -463,6 +466,10 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     [user]
   );
 
+  useEffect(() => {
+    refreshStats();
+  }, [refreshStats]);
+
   // Global Website Engagement & Active Time Tracker (Meaningful Site Interaction outside PDF Reader)
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -592,6 +599,9 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
 
     prevUserRef.current = user.uid;
     setActiveUserUid(user.uid);
+    // Non-destructively attach any pre-login guest data on this device to this user account
+    migrateGuestDataToUser(user.uid);
+
     // Immediately prime local state with this user's isolated local activity before cloud sync arrives
     const localUserStreak = getReadingActivityData(user.uid);
     setStreakData(localUserStreak);
@@ -606,6 +616,10 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
     const localHist = getStoredReadingHistory(user.uid);
     if (localHist && localHist.length > 0) {
       setReadingHistory(localHist);
+    }
+    const localMems = getAllReadingMemories(user.uid);
+    if (localMems && Object.keys(localMems).length > 0) {
+      setReadingMemories(localMems);
     }
     const localCols = getReadingCollections(user.uid);
     if (localCols && localCols.length > 0) {
@@ -691,6 +705,33 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       isCancelled = true;
     };
   }, [user]);
+
+  // Automatic reconnect sync: when device regains network, sync offline changes to Firestore
+  useEffect(() => {
+    if (typeof window === "undefined" || !user) return;
+    const handleOnline = () => {
+      reconcileAndSyncAllUserData(user)
+        .then((cloudData) => {
+          setFavorites(cloudData.favorites);
+          setReadingHistory(cloudData.readingHistory);
+          setStreakData(cloudData.readingActivity);
+          setReadingMemories(cloudData.readingMemories || {});
+          refreshStats(
+            cloudData.readingHistory,
+            cloudData.favorites,
+            cloudData.readingActivity,
+            cloudData.activeTime
+          );
+        })
+        .catch((err) => {
+          console.warn("[LibraryContext] Reconnect sync note:", err);
+        });
+    };
+    window.addEventListener("online", handleOnline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+    };
+  }, [user, refreshStats]);
 
   // Tab visibility change activity trigger (throttled to 3 minutes)
   useEffect(() => {
@@ -853,6 +894,8 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       saveCertificate(cert, user?.uid);
       if (user?.uid) {
         syncCertificateToCloud(user.uid, cert);
+        const curCompleted = getGenuinelyCompletedBookIds(updatedHistoryList, readingMemories, user.uid);
+        syncCompletedBooksToCloud(user.uid, curCompleted);
       }
       setIsNewCertificate(true);
       setActiveCertificate(cert);

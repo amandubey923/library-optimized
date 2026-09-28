@@ -7,7 +7,7 @@ import Image from "next/image";
 import { useLibrary } from "@/context/LibraryContext";
 import { useAuth } from "@/context/AuthContext";
 import dynamic from "next/dynamic";
-import { Book, BOOKS } from "@/data/books";
+import { Book, BOOKS, getBookById } from "@/data/books";
 import BookCard from "@/components/BookCard";
 import { getLocalDateKey, getPreviousDateKey, DAILY_READING_GOAL_SECONDS, getGenuinelyCompletedBookIds, getAllReadingMemories, getBookReadingMemory, getSavedProgress } from "@/lib/reader-storage";
 import { syncUserSettingsToCloud, fetchUserSettingsFromCloud } from "@/lib/firestore-sync";
@@ -24,7 +24,7 @@ const BookReadingMemory = dynamic(() => import("@/components/memory/BookReadingM
   ssr: false,
 });
 
-type ShelfTab = "favorites" | "reading" | "completed" | "collections" | "paths" | "insights" | "offline" | "memory" | "stats" | "achievements";
+type ShelfTab = "favorites" | "reading" | "completed" | "collections" | "paths" | "insights" | "memory" | "stats" | "achievements";
 
 export default function FavoritesPage() {
   const { user } = useAuth();
@@ -156,13 +156,13 @@ export default function FavoritesPage() {
   };
 
   // 1. Authoritative Completed Books Set for strict mutual exclusivity
-  // CRITICAL: pass readingMemories from context (not undefined) so that when
-  // Firestore cloud sync fires setReadingMemories(), this memo recomputes.
-  // Previously passing undefined caused getAllReadingMemories() to read from
-  // localStorage which may be empty on first render before cloud hydration.
+  // Single Source of Truth: Uses stats.completedBookIds alongside getGenuinelyCompletedBookIds
+  // to guarantee 100% synchronization between Stats & Goals and the Completed tab.
   const completedSet = useMemo(() => {
-    return new Set(getGenuinelyCompletedBookIds(readingHistory, readingMemories, user?.uid));
-  }, [readingHistory, readingMemories, user?.uid]);
+    const statsIds = stats.completedBookIds || [];
+    const directIds = getGenuinelyCompletedBookIds(readingHistory, readingMemories, user?.uid);
+    return new Set([...statsIds, ...directIds]);
+  }, [stats.completedBookIds, readingHistory, readingMemories, user?.uid]);
 
   // Derive In-Progress Books from Reading History (Mutually exclusive with Completed)
   const currentlyReadingBooks = useMemo(() => {
@@ -175,7 +175,7 @@ export default function FavoritesPage() {
           !isDismissedFromShelf("reading", item.bookId)
       )
       .map((item) => {
-        const book = BOOKS.find((b) => b.id === item.bookId);
+        const book = getBookById(item.bookId) || BOOKS.find((b) => b.id === item.bookId || b.id.toLowerCase() === item.bookId.toLowerCase());
         if (!book) return null;
         return {
           ...book,
@@ -203,9 +203,9 @@ export default function FavoritesPage() {
     return Array.from(completedSet)
       .filter((bookId) => !isDismissedFromShelf("completed", bookId))
       .map((bookId) => {
-        const book = BOOKS.find((b) => b.id === bookId);
+        const book = getBookById(bookId) || BOOKS.find((b) => b.id === bookId || b.id.toLowerCase() === bookId.toLowerCase());
         if (!book) return null;
-        const hist = readingHistory.find((item) => item.bookId === bookId);
+        const hist = readingHistory.find((item) => item.bookId === bookId || item.bookId.toLowerCase() === bookId.toLowerCase());
         const saved = getSavedProgress(bookId, user?.uid);
         const totalPages = Number(hist?.totalPages || saved?.totalPages || book.pages || 0);
         const currentPage = Number(hist?.page || saved?.page || totalPages);
@@ -565,23 +565,6 @@ export default function FavoritesPage() {
           </button>
 
           <button
-            onClick={() => {
-              setActiveTab("offline");
-              refreshOfflineBooks();
-            }}
-            className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 sm:gap-2 whitespace-nowrap flex-shrink-0 ${
-              activeTab === "offline"
-                ? "bg-[var(--primary)] text-[var(--primary-foreground)] shadow-md"
-                : "bg-[var(--card)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)]"
-            }`}
-          >
-            <span>📦 Offline Books</span>
-            <span className="px-1.5 py-0.2 rounded-full bg-black/20 text-[10px]">
-              {visibleOfflineBooks.length}
-            </span>
-          </button>
-
-          <button
             onClick={() => setActiveTab("stats")}
             className={`px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-xl sm:rounded-2xl text-[11px] sm:text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 sm:gap-2 whitespace-nowrap flex-shrink-0 ${
               activeTab === "stats"
@@ -797,118 +780,6 @@ export default function FavoritesPage() {
       {activeTab === "insights" && (
         <div className="w-full min-w-0">
           <KnowledgeInsightsTab />
-        </div>
-      )}
-
-      {/* -------------------------------------------------------------
-       * Tab 7: Offline Books Manager
-       * ------------------------------------------------------------- */}
-      {activeTab === "offline" && (
-        <div className="w-full space-y-4 sm:space-y-6 min-w-0">
-          <div className="w-full p-4 sm:p-6 rounded-2xl sm:rounded-3xl glass-card border border-[var(--border)] bg-[var(--card)] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xl min-w-0">
-            <div className="flex items-center gap-3.5 sm:gap-4 text-left w-full sm:w-auto">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 text-xl sm:text-2xl flex items-center justify-center flex-shrink-0">
-                📦
-              </div>
-              <div className="min-w-0 flex-1">
-                <h3 className="font-serif font-bold text-sm sm:text-base text-[var(--foreground)] truncate">
-                  Offline Library Storage
-                </h3>
-                <p className="text-[11px] sm:text-xs text-[var(--text-secondary)]">
-                  {visibleOfflineBooks.length} book{visibleOfflineBooks.length === 1 ? "" : "s"} cached locally (~{offlineStorageSizeMb} MB on device).
-                </p>
-              </div>
-            </div>
-
-            <button
-              onClick={refreshOfflineBooks}
-              className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-[var(--secondary)] hover:bg-[var(--border)] text-[var(--foreground)] text-xs font-semibold border border-[var(--border)] transition-all cursor-pointer flex items-center justify-center gap-1.5 flex-shrink-0"
-            >
-              <span>↻</span>
-              <span>Refresh Cache</span>
-            </button>
-          </div>
-
-          {visibleOfflineBooks.length === 0 ? (
-            <div className="w-full max-w-2xl mx-auto text-center py-12 sm:py-20 px-4 sm:px-6 glass-card rounded-2xl sm:rounded-3xl border border-[var(--border)] bg-[var(--card)] shadow-2xl">
-              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-[var(--secondary)] border border-[var(--border)] text-2xl sm:text-3xl flex items-center justify-center mx-auto mb-3 sm:mb-4 text-[var(--text-secondary)] shadow-inner">
-                📦
-              </div>
-              <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold font-serif text-[var(--foreground)] mb-2">
-                No Offline Books Saved
-              </h2>
-              <p className="text-xs sm:text-sm text-[var(--text-secondary)] max-w-md mx-auto mb-6 sm:mb-8 leading-relaxed font-normal">
-                Click the &ldquo;Save Offline (📦)&rdquo; button in any book header or reader to keep full copies available on your device without internet.
-              </p>
-              <Link
-                href="/library"
-                className="inline-flex items-center gap-2 px-6 sm:px-8 py-3 sm:py-3.5 rounded-xl bg-[var(--primary)] text-[var(--primary-foreground)] font-bold text-xs shadow-xl hover:scale-105 transition-all"
-              >
-                <span>Browse Library to Cache Books</span>
-                <span>→</span>
-              </Link>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-6 w-full min-w-0">
-              {visibleOfflineBooks.map((book) => (
-                <div
-                  key={book.id}
-                  className="glass-card rounded-2xl sm:rounded-3xl p-4 sm:p-5 border border-emerald-500/30 bg-[var(--card)] shadow-xl flex flex-col justify-between space-y-3 sm:space-y-4 relative group"
-                >
-                  {/* Subtle Dismiss Button */}
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      dismissFromShelf("offline", book.id);
-                    }}
-                    className="absolute top-3 right-3 sm:top-4 sm:right-4 w-6 h-6 sm:w-6.5 sm:h-6.5 rounded-full bg-[var(--secondary)]/80 hover:bg-rose-500/20 text-[var(--text-secondary)] hover:text-rose-400 border border-[var(--border)] hover:border-rose-500/40 flex items-center justify-center text-xs sm:text-sm font-bold transition-all duration-200 cursor-pointer shadow-xs focus-visible:ring-2 focus-visible:ring-[var(--accent)] z-10"
-                    aria-label={`Remove ${book.title} from Offline shelf`}
-                    title="Remove from shelf view"
-                  >
-                    ×
-                  </button>
-
-                  <div className="flex gap-3.5 sm:gap-4 pr-6 sm:pr-7">
-                    <div className="relative w-14 h-20 sm:w-16 sm:h-24 rounded-xl overflow-hidden book-shadow flex-shrink-0 border border-[var(--border)]">
-                      <Image src={book.cover} alt={book.title} fill className="object-cover" sizes="(max-width: 640px) 56px, 64px" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <span className="text-[9px] sm:text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold border border-emerald-500/30">
-                        Available Offline ✓
-                      </span>
-                      <h4 className="font-serif font-bold text-xs sm:text-sm text-[var(--foreground)] truncate mt-1">
-                        {book.title}
-                      </h4>
-                      <p className="text-[11px] sm:text-xs text-[var(--text-secondary)] truncate">
-                        by {book.author}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <Link
-                      href={`/book/${book.id}`}
-                      className="flex-1 py-2 rounded-xl bg-[var(--primary)] text-[var(--primary-foreground)] text-xs font-bold text-center block shadow-md hover:scale-102 transition-transform"
-                    >
-                      Read Now →
-                    </Link>
-                    <button
-                      onClick={async () => {
-                        await removeBookOffline(book.id, book.pdf);
-                        await refreshOfflineBooks();
-                      }}
-                      className="px-3 py-2 rounded-xl bg-[var(--secondary)] hover:bg-rose-500/20 hover:text-rose-400 text-[var(--text-secondary)] text-xs border border-[var(--border)] cursor-pointer"
-                      title="Remove Offline Copy from Device Cache"
-                    >
-                      🗑️
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       )}
 

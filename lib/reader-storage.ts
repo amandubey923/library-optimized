@@ -3,7 +3,7 @@
  * Namespaced browser-local persistence for Reading Progress, Bookmarks, Highlights, Notes, Study Annotations, Daily Reading Streak (Diwali Diya), Reading Memory, and Offline Cache.
  */
 
-import { BOOKS } from "@/data/books";
+import { BOOKS, getBookById } from "@/data/books";
 
 export interface BookmarkItem {
   id: string;
@@ -134,6 +134,7 @@ export interface ReadingStats {
   totalReadingSeconds: number; // Genuine reading time across all books
   totalActiveSeconds: number;  // Meaningful website engagement time
   todayActiveSeconds: number;  // Today's website engagement time
+  completedBookIds?: string[]; // Authoritative list of genuinely completed book IDs
 }
 
 export interface ReaderHubExportData {
@@ -228,11 +229,14 @@ export function getStoredFavorites(uid?: string | null): string[] {
       if (Array.isArray(parsed)) return parsed;
     }
     const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
-    if (!targetUid) {
-      const legacy = localStorage.getItem(FAVORITES_KEY);
-      if (legacy) {
-        const parsed = JSON.parse(legacy);
-        if (Array.isArray(parsed)) return parsed;
+    const legacy = localStorage.getItem(FAVORITES_KEY) || localStorage.getItem("readershub:favorites:v1:guest");
+    if (legacy) {
+      const parsed = JSON.parse(legacy);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        if (targetUid) {
+          try { localStorage.setItem(key, legacy); } catch {}
+        }
+        return parsed;
       }
     }
     return [];
@@ -265,11 +269,14 @@ export function getStoredReadingHistory(uid?: string | null): ReadingProgressIte
       if (Array.isArray(parsed)) return parsed;
     }
     const targetUid = uid !== undefined ? (uid ? uid.trim() : null) : activeUserUid;
-    if (!targetUid) {
-      const legacy = localStorage.getItem(HISTORY_KEY);
-      if (legacy) {
-        const parsed = JSON.parse(legacy);
-        if (Array.isArray(parsed)) return parsed;
+    const legacy = localStorage.getItem(HISTORY_KEY) || localStorage.getItem("readershub:history:v1:guest");
+    if (legacy) {
+      const parsed = JSON.parse(legacy);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        if (targetUid) {
+          try { localStorage.setItem(key, legacy); } catch {}
+        }
+        return parsed;
       }
     }
     return [];
@@ -1040,11 +1047,14 @@ export function getBookReadingMemory(bookId: string, uid?: string | null): BookR
     const userKey = getMemoryStorageKey(bookId, targetUid);
     let raw = localStorage.getItem(userKey);
 
-    if (!raw && !targetUid) {
-      const legacy = localStorage.getItem(`${MEMORY_KEY_PREFIX}:${bookId}`);
+    if (!raw) {
+      const legacy = localStorage.getItem(`${MEMORY_KEY_PREFIX}:${bookId}`) ||
+                     localStorage.getItem(`readershub:memory:v1:guest:${bookId}`);
       if (legacy) {
         raw = legacy;
-        localStorage.setItem(userKey, legacy);
+        if (targetUid) {
+          try { localStorage.setItem(userKey, legacy); } catch {}
+        }
       }
     }
 
@@ -1156,8 +1166,8 @@ export function getAllReadingMemories(uid?: string | null): Record<string, BookR
       if (userPrefix && key.startsWith(userPrefix)) {
         const bookId = key.replace(userPrefix, "");
         if (bookId) result[bookId] = getBookReadingMemory(bookId, targetUid);
-      } else if (!targetUid && key.startsWith(`${MEMORY_KEY_PREFIX}:`)) {
-        // Only consider keys that do NOT belong to another user
+      } else if (key.startsWith(`${MEMORY_KEY_PREFIX}:`)) {
+        // Fallback for legacy or guest memory keys on this device
         const rest = key.replace(`${MEMORY_KEY_PREFIX}:`, "");
         if (!rest.includes(":")) {
           const bookId = rest;
@@ -1240,8 +1250,12 @@ export function getSavedProgress(bookId: string, uid?: string | null): ReadingPr
   try {
     const userKey = getProgressStorageKey(bookId, targetUid);
     let raw = localStorage.getItem(userKey);
-    if (!raw && !targetUid) {
-      raw = localStorage.getItem(`${PROGRESS_KEY_PREFIX}:${bookId}`);
+    if (!raw) {
+      raw = localStorage.getItem(`${PROGRESS_KEY_PREFIX}:${bookId}`) ||
+            localStorage.getItem(`readershub:progress:v1:guest:${bookId}`);
+      if (raw && targetUid) {
+        try { localStorage.setItem(userKey, raw); } catch {}
+      }
     }
     if (raw) {
       const parsed = JSON.parse(raw);
@@ -1586,12 +1600,8 @@ export function getGenuinelyCompletedBookIds(
   }
   if (!historyList) historyList = [];
 
-  const allMemories =
-    memories && Object.keys(memories).length > 0
-      ? memories
-      : typeof window !== "undefined"
-      ? getAllReadingMemories(targetUid)
-      : {};
+  const localMemories = typeof window !== "undefined" ? getAllReadingMemories(targetUid) : {};
+  const allMemories: Record<string, BookReadingMemory> = { ...localMemories, ...(memories || {}) };
   const completedIds: string[] = [];
 
   for (const item of historyList) {
@@ -1600,7 +1610,7 @@ export function getGenuinelyCompletedBookIds(
     const bookSecs = mem?.totalSeconds || 0;
 
     // Resolve authoritative total pages from item or catalog metadata
-    const catalogBook = BOOKS.find((b) => b.id === item.bookId);
+    const catalogBook = getBookById(item.bookId) || BOOKS.find((b) => b.id === item.bookId || b.id.toLowerCase() === item.bookId.toLowerCase());
     const catalogPages = Number(catalogBook?.pages) || 0;
     const actualTotalPages = Number(item.totalPages) > 0 ? Number(item.totalPages) : catalogPages;
 
@@ -1617,7 +1627,7 @@ export function getGenuinelyCompletedBookIds(
     if (!bId || completedIds.includes(bId)) continue;
     const bookSecs = mem?.totalSeconds || 0;
     const saved = typeof window !== "undefined" ? getSavedProgress(bId, targetUid) : null;
-    const catalogBook = BOOKS.find((b) => b.id === bId);
+    const catalogBook = getBookById(bId) || BOOKS.find((b) => b.id === bId || b.id.toLowerCase() === bId.toLowerCase());
     const catalogPages = Number(catalogBook?.pages) || 0;
     const curPage = saved?.page || 0;
     const curProg = saved?.progress || (catalogPages > 0 && curPage > 0 ? Math.round((curPage / catalogPages) * 100) : 0);
@@ -1660,6 +1670,7 @@ export function calculateReadingStats(
     return {
       booksStarted: 0,
       booksCompleted: 0,
+      completedBookIds: [],
       pagesRead: 0,
       totalFavorites: 0,
       totalBookmarks: 0,
@@ -1683,6 +1694,7 @@ export function calculateReadingStats(
   let totalNotes = 0;
   let totalHighlights = 0;
   let totalDrawings = 0;
+  let completedIds: string[] = [];
 
   try {
     // 1. Favorites
@@ -1694,7 +1706,7 @@ export function calculateReadingStats(
       explicitHistory !== undefined ? explicitHistory : getStoredReadingHistory(targetUid);
 
     const allMemories = getAllReadingMemories(targetUid);
-    const completedIds = getGenuinelyCompletedBookIds(parsed, allMemories, targetUid);
+    completedIds = getGenuinelyCompletedBookIds(parsed, allMemories, targetUid);
     booksCompleted = completedIds.length;
 
     for (const item of parsed) {
@@ -1751,6 +1763,7 @@ export function calculateReadingStats(
   return {
     booksStarted,
     booksCompleted,
+    completedBookIds: completedIds,
     pagesRead,
     totalFavorites,
     totalBookmarks,
@@ -2390,4 +2403,137 @@ export function hydrateStorageFromCloudData(
     console.warn("[ReaderStorage] Hydration error:", e);
   }
 }
+
+/**
+ * Safely & non-destructively copies and merges all guest/local data on this device
+ * into the authenticated user's isolated storage namespace upon login.
+ * Never deletes guest data; only copies/unions forward so the user never loses progress.
+ */
+export function migrateGuestDataToUser(uid: string): void {
+  if (typeof window === "undefined" || !uid) return;
+  const targetUid = uid.trim();
+  if (!targetUid) return;
+
+  try {
+    // 1. Migrate Favorites
+    const guestFavs = getStoredFavorites(null);
+    if (guestFavs.length > 0) {
+      const userFavs = getStoredFavorites(targetUid);
+      const mergedFavs = Array.from(new Set([...userFavs, ...guestFavs]));
+      saveStoredFavorites(mergedFavs, targetUid);
+    }
+
+    // 2. Migrate Reading History
+    const guestHistory = getStoredReadingHistory(null);
+    if (guestHistory.length > 0) {
+      const userHistory = getStoredReadingHistory(targetUid);
+      const histMap = new Map<string, ReadingProgressItem>();
+      userHistory.forEach((h) => histMap.set(h.bookId, h));
+      guestHistory.forEach((gh) => {
+        const ex = histMap.get(gh.bookId);
+        if (!ex) {
+          histMap.set(gh.bookId, gh);
+        } else {
+          histMap.set(gh.bookId, {
+            bookId: gh.bookId,
+            page: Math.max(ex.page || 1, gh.page || 1),
+            totalPages: Math.max(ex.totalPages || 100, gh.totalPages || 100),
+            progress: Math.max(ex.progress || 0, gh.progress || 0),
+            lastReadAt: Math.max(ex.lastReadAt || 0, gh.lastReadAt || 0),
+          });
+        }
+      });
+      saveStoredReadingHistory(Array.from(histMap.values()), targetUid);
+    }
+
+    // 3. Migrate Reading Activity & Streaks
+    const guestActivity = getReadingActivityData(null);
+    if (guestActivity && Object.keys(guestActivity.daily || {}).length > 0) {
+      const userActivity = getReadingActivityData(targetUid);
+      const mergedDaily = { ...(userActivity.daily || {}) };
+      Object.entries(guestActivity.daily || {}).forEach(([dateKey, act]) => {
+        if (mergedDaily[dateKey]) {
+          const secs = Math.max(mergedDaily[dateKey].seconds || 0, act.seconds || 0);
+          mergedDaily[dateKey] = {
+            seconds: secs,
+            qualified: Boolean(mergedDaily[dateKey].qualified || act.qualified || secs >= 900),
+            lastUpdated: Math.max(mergedDaily[dateKey].lastUpdated || 0, act.lastUpdated || 0),
+          };
+        } else {
+          mergedDaily[dateKey] = act;
+        }
+      });
+      const { currentStreak, longestStreak, lastQualifiedDate } = calculateStreak(mergedDaily);
+      saveReadingActivityData(
+        {
+          daily: mergedDaily,
+          currentStreak,
+          longestStreak: Math.max(longestStreak, userActivity.longestStreak || 0),
+          lastQualifiedDate: lastQualifiedDate || userActivity.lastQualifiedDate,
+        },
+        targetUid
+      );
+    }
+
+    // 4. Migrate Active Time
+    const guestActive = getWebsiteActiveTimeData(null);
+    if (guestActive && guestActive.totalActiveSeconds > 0) {
+      const userActive = getWebsiteActiveTimeData(targetUid);
+      const mergedDaily = { ...(userActive.daily || {}) };
+      Object.entries(guestActive.daily || {}).forEach(([k, s]) => {
+        mergedDaily[k] = Math.max(mergedDaily[k] || 0, s || 0);
+      });
+      saveWebsiteActiveTimeData(
+        {
+          totalActiveSeconds: Math.max(userActive.totalActiveSeconds || 0, guestActive.totalActiveSeconds || 0),
+          daily: mergedDaily,
+          explorationDaily: { ...(userActive.explorationDaily || {}), ...(guestActive.explorationDaily || {}) },
+          totalExplorationSeconds: Math.max(userActive.totalExplorationSeconds || 0, guestActive.totalExplorationSeconds || 0),
+          lastUpdated: Math.max(userActive.lastUpdated || 0, guestActive.lastUpdated || 0),
+        },
+        targetUid
+      );
+    }
+
+    // 5. Migrate Reading Memories & Progress Keys
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (!key) continue;
+
+      if (key.startsWith(`${MEMORY_KEY_PREFIX}:`) && !key.startsWith("readershub:memory:v1:")) {
+        const bookId = key.replace(`${MEMORY_KEY_PREFIX}:`, "");
+        if (bookId && !bookId.includes(":")) {
+          const raw = localStorage.getItem(key);
+          const userMemKey = getMemoryStorageKey(bookId, targetUid);
+          if (raw && !localStorage.getItem(userMemKey)) {
+            localStorage.setItem(userMemKey, raw);
+          }
+        }
+      } else if (key.startsWith(`${PROGRESS_KEY_PREFIX}:`) && !key.startsWith("readershub:progress:v1:")) {
+        const bookId = key.replace(`${PROGRESS_KEY_PREFIX}:`, "");
+        if (bookId && !bookId.includes(":")) {
+          const raw = localStorage.getItem(key);
+          const userProgKey = getProgressStorageKey(bookId, targetUid);
+          if (raw && !localStorage.getItem(userProgKey)) {
+            localStorage.setItem(userProgKey, raw);
+          }
+        }
+      } else if (key.startsWith(`${ANNOTATIONS_KEY_PREFIX}:`) && !key.startsWith("readershub:annotations:v1:")) {
+        const bookId = key.replace(`${ANNOTATIONS_KEY_PREFIX}:`, "");
+        if (bookId && !bookId.includes(":")) {
+          const raw = localStorage.getItem(key);
+          const userAnnKey = getAnnotationsStorageKey(bookId, targetUid);
+          if (raw && !localStorage.getItem(userAnnKey)) {
+            localStorage.setItem(userAnnKey, raw);
+          }
+        }
+      }
+    }
+
+    invalidateAllCaches();
+  } catch (err) {
+    console.warn("[ReaderStorage] Error in migrateGuestDataToUser:", err);
+  }
+}
+
 
