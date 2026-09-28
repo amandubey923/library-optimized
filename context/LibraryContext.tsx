@@ -28,6 +28,7 @@ import {
   BookAnnotations,
   ReadingTimelineEvent,
   getBookReadingMemory,
+  getAllReadingMemories,
   recordReadingMemorySession,
   isBookOffline as checkIsBookOffline,
   cacheBookOffline as storeBookOffline,
@@ -321,8 +322,10 @@ export function LibraryProvider({ children }: { children: ReactNode }) {
       if (storedFavs && storedFavs.length > 0) setFavorites(storedFavs);
       const storedHist = getStoredReadingHistory();
       if (storedHist && storedHist.length > 0) setReadingHistory(storedHist);
+      const storedMem = getAllReadingMemories();
+      if (storedMem && Object.keys(storedMem).length > 0) setReadingMemories(storedMem);
     } catch (e) {
-      console.warn("[LibraryContext] Failed to load local favorites/history:", e);
+      console.warn("[LibraryContext] Failed to load local favorites/history/memories:", e);
     }
   }, []);
 

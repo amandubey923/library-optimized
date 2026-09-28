@@ -1586,7 +1586,12 @@ export function getGenuinelyCompletedBookIds(
   }
   if (!historyList) historyList = [];
 
-  const allMemories = memories || (typeof window !== "undefined" ? getAllReadingMemories(targetUid) : {});
+  const allMemories =
+    memories && Object.keys(memories).length > 0
+      ? memories
+      : typeof window !== "undefined"
+      ? getAllReadingMemories(targetUid)
+      : {};
   const completedIds: string[] = [];
 
   for (const item of historyList) {

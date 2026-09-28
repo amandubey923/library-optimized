@@ -8,7 +8,9 @@ import { useLibrary } from "@/context/LibraryContext";
 import { useAuth } from "@/context/AuthContext";
 import dynamic from "next/dynamic";
 import { Book, BOOKS } from "@/data/books";
+import BookCard from "@/components/BookCard";
 import { getLocalDateKey, getPreviousDateKey, DAILY_READING_GOAL_SECONDS, getGenuinelyCompletedBookIds, getAllReadingMemories, getBookReadingMemory, getSavedProgress } from "@/lib/reader-storage";
+import { syncUserSettingsToCloud, fetchUserSettingsFromCloud } from "@/lib/firestore-sync";
 import AuthGuard from "@/components/auth/AuthGuard";
 import CollectionsTab from "@/components/collections/CollectionsTab";
 import ReadingPathsTab from "@/components/paths/ReadingPathsTab";
@@ -198,29 +200,25 @@ export default function FavoritesPage() {
   }, [spotlightBook, getReadingMemory]);
 
   const completedBooks = useMemo(() => {
-    return readingHistory
-      .filter(
-        (item) =>
-          (
-            completedSet.has(item.bookId) ||
-            item.progress >= 100 ||
-            (item.totalPages > 0 && item.page >= item.totalPages)
-          ) &&
-          !isDismissedFromShelf("completed", item.bookId)
-      )
-      .map((item) => {
-        const book = BOOKS.find((b) => b.id === item.bookId);
+    return Array.from(completedSet)
+      .filter((bookId) => !isDismissedFromShelf("completed", bookId))
+      .map((bookId) => {
+        const book = BOOKS.find((b) => b.id === bookId);
         if (!book) return null;
+        const hist = readingHistory.find((item) => item.bookId === bookId);
+        const saved = getSavedProgress(bookId, user?.uid);
+        const totalPages = Number(hist?.totalPages || saved?.totalPages || book.pages || 0);
+        const currentPage = Number(hist?.page || saved?.page || totalPages);
         return {
           ...book,
-          currentPage: item.page,
-          totalPages: item.totalPages || book.pages,
+          currentPage,
+          totalPages,
           progress: 100,
-          lastReadAt: item.lastReadAt || 0,
+          lastReadAt: hist?.lastReadAt || saved?.lastReadAt || 0,
         };
       })
-      .filter((b): b is Book & { currentPage: number; totalPages: number | string; progress: number; lastReadAt: number } => b !== null);
-  }, [readingHistory, completedSet, isDismissedFromShelf]);
+      .filter(Boolean) as (Book & { currentPage: number; totalPages: number | string; progress: number; lastReadAt: number })[];
+  }, [completedSet, readingHistory, isDismissedFromShelf, user?.uid]);
 
   // 2. Derive Books with Reading Memory / In-Progress (Mutually exclusive with Completed)
   const memoryBooks = useMemo(() => {
