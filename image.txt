@@ -36,5 +36,12 @@ you can use your mind to genrate the image
 and you can use your mind before genration know about the book first before genration . search on the web . Book is related from which genre. and also you can check orgional cover of book from the internet after that you can replicate it with my condition or also can imporve it 
 and also if you think original cover on the internet of book is good then you can use it on the better way and more interactive
 and also in image i dont want any watermark of ai on the imgae 
+and only for checking the idea you can take example of 
+1984.jpeg
+godaan.webp.
+crimeandpunishment.jpeg
+thegreatgatsby.jpeg
+
+you have take only example from these not follow blindly these image 
 USER WILL PROVIDE ONLY:
 Book Name: <BOOK NAME>
