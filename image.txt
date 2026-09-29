@@ -30,6 +30,8 @@ For the given book:
 
 IMPORTANT:
 Keep the design SYSTEM consistent across all books, but make the artwork UNIQUE to each book.
-
+you can use gemini for image genration 
+And for taking idea you can check the 1984.jpeg image for taking example only 
+you can use your mind to genrate the image 
 USER WILL PROVIDE ONLY:
 Book Name: <BOOK NAME>
