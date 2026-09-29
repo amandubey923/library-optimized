@@ -1,0 +1,35 @@
+READER'S HUB — BOOK COVER AUTO GENERATOR
+
+Input: BOOK NAME only.
+
+For the given book:
+
+1. Search the web and understand the actual book, its genre, topic, theme and context.
+2. Create a NEW premium 2:3 (1024×1536) portrait cover specifically for that book.
+3. Keep the SAME Reader's HUB visual style, layout, typography, branding and overall design language as the other Reader's HUB covers, so all books look like one consistent collection.
+4. Change only the artwork/background according to the actual book:
+   AI → AI/robotic 3D visual
+   History → historical 3D visual
+   Science → scientific 3D visual
+   Economics → financial/economic visual
+   Geography → globe/terrain/map visual
+   etc.
+   Choose the most relevant visual yourself based on research.
+5. Cover must contain:
+   - Reader's HUB
+   - Exact Book Title
+   - By — Exact Author Name
+6. Do NOT copy the original publisher cover. Create an original interpretation.
+7. Make it premium, cinematic, realistic 3D, clean, detailed and visually attractive.
+8. After generation:
+   - Find the existing cover/image of that exact book.
+   - Replace it with the newly generated image.
+   - Delete the old cover/image completely if no longer referenced.
+   - Remove any duplicate/unused image created during replacement.
+   - Verify the book now displays the new cover correctly.
+
+IMPORTANT:
+Keep the design SYSTEM consistent across all books, but make the artwork UNIQUE to each book.
+
+USER WILL PROVIDE ONLY:
+Book Name: <BOOK NAME>
