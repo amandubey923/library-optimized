@@ -318,6 +318,7 @@ function LibraryContent() {
               </div>
             </div>
           </div>
+        )}
 
         {/* Row 2c: Philosophy & Spirituality Subcategories (Only when Philosophy is selected) */}
         {selectedCategory === "Philosophy & Spirituality" && (
@@ -355,47 +356,6 @@ function LibraryContent() {
             </div>
           </div>
         )}
-
-<<<<<<< HEAD
-        {/* Row 2c: Philosophy & Spirituality Subcategories (Only when Philosophy is selected) */}
-        {selectedCategory === "Philosophy & Spirituality" && (
-          <div className="space-y-3 pt-3 border-t border-[var(--border)]/70 animate-fade-in">
-            <div>
-              <div className="text-xs text-[var(--accent)] font-semibold mb-2 flex items-center gap-1.5">
-                <span>🧘</span>
-                <span>Filter by School of Thought:</span>
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {PHILOSOPHY_SUBCATEGORIES.map((subcat) => {
-                  const isSubActive = selectedPhilosophySubcategory === subcat;
-                  const subCount = PHILOSOPHY_SUBCATEGORY_COUNTS[subcat] ?? 0;
-                  return (
-                    <button
-                      key={subcat}
-                      onClick={() => {
-                        setSelectedPhilosophySubcategory(subcat);
-                        setDisplayLimit(25);
-                      }}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1 ${
-                        isSubActive
-                          ? "bg-[var(--accent)] text-[var(--background)] font-bold shadow-xs scale-105"
-                          : "bg-[var(--background)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)]"
-                      }`}
-                    >
-                      <span>{subcat}</span>
-                      <span className={`text-[10px] ${isSubActive ? "opacity-90 font-bold" : "opacity-60"}`}>
-                        ({subCount})
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
-=======
-)}
->>>>>>> c9d48000c802514beb311e53845b1059bb8e9246
 
         {/* Row 3: Language Badges */}
         <div className="flex flex-wrap items-center justify-between gap-4 pt-3 border-t border-[var(--border)]">
