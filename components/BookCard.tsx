@@ -131,15 +131,15 @@ function BookCardComponent({
         {/* Book Cover Container */}
         <Link
           href={`/book/${book.id}`}
-          className="relative w-full aspect-[2/3] lg:aspect-square rounded-lg sm:rounded-xl overflow-hidden mb-2.5 sm:mb-3.5 book-shadow bg-[var(--background)] block group/cover"
+          className="relative w-full aspect-[2/3] rounded-lg sm:rounded-xl overflow-hidden mb-2.5 sm:mb-3.5 book-shadow bg-[var(--background)] block group/cover"
         >
           <Image
             src={book.cover}
             alt={`Cover of ${book.title}`}
             fill
             loading="lazy"
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-            className="object-cover group-hover/cover:scale-105 transition-transform duration-500 ease-out"
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 23vw"
+            className="object-contain transition-transform duration-500 ease-out"
           />
 
           {/* Quick Read Overlay */}
