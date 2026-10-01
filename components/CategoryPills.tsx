@@ -7,6 +7,7 @@ import {
   BOOKS,
   isTechnicalBook,
   TECHNICAL_SUBCATEGORIES,
+  matchesTechnicalSubcategory,
 } from "@/data/books";
 
 interface CategoryPillsProps {
@@ -53,11 +54,10 @@ export default function CategoryPills({
     for (const b of BOOKS) {
       if (isTechnicalBook(b)) {
         counts["All Technical"]++;
-        if (counts[b.category] !== undefined) {
-          counts[b.category]++;
-        }
-        if (b.resourceType && counts[b.resourceType] !== undefined) {
-          counts[b.resourceType]++;
+        for (const sub of TECHNICAL_SUBCATEGORIES) {
+          if (sub !== "All Technical" && matchesTechnicalSubcategory(b, sub)) {
+            counts[sub]++;
+          }
         }
       }
     }

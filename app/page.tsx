@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useDeferredValue, useRef } from "react";
 import Link from "next/link";
-import { BOOKS, Category, getBooksByCategory, searchBooks, isTechnicalBook } from "@/data/books";
+import { BOOKS, Category, getBooksByCategory, searchBooks, isTechnicalBook, matchesTechnicalSubcategory } from "@/data/books";
 import HeroVideo from "@/components/HeroVideo";
 import ContinueReading from "@/components/ContinueReading";
 import FeaturedCarousel from "@/components/FeaturedCarousel";
@@ -29,7 +29,7 @@ export default function HomePage() {
         if (selectedCategory === "All") return true;
         if (selectedCategory === "Technical Knowledge") {
           if (selectedSubcategory !== "All Technical") {
-            return b.category === selectedSubcategory || (b.resourceType as string) === selectedSubcategory;
+            return matchesTechnicalSubcategory(b, selectedSubcategory);
           }
           return isTechnicalBook(b);
         }

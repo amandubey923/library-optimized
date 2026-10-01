@@ -9,6 +9,7 @@ import {
   isTechnicalBook,
   TECHNICAL_SUBCATEGORIES,
   ResourceType,
+  matchesTechnicalSubcategory,
 } from "@/data/books";
 import BookCard from "@/components/BookCard";
 
@@ -21,6 +22,17 @@ const RESOURCE_TYPE_COUNTS: Record<string, number> = {
   HandwrittenNotes: TECHNICAL_BOOKS_CACHE.filter((b) => b.resourceType === "HandwrittenNotes").length,
   CheatSheet: TECHNICAL_BOOKS_CACHE.filter((b) => b.resourceType === "CheatSheet").length,
   InterviewPrep: TECHNICAL_BOOKS_CACHE.filter((b) => b.resourceType === "InterviewPrep").length,
+};
+
+const TECHNICAL_SUBCATEGORY_COUNTS: Record<string, number> = {
+  "All Technical": TECHNICAL_BOOKS_CACHE.length,
+  "DSA & Problem Solving": TECHNICAL_BOOKS_CACHE.filter((b) => matchesTechnicalSubcategory(b, "DSA & Problem Solving")).length,
+  "Computer Science & Systems": TECHNICAL_BOOKS_CACHE.filter((b) => matchesTechnicalSubcategory(b, "Computer Science & Systems")).length,
+  "Web & Backend Development": TECHNICAL_BOOKS_CACHE.filter((b) => matchesTechnicalSubcategory(b, "Web & Backend Development")).length,
+  "DBMS & SQL": TECHNICAL_BOOKS_CACHE.filter((b) => matchesTechnicalSubcategory(b, "DBMS & SQL")).length,
+  "OOP & Software Design": TECHNICAL_BOOKS_CACHE.filter((b) => matchesTechnicalSubcategory(b, "OOP & Software Design")).length,
+  "System Design & DevOps": TECHNICAL_BOOKS_CACHE.filter((b) => matchesTechnicalSubcategory(b, "System Design & DevOps")).length,
+  "Programming Languages": TECHNICAL_BOOKS_CACHE.filter((b) => matchesTechnicalSubcategory(b, "Programming Languages")).length,
 };
 
 function LibraryContent() {
@@ -61,9 +73,7 @@ function LibraryContent() {
       result = result.filter((b) => isTechnicalBook(b));
 
       if (selectedSubcategory !== "All Technical") {
-        result = result.filter(
-          (b) => b.category === selectedSubcategory || (b.resourceType as string) === selectedSubcategory
-        );
+        result = result.filter((b) => matchesTechnicalSubcategory(b, selectedSubcategory));
       }
 
       if (selectedResourceType !== "All") {
@@ -234,10 +244,7 @@ function LibraryContent() {
               <div className="flex flex-wrap gap-1.5">
                 {TECHNICAL_SUBCATEGORIES.map((subcat) => {
                   const isSubActive = selectedSubcategory === subcat;
-                  const subCount =
-                    subcat === "All Technical"
-                      ? BOOKS.filter((b) => isTechnicalBook(b)).length
-                      : BOOKS.filter((b) => isTechnicalBook(b) && (b.category === subcat || (b.resourceType as string) === subcat)).length;
+                  const subCount = TECHNICAL_SUBCATEGORY_COUNTS[subcat] ?? 0;
                   return (
                     <button
                       key={subcat}
