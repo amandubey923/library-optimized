@@ -482,27 +482,6 @@
     "excerpt": "Arise, awake, and stop not till the goal is reached."
   },
   {
-    "id": "advait-in-daily-life",
-    "title": "Advait in Daily Life",
-    "author": "Advaita Vedanta Study",
-    "category": "Philosophy & Spirituality",
-    "cover": "/images/books/advaitindailylife.jpeg",
-    "pdf": "/pdfs/AdvaitInEverydayLife.pdf",
-    "description": "An insightful practical guide illustrating how non-dualistic Advaita Vedanta philosophy can be integrated into everyday modern life, relationships, work, and mind management.",
-    "year": 2015,
-    "pages": 220,
-    "language": "Hindi",
-    "rating": 4.7,
-    "featured": false,
-    "tags": [
-      "Advaita",
-      "Non-Duality",
-      "Mindfulness",
-      "Indian Philosophy"
-    ],
-    "excerpt": "अद्वैत का अर्थ है एकत्व का अनुभव, जहाँ कोई भेद नहीं बचता।"
-  },
-  {
     "id": "warmth",
     "title": "Warmth",
     "author": "Contemporary Poetry",
@@ -1071,9 +1050,9 @@
     "fileHash": "a8cacf49ea808daacbef95466b3bcbd3db371d63fdeabcb8d26cf15504062878"
   },
   {
-    "id": "bertrand-russell",
+    "id": "The Conquest of Happiness",
     "title": "Bertrand Russell",
-    "author": "The Conquest of Happiness-Liveright",
+    "author": "bertrand-russell-Liveright",
     "category": "Fantasy & Adventure",
     "cover": "/images/books/the-conquest-of-happiness.webp",
     "pdf": "/pdfs/TheConquestOfHappinessBertrandRussell.pdf",
