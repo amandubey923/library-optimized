@@ -69,6 +69,126 @@ export function isTechnicalBook(book: Book): boolean {
   return TECHNICAL_CATEGORIES_SET.has(book.category) || Boolean(book.resourceType && book.resourceType !== "Book");
 }
 
+export const PHILOSOPHY_SUBCATEGORIES = [
+  "All Philosophy",
+  "Osho",
+  "Jiddu Krishnamurti",
+  "Acharya Prashant",
+  "Buddhism & Dhamma",
+  "Stoicism",
+  "Western Philosophy",
+  "Indian Philosophy & Vedanta",
+  "Existentialism",
+  "Taoism & Eastern Wisdom",
+] as const;
+
+export type PhilosophySubcategory = typeof PHILOSOPHY_SUBCATEGORIES[number];
+
+export function matchesPhilosophySubcategory(book: Book, subcategory: string): boolean {
+  if (subcategory === "All Philosophy" || subcategory === "All") {
+    return book.category === "Philosophy & Spirituality";
+  }
+  if (book.category !== "Philosophy & Spirituality") return false;
+
+  const author = (book.author || "").toLowerCase();
+  const title = (book.title || "").toLowerCase();
+  const tags = (book.tags || []).map((t) => t.toLowerCase()).join(" ");
+  const combined = author + " " + title + " " + tags;
+
+  switch (subcategory) {
+    case "Osho":
+      return (
+        author.includes("osho") ||
+        tags.includes("osho")
+      );
+
+    case "Jiddu Krishnamurti":
+      return (
+        author.includes("krishnamurti") ||
+        author.includes("jiddu")
+      );
+
+    case "Acharya Prashant":
+      return author.includes("acharya prashant");
+
+    case "Buddhism & Dhamma":
+      return (
+        author.includes("narada mahathera") ||
+        author.includes("walpola rahula") ||
+        author.includes("bhikkhu bodhi") ||
+        author.includes("thich nhat hanh") ||
+        author.includes("gunaratana") ||
+        author.includes("karen armstrong") ||
+        author.includes("bomhard") ||
+        author.includes("ambedkar") ||
+        author.includes("hanh") ||
+        author.includes("bukkyo dendo") ||
+        title.includes("buddha") ||
+        title.includes("dhamma") ||
+        title.includes("buddhis") ||
+        (title.includes("mindful") && !author.includes("osho") && !author.includes("acharya prashant"))
+      );
+
+    case "Stoicism":
+      return (
+        author.includes("seneca") ||
+        author.includes("epictetus") ||
+        author.includes("marcus aurelius") ||
+        tags.includes("stoic") ||
+        title.includes("stoic")
+      );
+
+    case "Western Philosophy":
+      return (
+        author.includes("plato") ||
+        author.includes("aristotle") ||
+        author.includes("immanuel kant") ||
+        author.includes("hegel") ||
+        author.includes("david hume") ||
+        author.includes("john locke") ||
+        author.includes("rené descartes") ||
+        author.includes("rene descartes") ||
+        author.includes("schopenhauer") ||
+        author.includes("amartya sen")
+      );
+
+    case "Indian Philosophy & Vedanta":
+      return (
+        author.includes("swami vivekananda") ||
+        author.includes("ramana maharshi") ||
+        author.includes("sadhguru") ||
+        author.includes("swami sivananda") ||
+        title.includes("upanishad") ||
+        title.includes("vedanta") ||
+        title.includes("raja yoga") ||
+        title.includes("karma yoga") ||
+        (tags.includes("vedanta") && !author.includes("osho") && !author.includes("acharya prashant"))
+      );
+
+    case "Existentialism":
+      return (
+        author.includes("nietzsche") ||
+        author.includes("camus") ||
+        author.includes("sartre") ||
+        tags.includes("existentialism") ||
+        title.includes("existential")
+      );
+
+    case "Taoism & Eastern Wisdom":
+      return (
+        author.includes("lao tzu") ||
+        author.includes("sun tzu") ||
+        title.includes("tao te ching") ||
+        title.includes("art of war") ||
+        (title.includes("tao") && !author.includes("osho") && !author.includes("acharya prashant"))
+      );
+
+    default:
+      return false;
+  }
+}
+
+
 export function matchesTechnicalSubcategory(book: Book, subcategory: string): boolean {
   if (subcategory === "All Technical" || subcategory === "All") {
     return isTechnicalBook(book);
@@ -163,6 +283,12 @@ export function getBooksByCategory(category: string, subcategory?: string): Book
       return BOOKS.filter((b) => matchesTechnicalSubcategory(b, subcategory));
     }
     return BOOKS.filter((b) => isTechnicalBook(b));
+  }
+  if (category === "Philosophy & Spirituality") {
+    if (subcategory && subcategory !== "All Philosophy" && subcategory !== "All") {
+      return BOOKS.filter((b) => matchesPhilosophySubcategory(b, subcategory));
+    }
+    return BOOKS.filter((book) => book.category === "Philosophy & Spirituality");
   }
   return BOOKS.filter((book) => book.category === category);
 }

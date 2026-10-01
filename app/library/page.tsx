@@ -8,8 +8,10 @@ import {
   Category,
   isTechnicalBook,
   TECHNICAL_SUBCATEGORIES,
+  PHILOSOPHY_SUBCATEGORIES,
   ResourceType,
   matchesTechnicalSubcategory,
+  matchesPhilosophySubcategory,
 } from "@/data/books";
 import BookCard from "@/components/BookCard";
 
@@ -35,6 +37,20 @@ const TECHNICAL_SUBCATEGORY_COUNTS: Record<string, number> = {
   "Programming Languages": TECHNICAL_BOOKS_CACHE.filter((b) => matchesTechnicalSubcategory(b, "Programming Languages")).length,
 };
 
+const PHILOSOPHY_BOOKS_CACHE = BOOKS.filter((b) => b.category === "Philosophy & Spirituality");
+const PHILOSOPHY_SUBCATEGORY_COUNTS: Record<string, number> = {
+  "All Philosophy": PHILOSOPHY_BOOKS_CACHE.length,
+  "Osho": PHILOSOPHY_BOOKS_CACHE.filter((b) => matchesPhilosophySubcategory(b, "Osho")).length,
+  "Jiddu Krishnamurti": PHILOSOPHY_BOOKS_CACHE.filter((b) => matchesPhilosophySubcategory(b, "Jiddu Krishnamurti")).length,
+  "Acharya Prashant": PHILOSOPHY_BOOKS_CACHE.filter((b) => matchesPhilosophySubcategory(b, "Acharya Prashant")).length,
+  "Buddhism & Dhamma": PHILOSOPHY_BOOKS_CACHE.filter((b) => matchesPhilosophySubcategory(b, "Buddhism & Dhamma")).length,
+  "Stoicism": PHILOSOPHY_BOOKS_CACHE.filter((b) => matchesPhilosophySubcategory(b, "Stoicism")).length,
+  "Western Philosophy": PHILOSOPHY_BOOKS_CACHE.filter((b) => matchesPhilosophySubcategory(b, "Western Philosophy")).length,
+  "Indian Philosophy & Vedanta": PHILOSOPHY_BOOKS_CACHE.filter((b) => matchesPhilosophySubcategory(b, "Indian Philosophy & Vedanta")).length,
+  "Existentialism": PHILOSOPHY_BOOKS_CACHE.filter((b) => matchesPhilosophySubcategory(b, "Existentialism")).length,
+  "Taoism & Eastern Wisdom": PHILOSOPHY_BOOKS_CACHE.filter((b) => matchesPhilosophySubcategory(b, "Taoism & Eastern Wisdom")).length,
+};
+
 function LibraryContent() {
   const searchParams = useSearchParams();
   const initialCategoryParam = searchParams.get("category");
@@ -46,6 +62,7 @@ function LibraryContent() {
       : "All"
   );
   const [selectedSubcategory, setSelectedSubcategory] = useState<string>("All Technical");
+  const [selectedPhilosophySubcategory, setSelectedPhilosophySubcategory] = useState<string>("All Philosophy");
   const [selectedResourceType, setSelectedResourceType] = useState<string>("All");
   const [searchQuery, setSearchQuery] = useState("");
   const deferredSearchQuery = useDeferredValue(searchQuery);
@@ -78,6 +95,11 @@ function LibraryContent() {
 
       if (selectedResourceType !== "All") {
         result = result.filter((b) => b.resourceType === selectedResourceType);
+      }
+    } else if (selectedCategory === "Philosophy & Spirituality") {
+      result = result.filter((b) => b.category === "Philosophy & Spirituality");
+      if (selectedPhilosophySubcategory !== "All Philosophy") {
+        result = result.filter((b) => matchesPhilosophySubcategory(b, selectedPhilosophySubcategory));
       }
     } else if (selectedCategory !== "All") {
       result = result.filter((b) => b.category === selectedCategory);
@@ -117,7 +139,7 @@ function LibraryContent() {
     });
 
     return result;
-  }, [selectedCategory, selectedSubcategory, selectedResourceType, selectedLanguage, deferredSearchQuery, sortBy]);
+  }, [selectedCategory, selectedSubcategory, selectedPhilosophySubcategory, selectedResourceType, selectedLanguage, deferredSearchQuery, sortBy]);
 
   const visibleBooks = useMemo(() => {
     return filteredBooks.slice(0, displayLimit);
@@ -126,6 +148,7 @@ function LibraryContent() {
   const resetFilters = () => {
     setSelectedCategory("All");
     setSelectedSubcategory("All Technical");
+    setSelectedPhilosophySubcategory("All Philosophy");
     setSelectedResourceType("All");
     setSelectedLanguage("All");
     setSearchQuery("");
@@ -216,6 +239,7 @@ function LibraryContent() {
                   onClick={() => {
                     setSelectedCategory(cat);
                     setSelectedSubcategory("All Technical");
+                    setSelectedPhilosophySubcategory("All Philosophy");
                     setSelectedResourceType("All");
                     setDisplayLimit(25);
                   }}
@@ -294,7 +318,45 @@ function LibraryContent() {
               </div>
             </div>
           </div>
+
+        {/* Row 2c: Philosophy & Spirituality Subcategories (Only when Philosophy is selected) */}
+        {selectedCategory === "Philosophy & Spirituality" && (
+          <div className="space-y-3 pt-3 border-t border-[var(--border)]/70 animate-fade-in">
+            <div>
+              <div className="text-xs text-[var(--accent)] font-semibold mb-2 flex items-center gap-1.5">
+                <span>🧘</span>
+                <span>Filter by School of Thought:</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {PHILOSOPHY_SUBCATEGORIES.map((subcat) => {
+                  const isSubActive = selectedPhilosophySubcategory === subcat;
+                  const subCount = PHILOSOPHY_SUBCATEGORY_COUNTS[subcat] ?? 0;
+                  return (
+                    <button
+                      key={subcat}
+                      onClick={() => {
+                        setSelectedPhilosophySubcategory(subcat);
+                        setDisplayLimit(25);
+                      }}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1 ${
+                        isSubActive
+                          ? "bg-[var(--accent)] text-[var(--background)] font-bold shadow-xs scale-105"
+                          : "bg-[var(--background)] text-[var(--text-secondary)] hover:text-[var(--foreground)] border border-[var(--border)]"
+                      }`}
+                    >
+                      <span>{subcat}</span>
+                      <span className={`text-[10px] ${isSubActive ? "opacity-90 font-bold" : "opacity-60"}`}>
+                        ({subCount})
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
         )}
+
+)}
 
         {/* Row 3: Language Badges */}
         <div className="flex flex-wrap items-center justify-between gap-4 pt-3 border-t border-[var(--border)]">
