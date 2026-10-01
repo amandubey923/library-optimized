@@ -735,8 +735,8 @@
     "fileHash": "e1f204cf9ca2348f867d6462e5aeb301d02e2309acf82a008df97e4302de0e63"
   },
   {
-    "id": "who-am-i-nan-yar",
-    "title": "Who Am I? (Nan Yar?)",
+    "id": "who-am-i",
+    "title": "Who Am I?",
     "author": "Sri Ramana Maharshi",
     "category": "Philosophy & Spirituality",
     "cover": "/images/books/who-am-i-nan-yar.webp",
@@ -1619,7 +1619,7 @@
   {
     "id": "karma-a-yogis-guide-to-crafting-your-destiny",
     "title": "Karma: A Yogi's Guide to Crafting Your Destiny",
-    "author": "Sadhguru",
+    "author": "Acharya Prashant",
     "category": "Philosophy & Spirituality",
     "cover": "/images/books/karma-a-yogis-guide-to-crafting-your-destiny.webp",
     "pdf": "/pdfs/KarmaAcharyaPrashant.pdf",
@@ -1890,8 +1890,8 @@
     "fileHash": "57867c21100c6783a8cf9cf72d2328c7b99e8b40e68d8ebbad626120e61f923b"
   },
   {
-    "id": "tao-upanishad-part-1",
-    "title": "Tao Upanishad (Part 1)",
+    "id": "tao-upanishad",
+    "title": "Tao Upanishad",
     "author": "Osho",
     "category": "Philosophy & Spirituality",
     "cover": "/images/books/tao-upanishad-part-1.webp",
