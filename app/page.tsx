@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useDeferredValue, useRef } from "react";
 import Link from "next/link";
-import { BOOKS, Category, getBooksByCategory, searchBooks, isTechnicalBook, matchesTechnicalSubcategory } from "@/data/books";
+import { BOOKS, Category, getBooksByCategory, searchBooks, isTechnicalBook, matchesTechnicalSubcategory, matchesPhilosophySubcategory } from "@/data/books";
 import HeroVideo from "@/components/HeroVideo";
 import ContinueReading from "@/components/ContinueReading";
 import FeaturedCarousel from "@/components/FeaturedCarousel";
@@ -14,6 +14,7 @@ import SmartRecommendations from "@/components/recommendations/SmartRecommendati
 export default function HomePage() {
   const [selectedCategory, setSelectedCategory] = useState<Category>("All");
   const [selectedSubcategory, setSelectedSubcategory] = useState<string>("All Technical");
+  const [selectedPhilosophySubcategory, setSelectedPhilosophySubcategory] = useState<string>("All Philosophy");
   const [searchQuery, setSearchQuery] = useState("");
   const deferredSearchQuery = useDeferredValue(searchQuery);
   const [displayLimit, setDisplayLimit] = useState(20);
@@ -22,7 +23,11 @@ export default function HomePage() {
   const filteredBooks = useMemo(() => {
     let result = getBooksByCategory(
       selectedCategory,
-      selectedCategory === "Technical Knowledge" ? selectedSubcategory : undefined
+      selectedCategory === "Technical Knowledge"
+        ? selectedSubcategory
+        : selectedCategory === "Philosophy & Spirituality"
+        ? selectedPhilosophySubcategory
+        : undefined
     );
     if (deferredSearchQuery.trim()) {
       result = searchBooks(deferredSearchQuery).filter((b) => {
@@ -33,15 +38,22 @@ export default function HomePage() {
           }
           return isTechnicalBook(b);
         }
+        if (selectedCategory === "Philosophy & Spirituality") {
+          if (selectedPhilosophySubcategory !== "All Philosophy") {
+            return matchesPhilosophySubcategory(b, selectedPhilosophySubcategory);
+          }
+          return b.category === "Philosophy & Spirituality";
+        }
         return b.category === selectedCategory;
       });
     }
     return result;
-  }, [selectedCategory, selectedSubcategory, deferredSearchQuery]);
+  }, [selectedCategory, selectedSubcategory, selectedPhilosophySubcategory, deferredSearchQuery]);
 
   const handleCategoryChange = (cat: Category) => {
     setSelectedCategory(cat);
     setSelectedSubcategory("All Technical");
+    setSelectedPhilosophySubcategory("All Philosophy");
     setDisplayLimit(20);
   };
 
@@ -121,6 +133,8 @@ export default function HomePage() {
               onSelectCategory={handleCategoryChange}
               activeSubcategory={selectedSubcategory}
               onSelectSubcategory={setSelectedSubcategory}
+              activePhilosophySubcategory={selectedPhilosophySubcategory}
+              onSelectPhilosophySubcategory={setSelectedPhilosophySubcategory}
             />
           </div>
 

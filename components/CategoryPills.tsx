@@ -8,6 +8,8 @@ import {
   isTechnicalBook,
   TECHNICAL_SUBCATEGORIES,
   matchesTechnicalSubcategory,
+  PHILOSOPHY_SUBCATEGORIES,
+  matchesPhilosophySubcategory,
 } from "@/data/books";
 
 interface CategoryPillsProps {
@@ -15,6 +17,8 @@ interface CategoryPillsProps {
   onSelectCategory: (category: Category) => void;
   activeSubcategory?: string;
   onSelectSubcategory?: (subcat: string) => void;
+  activePhilosophySubcategory?: string;
+  onSelectPhilosophySubcategory?: (subcat: string) => void;
 }
 
 export default function CategoryPills({
@@ -22,6 +26,8 @@ export default function CategoryPills({
   onSelectCategory,
   activeSubcategory = "All Technical",
   onSelectSubcategory,
+  activePhilosophySubcategory = "All Philosophy",
+  onSelectPhilosophySubcategory,
 }: CategoryPillsProps) {
   const categoryCounts = useMemo(() => {
     const counts: Record<string, number> = {
@@ -64,8 +70,27 @@ export default function CategoryPills({
     return counts;
   }, []);
 
+  const philosophySubcategoryCounts = useMemo(() => {
+    const counts: Record<string, number> = { "All Philosophy": 0 };
+    for (const sub of PHILOSOPHY_SUBCATEGORIES) {
+      counts[sub] = 0;
+    }
+    for (const b of BOOKS) {
+      if (b.category === "Philosophy & Spirituality") {
+        counts["All Philosophy"]++;
+        for (const sub of PHILOSOPHY_SUBCATEGORIES) {
+          if (sub !== "All Philosophy" && matchesPhilosophySubcategory(b, sub)) {
+            counts[sub]++;
+          }
+        }
+      }
+    }
+    return counts;
+  }, []);
+
   const getCount = (cat: Category) => categoryCounts[cat] || 0;
   const getSubcategoryCount = (subcat: string) => subcategoryCounts[subcat] || 0;
+  const getPhilosophySubcategoryCount = (subcat: string) => philosophySubcategoryCounts[subcat] || 0;
 
   return (
     <div className="space-y-3">
@@ -124,6 +149,38 @@ export default function CategoryPills({
                   }`}
                 >
                   <span>{subcat.replace(" & Systems", "").replace(" & Problem Solving", "").replace(" & DevOps", "")}</span>
+                  <span className={`text-[10px] ${isSubActive ? "opacity-90 font-bold" : "opacity-60"}`}>
+                    ({subCount})
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Philosophy & Spirituality Sub-Filter Bar (Visible when Philosophy is selected) */}
+      {activeCategory === "Philosophy & Spirituality" && onSelectPhilosophySubcategory && (
+        <div className="w-full overflow-x-auto pb-2 scrollbar-none animate-fade-in">
+          <div className="flex items-center gap-2 min-w-max px-1 py-1 rounded-2xl bg-[var(--accent)]/5 border border-[var(--accent)]/15">
+            <span className="text-[11px] font-bold text-[var(--accent)] px-2.5 py-1 uppercase tracking-wider">
+              🧘 School:
+            </span>
+            {PHILOSOPHY_SUBCATEGORIES.map((subcat) => {
+              const isSubActive = activePhilosophySubcategory === subcat;
+              const subCount = getPhilosophySubcategoryCount(subcat);
+
+              return (
+                <button
+                  key={subcat}
+                  onClick={() => onSelectPhilosophySubcategory(subcat)}
+                  className={`px-3 py-1 rounded-lg text-xs font-medium transition-all cursor-pointer flex items-center gap-1.5 ${
+                    isSubActive
+                      ? "bg-[var(--accent)] text-[var(--background)] font-bold shadow-xs scale-[1.02]"
+                      : "bg-[var(--card)]/80 text-[var(--text-secondary)] hover:text-[var(--foreground)] hover:bg-[var(--secondary)] border border-[var(--border)]/70"
+                  }`}
+                >
+                  <span>{subcat}</span>
                   <span className={`text-[10px] ${isSubActive ? "opacity-90 font-bold" : "opacity-60"}`}>
                     ({subCount})
                   </span>
