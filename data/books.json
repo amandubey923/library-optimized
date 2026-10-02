@@ -8628,7 +8628,7 @@
   {
     "id": "refactoring-improving-the-design-of-existing-code",
     "title": "Refactoring: Improving the Design of Existing Code",
-    "author": "http://dennis.pp.ru/book.htm",
+    "author": "Martin Fowler",
     "category": "Technical Knowledge",
     "resourceType": "Book",
     "cover": "/images/books/refactoring-improving-the-design-of-existing-code.webp",
